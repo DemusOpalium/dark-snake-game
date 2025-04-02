@@ -1,5 +1,5 @@
+---
 
-cat << 'EOF' > README.md
 # Complete Snake Game – Dark Art Edition
 
 Welcome to the Complete Snake Game – Dark Art Edition!  
