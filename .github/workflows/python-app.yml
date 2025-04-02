@@ -1,45 +1,30 @@
 name: Build Windows EXE
 
-on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+on: [push, pull_request]
 
 jobs:
   build:
     runs-on: windows-latest
-
+    
     steps:
-      - uses: actions/checkout@v3
-
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v4
+      - uses: actions/checkout@v2
+      
+      - name: Set up Python
+        uses: actions/setup-python@v2
         with:
-          python-version: '3.12'
-
+          python-version: '3.x'
+      
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pyinstaller pygame
-
-      - name: Build EXE with PyInstaller
+          pip install -r requirements.txt
+      
+      - name: Build
         run: |
-          pyinstaller --onefile --windowed --add-data "assets;assets" --add-data "modules;modules" main.py
-
-      - name: Verify EXE file exists
-        shell: bash
-        run: |
-          if [ -f dist/main.exe ]; then
-            echo "File exists."
-          else
-            echo "File does not exist."
-            exit 1
-          fi
-
-      - name: Upload Build Artifact
-        uses: actions/upload-artifact@<commit-hash>
+          pyinstaller --onefile your_script.py
+      
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
         with:
-         name: dark-snake-exe
-         path: dist/main.exe
-
+          name: my-artifact
+          path: path/to/your/artifact
