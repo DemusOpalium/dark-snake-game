@@ -30,7 +30,6 @@ jobs:
         run: |
            pyinstaller --onefile --windowed --add-data "assets;assets" --add-data "modules;modules" main.py
 
-
       - name: List files in dist directory
         run: dir dist
 
