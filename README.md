@@ -17,12 +17,59 @@ Dieses Snake-Spiel vereint klassische Spielmechaniken mit einem düsteren, küns
 
 ---
 
-## Project Structure / Projektstruktur
 
-Dark_Snake/ ├── main.py # Entry point and game loop / Einstiegspunkt und Spiel-Loop ├── config.py # Configuration, constants, and color definitions / Konfiguration, Konstanten und Farbdefinitionen ├── assets/ # All external resources / Alle externen Ressourcen │ ├── graphics/ # Graphics, sprites, animations, and icons / Grafiken, Sprites, Animationen und Icons │ │ ├── Boss001/ # Animation frames for Boss 001 │ │ ├── Boss002/ # Animation frames for Boss 002 │ │ ├── Boss003/ # Animation frames for Boss 003 │ │ └── ... # Additional images for snake head, body, items, portals, etc. │ └── sounds/ # Sound files and music / Sounddateien und Musik │ ├── boss.wav │ ├── dice.wav │ ├── gameover.wav │ ├── eat.wav │ ├── gegner.wav │ ├── powerup.wav │ └── music/ # Music files (e.g., DarkSnakeMusicIndi1.mp3, DarkSnakeMusicIndi2.mp3, etc.) ├── modules/ # Modular game code / Modulare Spiel-Logik │ ├── audio.py # Audio functions / Soundverwaltung │ ├── customization.py # Customization options / Anpassungsfunktionen │ ├── enums.py # Enumerations (game states, directions, item types, etc.) / Enumerationen │ ├── graphics.py # Rendering and sprite handling / Grafik-Rendering und Spriteladen │ ├── ui.py # UI components (buttons, sliders, HUD) / Benutzeroberfläche │ ├── controls.py # Input handling (keyboard, touch, etc.) / Steuerungslogik │ ├── enemies.py # Enemy classes and behavior / Gegner-Logik │ └── game.py # Core game logic (levels, collisions, upgrades, etc.) / Zentrale Spiel-Logik ├── leaderboard.txt # Leaderboard data / Bestenliste ├── settings.txt # User settings / Benutzereinstellungen ├── GameStarter.desktop # Desktop file for starting the game under Linux / Startverknüpfung für Linux ├── README.md # Project documentation / Projektdokumentation └── (Other files may include licenses, etc.)
+(See the LICENSE file for details.)
+Notes / Hinweise
+
+    Resources:
+    Ensure that all required resource files (graphics and sounds) remain in their respective folders as the game loads them during runtime.
+
+    Platform:
+    The game has been developed and tested on Linux Mint with Python and Pygame.
+
+    Future Enhancements:
+    Ideas for future updates include additional levels, new enemy types, improved UI effects, and potential mobile adaptations.
+
+Enjoy the game and happy coding!
+Viel Spaß beim Spielen und Weiterentwickeln! EOF
 
 
----
+-
+Dark_Snake/                # Projektstammordner
+├── assets/                # Enthält alle externen Ressourcen (Grafiken, Sounds etc.)
+│   ├── graphics/          # Grafische Elemente und Animationen
+│   │   ├── Boss001/       # Animationsframes für Boss 001 (frame0000.png, frame0001.png, …, frame0047.png)
+│   │   ├── Boss002/       # Animationsframes für Boss 002 (frame0000.png, frame0001.png, …, frame0014.png)
+│   │   ├── Boss003/       # Animationsframes für Boss 003 (frame0000.png, frame0001.png, …, frame0026.png)
+│   │   ├── [weitere Bilder]  # Diverse Bilder, z.B. für Schlangenkopf, Schlangen-Körper, Items, Portale etc.
+│   └── sounds/           # Audiodateien für das Spiel
+│       ├── boss.wav
+│       ├── dice.wav
+│       ├── gameover.wav
+│       ├── eat.wav
+│       ├── gegner.wav
+│       ├── powerup.wav
+│       ├── DarkSnakeMusicIndi2.mp3
+│       └── music/        # Musikordner (MP3s, z.B. ChillFürAndre.mp3, DarkSnakeMusicIndi1.mp3, FürAndreTeil2.mp3)
+│
+├── config.py              # Konfiguration (Fenstergröße, Farbschema, FPS, etc.)
+├── GameStarter.desktop    # Startverknüpfung (Desktop-Datei für den grafischen Start unter Linux)
+├── main.py                # Hauptprogramm; startet das Spiel und lädt alle Module
+├── modules/               # Enthält alle Module (Quellcode) des Spiels
+│   ├── audio.py         # Audiofunktionen (Sounds, Musik)
+│   ├── customization.py # Funktionen zur Anpassung/Customizing des Spiels
+│   ├── enums.py         # Enumerationen (Spielzustände, Richtungen, Item-Typen etc.)
+│   ├── graphics.py      # Grafische Funktionen & Bildverarbeitung
+│   ├── ui.py            # Benutzeroberfläche (Buttons, Slider, Checkboxes, etc.)
+│   ├── controls.py      # Steuerungslogik (Tastatureingaben, etc.)
+│   ├── enemies.py       # Gegnerklassen und Logik
+│   └── game.py          # Kernspiel-Logik (Spielablauf, Kollisionen, Level-Up, etc.)
+│
+├── leaderboard.txt        # Bestenliste (Speichert Spielergebnisse)
+├── README.md              # Projektdokumentation (Einführung, Anleitung, etc.)
+└── settings.txt           # Speichert Benutzereinstellungen
+
+
 
 ## Installation & Requirements / Installation & Anforderungen
 
@@ -116,54 +163,10 @@ Notes / Hinweise
 Enjoy the game and happy coding!
 Viel Spaß beim Spielen und Weiterentwickeln! EOF
 
-
 ---
-
-Nachdem du diesen Befehl ausführst, wird eine README.md-Datei mit der formatierten Beschreibung erstellt, die du dann in dein GitHub-Repository hochladen kannst. Dies stellt sicher, dass auf GitHub alles gut lesbar und übersichtlich ist.
-
-
-
+Nachdem du diesen Befehl ausführst, wird eine README.md-Datei mit der formatierten Beschreibung erstellt,
+die du dann in dein GitHub-Repository hochladen kannst.
+Dies stellt sicher, dass auf GitHub alles gut lesbar und übersichtlich ist.
 
 
 
-
-
-
-
-
-
-
-
-Dark_Snake/                # Projektstammordner
-├── assets/                # Enthält alle externen Ressourcen (Grafiken, Sounds etc.)
-│   ├── graphics/          # Grafische Elemente und Animationen
-│   │   ├── Boss001/       # Animationsframes für Boss 001 (frame0000.png, frame0001.png, …, frame0047.png)
-│   │   ├── Boss002/       # Animationsframes für Boss 002 (frame0000.png, frame0001.png, …, frame0014.png)
-│   │   ├── Boss003/       # Animationsframes für Boss 003 (frame0000.png, frame0001.png, …, frame0026.png)
-│   │   ├── [weitere Bilder]  # Diverse Bilder, z.B. für Schlangenkopf, Schlangen-Körper, Items, Portale etc.
-│   └── sounds/           # Audiodateien für das Spiel
-│       ├── boss.wav
-│       ├── dice.wav
-│       ├── gameover.wav
-│       ├── eat.wav
-│       ├── gegner.wav
-│       ├── powerup.wav
-│       ├── DarkSnakeMusicIndi2.mp3
-│       └── music/        # Musikordner (MP3s, z.B. ChillFürAndre.mp3, DarkSnakeMusicIndi1.mp3, FürAndreTeil2.mp3)
-│
-├── config.py              # Konfiguration (Fenstergröße, Farbschema, FPS, etc.)
-├── GameStarter.desktop    # Startverknüpfung (Desktop-Datei für den grafischen Start unter Linux)
-├── main.py                # Hauptprogramm; startet das Spiel und lädt alle Module
-├── modules/               # Enthält alle Module (Quellcode) des Spiels
-│   ├── audio.py         # Audiofunktionen (Sounds, Musik)
-│   ├── customization.py # Funktionen zur Anpassung/Customizing des Spiels
-│   ├── enums.py         # Enumerationen (Spielzustände, Richtungen, Item-Typen etc.)
-│   ├── graphics.py      # Grafische Funktionen & Bildverarbeitung
-│   ├── ui.py            # Benutzeroberfläche (Buttons, Slider, Checkboxes, etc.)
-│   ├── controls.py      # Steuerungslogik (Tastatureingaben, etc.)
-│   ├── enemies.py       # Gegnerklassen und Logik
-│   └── game.py          # Kernspiel-Logik (Spielablauf, Kollisionen, Level-Up, etc.)
-│
-├── leaderboard.txt        # Bestenliste (Speichert Spielergebnisse)
-├── README.md              # Projektdokumentation (Einführung, Anleitung, etc.)
-└── settings.txt           # Speichert Benutzereinstellungen
