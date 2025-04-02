@@ -39,8 +39,9 @@ jobs:
             echo "File does not exist."
             exit 1
 
-      - name: Upload Build Artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: dark-snake-exe
-          path: dist/main.exe
+          - name: Upload Build Artifact
+            uses: actions/upload-artifact
+             with:
+                name: dark-snake-exe
+                path: dist/main.exe
+
