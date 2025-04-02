@@ -13,9 +13,6 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: List repository files
-        run: dir
-
       - name: Set up Python 3.12
         uses: actions/setup-python@v4
         with:
@@ -28,10 +25,17 @@ jobs:
 
       - name: Build EXE with PyInstaller
         run: |
-           pyinstaller --onefile --windowed --add-data "assets;assets" --add-data "modules;modules" main.py
+          pyinstaller --onefile --windowed --add-data "assets;assets" --add-data "modules;modules" main.py
 
-      - name: List files in dist directory
-        run: dir dist
+      - name: Verify EXE file exists
+        shell: bash
+        run: |
+          if [ -f dist/main.exe ]; then
+            echo "File exists."
+          else
+            echo "File does not exist."
+            exit 1
+          fi
 
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v3
