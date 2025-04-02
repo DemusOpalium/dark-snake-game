@@ -1,9 +1,0 @@
-initial_speed=8
-fullscreen=False
-music_volume=0.5
-sfx_volume=0.7
-bg_music_volume=0.5
-difficulty=1.0
-field_scale=1.0
-snake_design=0
-custom_head=None

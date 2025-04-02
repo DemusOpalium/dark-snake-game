@@ -1,8 +1,0 @@
-
-[Desktop Entry]
-Name=Complete Snake Game
-Exec=python3 /home/demus/Schreibtisch/complete-snake-game/main.py
-Path=/home/demus/Schreibtisch/complete-snake-game
-Icon=/home/demus/Schreibtisch/complete-snake-game/icon.png
-Terminal=false
-Type=Application
