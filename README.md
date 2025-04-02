@@ -34,42 +34,6 @@ Enjoy the game and happy coding!
 Viel Spaß beim Spielen und Weiterentwickeln! EOF
 
 
--
-Dark_Snake/                # Projektstammordner
-├── assets/                # Enthält alle externen Ressourcen (Grafiken, Sounds etc.)
-│   ├── graphics/          # Grafische Elemente und Animationen
-│   │   ├── Boss001/       # Animationsframes für Boss 001 (frame0000.png, frame0001.png, …, frame0047.png)
-│   │   ├── Boss002/       # Animationsframes für Boss 002 (frame0000.png, frame0001.png, …, frame0014.png)
-│   │   ├── Boss003/       # Animationsframes für Boss 003 (frame0000.png, frame0001.png, …, frame0026.png)
-│   │   ├── [weitere Bilder]  # Diverse Bilder, z.B. für Schlangenkopf, Schlangen-Körper, Items, Portale etc.
-│   └── sounds/           # Audiodateien für das Spiel
-│       ├── boss.wav
-│       ├── dice.wav
-│       ├── gameover.wav
-│       ├── eat.wav
-│       ├── gegner.wav
-│       ├── powerup.wav
-│       ├── DarkSnakeMusicIndi2.mp3
-│       └── music/        # Musikordner (MP3s, z.B. ChillFürAndre.mp3, DarkSnakeMusicIndi1.mp3, FürAndreTeil2.mp3)
-│
-├── config.py              # Konfiguration (Fenstergröße, Farbschema, FPS, etc.)
-├── GameStarter.desktop    # Startverknüpfung (Desktop-Datei für den grafischen Start unter Linux)
-├── main.py                # Hauptprogramm; startet das Spiel und lädt alle Module
-├── modules/               # Enthält alle Module (Quellcode) des Spiels
-│   ├── audio.py         # Audiofunktionen (Sounds, Musik)
-│   ├── customization.py # Funktionen zur Anpassung/Customizing des Spiels
-│   ├── enums.py         # Enumerationen (Spielzustände, Richtungen, Item-Typen etc.)
-│   ├── graphics.py      # Grafische Funktionen & Bildverarbeitung
-│   ├── ui.py            # Benutzeroberfläche (Buttons, Slider, Checkboxes, etc.)
-│   ├── controls.py      # Steuerungslogik (Tastatureingaben, etc.)
-│   ├── enemies.py       # Gegnerklassen und Logik
-│   └── game.py          # Kernspiel-Logik (Spielablauf, Kollisionen, Level-Up, etc.)
-│
-├── leaderboard.txt        # Bestenliste (Speichert Spielergebnisse)
-├── README.md              # Projektdokumentation (Einführung, Anleitung, etc.)
-└── settings.txt           # Speichert Benutzereinstellungen
-
-
 
 ## Installation & Requirements / Installation & Anforderungen
 
