@@ -2,9 +2,11 @@ name: Build Windows EXE
 
 on:
   push:
-    branches: [ "main" ]
+    branches:
+      - "main"
   pull_request:
-    branches: [ "main" ]
+    branches:
+      - "main"
 
 jobs:
   build:
@@ -19,7 +21,7 @@ jobs:
       - name: Set up Python 3.12
         uses: actions/setup-python@v4
         with:
-          python-version: '3.12'
+          python-version: "3.12"
 
       - name: Install dependencies
         run: |
@@ -39,8 +41,9 @@ jobs:
             echo "File does not exist."
             exit 1
           fi
+
       - name: Upload Build Artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: dark-snake-exe
           path: dist/main.exe
