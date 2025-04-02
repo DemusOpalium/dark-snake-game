@@ -13,9 +13,6 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: List repository files
-        run: dir
-
       - name: Set up Python 3.12
         uses: actions/setup-python@v4
         with:
@@ -35,4 +32,3 @@ jobs:
         with:
           name: dark-snake-exe
           path: dist/main.exe
-
