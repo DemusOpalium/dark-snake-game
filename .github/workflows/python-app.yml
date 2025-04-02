@@ -38,7 +38,8 @@ jobs:
           fi
 
       - name: Upload Build Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@<commit-hash>
         with:
-          name: dark-snake-exe
-          path: dist/main.exe
+         name: dark-snake-exe
+         path: dist/main.exe
+
