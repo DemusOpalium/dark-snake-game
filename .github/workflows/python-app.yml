@@ -35,6 +35,7 @@ jobs:
           else
             echo "File does not exist."
             exit 1
+          fi
 
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v3
