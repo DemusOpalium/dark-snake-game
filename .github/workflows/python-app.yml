@@ -43,3 +43,4 @@ jobs:
         with:
           name: dark-snake-exe
           path: dist/main.exe
+
