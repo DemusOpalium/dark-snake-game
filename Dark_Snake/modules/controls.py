@@ -7,15 +7,15 @@ class ControlsMenu:
     def __init__(self, game):
         self.game = game
         self.controls = {
-            "Spieler1 - Oben": "Pfeiltaste ↑",
-            "Spieler1 - Unten": "Pfeiltaste ↓",
-            "Spieler1 - Links": "Pfeiltaste ←",
-            "Spieler1 - Rechts": "Pfeiltaste →",
+            "Spieler1 - Oben": "Pfeiltaste ↑ / W",
+            "Spieler1 - Unten": "Pfeiltaste ↓ / S",
+            "Spieler1 - Links": "Pfeiltaste ← / A",
+            "Spieler1 - Rechts": "Pfeiltaste → / D",
             "Schießen": "+",
-            "Spieler2 - Oben": "W",
-            "Spieler2 - Unten": "S",
-            "Spieler2 - Links": "A",
-            "Spieler2 - Rechts": "D",
+            "Spieler2 - Oben": "Pfeiltaste ↑",
+            "Spieler2 - Unten": "Pfeiltaste ↓",
+            "Spieler2 - Links": "Pfeiltaste ←",
+            "Spieler2 - Rechts": "Pfeiltaste →",
             "Schießen": "SPACE"
         }
         self.back_button = Button(WINDOW_WIDTH//2 - 100, WINDOW_HEIGHT - 80, 200, 60, "ZURÜCK", color=PURPLE, action=self.back)
@@ -35,3 +35,8 @@ class ControlsMenu:
         self.back_button.draw(screen)
         pygame.display.update()
 
+    def handle_event(self, event):
+        # Diese Methode wird von Game.handle_events() aufgerufen, um Events im Steuerungs-Menü abzufangen.
+        mouse_pos = pygame.mouse.get_pos()
+        self.back_button.check_hover(mouse_pos)
+        self.back_button.handle_event(event)
