@@ -1,5 +1,6 @@
 import pygame
-from config import DARK_GREY, WHITE, ORANGE, PURPLE, FONT_SMALL, FONT_MEDIUM
+from config import DARK_GREY, WHITE, ORANGE, PURPLE, FONT_SMALL, FONT_MEDIUM, WINDOW_WIDTH, WINDOW_HEIGHT
+from modules.graphics import PLAY_BUTTON_IMG  # z. B. für Skalierung im Optionsmenü
 
 class Button:
     def __init__(self, x, y, width, height, text, color=DARK_GREY, text_color=WHITE, action=None, image=None):
@@ -73,7 +74,6 @@ class Slider:
         return None
 
     def check_hover(self, pos):
-        # Hier wird einfach die gesamte Schieberegler-Fläche überprüft
         return self.rect.collidepoint(pos)
 
 class CheckBox:
@@ -100,40 +100,41 @@ class CheckBox:
     def check_hover(self, pos):
         return self.rect.collidepoint(pos)
 
-def create_ui_elements(self):
-    center_x = WINDOW_WIDTH // 2
-    button_width = 200
-    button_height = 60
+class Dropdown:
+    def __init__(self, x, y, width, height, options, current_option, font, callback):
+        self.rect = pygame.Rect(x, y, width, height)
+        self.options = options
+        self.selected_index = options.index(current_option) if current_option in options else 0
+        self.font = font
+        self.callback = callback
+        self.expanded = False
 
-    def scale_image(img):
-        if img:
-            w, h = img.get_size()
-            return pygame.transform.scale(img, (int(w * 0.6), int(h * 0.6)))
-        return None
+    def draw(self, surface):
+        pygame.draw.rect(surface, DARK_GREY, self.rect)
+        text = self.font.render(self.options[self.selected_index], True, WHITE)
+        surface.blit(text, (self.rect.x + 5, self.rect.y + 5))
+        pygame.draw.polygon(surface, WHITE, [
+            (self.rect.right - 15, self.rect.y + 10),
+            (self.rect.right - 5, self.rect.y + 10),
+            (self.rect.right - 10, self.rect.y + 20)
+        ])
+        if self.expanded:
+            for i, option in enumerate(self.options):
+                option_rect = pygame.Rect(self.rect.x, self.rect.y + (i + 1) * self.rect.height, self.rect.width, self.rect.height)
+                pygame.draw.rect(surface, DARK_GREY, option_rect)
+                opt_text = self.font.render(option, True, WHITE)
+                surface.blit(opt_text, (option_rect.x + 5, option_rect.y + 5))
 
-    # Neuer Button für die Spielfeldgröße:
-    self.playfield_size_button = Button(
-        center_x - 100, WINDOW_HEIGHT - 280, button_width, button_height,
-        f"{WINDOW_WIDTH} x {WINDOW_HEIGHT}",
-        action=self.cycle_playfield_size,
-        image=scale_image(PLAY_BUTTON_IMG)
-    )
-
-    # Erstelle Dropdown für Hintergrundmusik:
-    # Lade die Musikoptionen aus dem Musikordner
-    music_options = get_music_library()
-    if not music_options:
-        music_options = ["Default"]
-    # Hier wird FONT_SMALL als Schriftart verwendet – passe dies ggf. an
-    # Wir positionieren den Dropdown an (center_x - 150, 240) mit einer Breite von 300 und Höhe von 20
-    self.bg_music_dropdown = Dropdown(center_x - 150, 240, 300, 20, music_options, music_options[0], FONT_SMALL, self.change_bg_music)
-
-    # Füge die Elemente zu den Einstellungen hinzu:
-    self.settings_elements = [
-        Slider(center_x - 150, 200, 300, 20, 1, 15, self.settings['initial_speed'], "Geschwindigkeit"),
-        self.bg_music_dropdown,  # Dropdown für Hintergrundmusik einfügen
-        self.playfield_size_button,
-        Button(center_x - 100, WINDOW_HEIGHT - 150, 200, 60, "SPEICHERN", action=lambda: self.save_settings()),
-        Button(center_x - 100, WINDOW_HEIGHT - 80, 200, 60, "CHARAKTER", action=self.open_customization, color=PURPLE)
-    ]
-
+    def handle_event(self, event):
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            mouse_pos = pygame.mouse.get_pos()
+            if self.rect.collidepoint(mouse_pos):
+                self.expanded = not self.expanded
+            elif self.expanded:
+                for i, option in enumerate(self.options):
+                    option_rect = pygame.Rect(self.rect.x, self.rect.y + (i + 1) * self.rect.height, self.rect.width, self.rect.height)
+                    if option_rect.collidepoint(mouse_pos):
+                        self.selected_index = i
+                        self.callback(self.options[i])
+                        self.expanded = False
+                        break
