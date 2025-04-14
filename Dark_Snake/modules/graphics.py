@@ -1,6 +1,6 @@
 import os
 import pygame
-from config import WINDOW_WIDTH, WINDOW_HEIGHT
+from config import WINDOW_WIDTH, WINDOW_HEIGHT, GRID_SIZE
 
 def load_image(filename):
     path = os.path.join("assets", "graphics", filename)
@@ -11,8 +11,18 @@ def load_image(filename):
         print(f"Bild {filename} konnte nicht geladen werden: {e}")
         return None
 
-# Snake-Grafiken
+# Neue Hilfsfunktion zum Skalieren für Thumbnails
+def scale_to_thumbnail(image, factor=0.75):
+    if image:
+        width = int(GRID_SIZE * factor)
+        height = int(GRID_SIZE * factor)
+        return pygame.transform.scale(image, (width, height))
+    return image
+
+# Snake-Grafiken – passe hier ggf. die Skalierung an (Beispiel: Skalierung auf GRID_SIZE x GRID_SIZE)
 SNAKE_HEAD_IMG = load_image("SnakeHeadAlpha1.png")
+if SNAKE_HEAD_IMG:
+    SNAKE_HEAD_IMG = pygame.transform.scale(SNAKE_HEAD_IMG, (GRID_SIZE, GRID_SIZE))
 SNAKE_HEAD1G20 = load_image("SnakeHead1G20.png")
 SNAKE_HEAD2G20 = load_image("SnakeHead2G20.png")
 SNAKE_HEAD3G20 = load_image("SnakeHead3G20.png")
@@ -25,9 +35,8 @@ SNAKE_BODY_Body4 = load_image("SnakeBody4.png")
 SNAKE_BODY_Body2 = load_image("SnakeBody2.png")
 SNAKE_BODY_Body6 = load_image("SnakeBody6.png")
 
-# Projectile (Standard)
+# Projectile
 PROJECTILE_IMG = load_image("Projektil.png")
-# Falls Du weitere Projektil-Grafiken nutzen möchtest:
 PROJECTILE2_IMG = load_image("Projektil2.png")
 PROJECTILE3_IMG = load_image("Projektil3.png")
 PROJECTILE4_IMG = load_image("Projektil4.png")
@@ -39,7 +48,6 @@ TITLE_IMG = load_image("titel1.png")
 # Boss-Grafiken
 BOSS_IMG = load_image("Boss-RingG60.png")
 BOSS_ALT_IMG = load_image("Boss-SkullPurPurG60.png")
-# Falls weitere Boss-Bilder gewünscht sind, können sie hier ergänzt werden:
 BOSS_ALEX_IMG = load_image("Boss-AlexG60.png")
 BOSS_BOLGI_IMG = load_image("Boss-BolgiG60.png")
 BOSS_DEMUS_IMG = load_image("Boss-DemusG60.png")
@@ -66,10 +74,10 @@ ITEM_IMAGES = {
     "LENGTH_DOUBLE": load_image("ItemTrank1G20.png"),
     "DICE_EVENT": load_image("ItemTrank2G20.png"),
     "SPECIAL_DAMAGE": load_image("ItemTrank3FG20.png"),
-    "PROJECTILE_SHOOT": load_image("Projektil.png")  # Falls benötigt
+    "PROJECTILE_SHOOT": load_image("Projektil.png")
 }
 
-# Gegner-Grafiken (normale Gegner)
+# Gegner-Grafiken
 ENEMY_TIM_IMG = load_image("gegner-TimG40.png")
 ENEMY_SPOONG_IMG = load_image("gegner-SpoongG40.png")
 ENEMY_OMNI_IMG = load_image("gegner-OmniG40.png")
@@ -78,4 +86,3 @@ ENEMY_GLUBS_IMG = load_image("gegner-glubsG40.png")
 # UI-Grafiken
 OPTIONS_BUTTON_IMG = load_image("optionsButton1.png")
 PLAY_BUTTON_IMG = load_image("PlayButton1.png")
-
