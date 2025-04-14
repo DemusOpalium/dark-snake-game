@@ -1,4 +1,3 @@
-# modules/enums.py
 from enum import Enum
 
 class GameState(Enum):
@@ -30,4 +29,3 @@ class ItemType(Enum):
     DICE_EVENT = 8
     SPECIAL_DAMAGE = 9
     PROJECTILE_SHOOT = 10
-
