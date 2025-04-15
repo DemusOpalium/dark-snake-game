@@ -1474,18 +1474,21 @@ class Game:
             btn.draw(self.screen)
 
     def draw_game(self):
+        # 1. Raster (Hintergrund) zeichnen – unterste Ebene
         self.screen.blit(self.background, (0, 0))
+        # 2. AoE-Effekte zeichnen – liegen zwischen Raster und dynamischen Objekten
+        for zone in self.aoe_zones:
+            zone.draw(self.screen)
+        # 3. Dynamische Spielobjekte (Spielerebene) zeichnen:
         if self.portal:
             self.portal.draw(self.screen)
         for item in self.items:
             item.draw(self.screen)
         for enemy in self.enemies:
             enemy.draw(self.screen)
-        for zone in self.aoe_zones:
-            zone.draw(self.screen)
-
+        # Spieler (Snake) zeichnen:
         if self.player_count == 2:
-            # Spieler 1
+            # Spieler 1 zeichnen:
             for i, seg in enumerate(self.snake1):
                 x = seg[0] * GRID_SIZE
                 y = seg[1] * GRID_SIZE
@@ -1505,7 +1508,6 @@ class Game:
                         rotated = head_img
                     self.screen.blit(rotated, (x, y))
                 else:
-                    # --- Aktualisierter Code für den Schlangenkörper von Spieler 1:
                     body_file = self.settings.get('custom_body_p1')
                     if body_file:
                         body_img = load_image(body_file)
@@ -1515,7 +1517,7 @@ class Game:
                         body_img = SNAKE_BODY_IMG
                     body_img = pygame.transform.scale(body_img, (GRID_SIZE, GRID_SIZE))
                     self.screen.blit(body_img, (x, y))
-            # Spieler 2
+            # Spieler 2 zeichnen:
             for i, seg in enumerate(self.snake2):
                 x = seg[0] * GRID_SIZE
                 y = seg[1] * GRID_SIZE
@@ -1545,7 +1547,7 @@ class Game:
                     body_img = pygame.transform.scale(body_img, (GRID_SIZE, GRID_SIZE))
                     self.screen.blit(body_img, (x, y))
         else:
-            # Einzelspieler: Verwende custom_head_p1 und custom_body_p1
+            # Einzelspieler: Zeichne die Snake
             for i, seg in enumerate(self.snake):
                 x = seg[0] * GRID_SIZE
                 y = seg[1] * GRID_SIZE
