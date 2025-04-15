@@ -11,7 +11,8 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
       - name: List repository files
         run: dir /s /B
@@ -28,7 +29,11 @@ jobs:
 
       - name: Build EXE with PyInstaller
         run: |
-          pyinstaller --onefile --windowed --add-data "Dark_Snake/assets;assets" --add-data "Dark_Snake/modules;modules" Dark_Snake/main.py
+          pyinstaller --onefile --windowed `
+          --add-data "assets;assets" `
+          --add-data "modules;modules" `
+          --add-data "sounds;sounds" `
+          main.py
 
       - name: Verify EXE file exists
         shell: bash
@@ -38,6 +43,7 @@ jobs:
           else
             echo "File does not exist."
             exit 1
+          fi
 
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v3
