@@ -32,19 +32,17 @@ jobs:
           pyinstaller --onefile --windowed --add-data "Dark_Snake/assets;assets" --add-data "Dark_Snake/modules;modules" Dark_Snake/main.py
 
       - name: Verify EXE file exists
-        shell: bash
+        shell: powershell
         run: |
-          if [ -f dist/main.exe ]; then
-            echo "File exists."
-          else
-            echo "File does not exist."
+          if (Test-Path "dist\main.exe") {
+            Write-Host "File exists."
+          } else {
+            Write-Host "File does not exist."
             exit 1
-          fi
+          }
 
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v3
         with:
           name: dark-snake-exe
           path: dist/main.exe
-
-
