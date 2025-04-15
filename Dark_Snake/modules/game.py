@@ -1267,6 +1267,17 @@ class Game:
                                 print("DEBUG: ExtraZone erzeugt, aber KEIN Effektbild gefunden!")
                             else:
                                 print("DEBUG: ExtraZone mit Effektbild erzeugt an Position:", pos)
+                        elif event.unicode == "ü":
+                            from modules.aoe_zones import BackgroundEffectZone
+                            try:
+                                bg_image = pygame.image.load("assets/graphics/AOEEffekte/Backround0021.png").convert_alpha()
+                            except Exception as e:
+                                print(f"DEBUG: Fehler beim Laden des Hintergrundbildes: {e}")
+                                bg_image = None
+                            if bg_image:
+                                zone = BackgroundEffectZone(bg_image, 7)
+                                self.aoe_zones.insert(0, zone)
+                                print("DEBUG: BackgroundEffectZone (Hintergrund-Effekt) erzeugt!")
                         if self.player_count == 1:
                             if event.key in (pygame.K_UP, pygame.K_w) and self.snake_direction != Direction.DOWN:
                                 self.next_direction = Direction.UP
