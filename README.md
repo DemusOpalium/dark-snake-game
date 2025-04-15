@@ -214,14 +214,4 @@ Weitere Informationen und Anleitungen findest du in den folgenden Dateien:
 
 ---
 
-> **Hinweis:**  
-> Für weitere Anpassungen (z. B. Farben, Trennlinien, Schriften) kannst du auch HTML in Markdown nutzen.  
-> Beispiel:
-> ```html
-> <hr style="border: 2px solid #FF6600;">
-> ```
-> Mit solchen Mitteln kannst du die README-Datei weiter individualisieren.
-
----
-
-Ich hoffe, diese Version hilft dir dabei, dein Spiel ansprechend zu präsentieren! Bei weiteren Fragen stehe ich dir gern zur Verfügung.
+mfg  DemusOpalium
