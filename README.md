@@ -64,19 +64,18 @@ _Tauche ein in ein Spielerlebnis, das so einzigartig ist wie dein Humor – dunk
 
 #### Options- und Profilbilder
 <p align="center">
-  <img src="Dark_Snake/assets/graphics/PlayButton1.png" alt="Options Menü" width="300px">
-  <img src="Dark_Snake/assets/graphics/optionsButton1.png" alt="Profil Bild" width="300px">
+   <img src="GamePICs/SnakeHeads.png" alt="Snake Heads" width="600px">
 </p>
 
 #### Steuerung
 <p align="center">
-  <img src="Dark_Snake/assets/graphics/SnakeHeadAlpha1.png" alt="Steuerung" width="400px">
+   <img src="GamePICs/Steuerung.png" alt="Steuerung" width="600px">
 </p>
 
 #### Spielszene (Aufnahmen)
 - **Spiel Szene 1:**
   <p align="center">
-    <img src="Dark_Snake/assets/graphics/ksnip_20250306-154402.png" alt="Spiel Szene 1" width="600px">
+    <img src="GamePICs/TwoPlayerModus.png" alt="Two Player Modus" width="600px">
   </p>
   
 - **Boss Fight 1:**
