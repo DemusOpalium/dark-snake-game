@@ -14,9 +14,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: List repository files
-        run: dir /s /B
-
       - name: Set up Python 3.12
         uses: actions/setup-python@v4
         with:
