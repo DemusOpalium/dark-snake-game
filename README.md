@@ -202,7 +202,7 @@ Dieses Projekt steht unter der MIT-Lizenz. Details findest du in der LICENSE Dat
 Kontakt & Feedback
 
 Hast du Fragen, Ideen oder witzige Vorschläge für Dark Snake Game?
-Öffne ein GitHub Issue oder schreib mir direkt eine E-Mail an deine.email@domain.de.
+Öffne ein GitHub Issue oder schreib mir direkt auf Git Hub.
 Und denk daran: Auch Schlangen haben ihren Humor – also behalte immer ein Lächeln auf den Lippen!
 
 Vielen Dank, dass du Dark Snake Game ausprobierst – viel Spaß beim Spielen und Programmieren!
