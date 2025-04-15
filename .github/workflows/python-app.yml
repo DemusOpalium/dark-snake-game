@@ -29,11 +29,11 @@ jobs:
 
       - name: Build EXE with PyInstaller
         run: |
-          pyinstaller --onefile --windowed `
-          --add-data "assets;assets" `
-          --add-data "modules;modules" `
-          --add-data "sounds;sounds" `
-          main.py
+          pyinstaller --onefile --windowed ^
+            --add-data "assets;assets" ^
+            --add-data "modules;modules" ^
+            --add-data "sounds;sounds" ^
+            main.py
 
       - name: Verify EXE file exists
         shell: bash
@@ -46,7 +46,7 @@ jobs:
           fi
 
       - name: Upload Build Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v3.0.2
         with:
           name: dark-snake-exe
           path: dist/main.exe
