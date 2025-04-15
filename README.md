@@ -1,6 +1,6 @@
 <!-- Coverbild oben in der README -->
 <p align="center">
-  <img src="assets/graphics/YourCoverImage.png" alt="Dark Snake Game Cover" width="800px">
+  <img src="Dark_Snake/assets/graphics/2222124.png" alt="Dark Snake Game Cover" width="800px">
 </p>
 
 <hr />
