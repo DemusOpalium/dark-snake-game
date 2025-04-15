@@ -395,6 +395,9 @@ class Game:
         self.intro_bg = self.menu_bg.copy()
         self.last_click_time = 0
         self.double_click_interval = 0.5
+        self.respawn_invincible_until = 0
+        self.last_head_pos = None
+        self.still_timer = None
 
         # Health-Variablen
         self.player_health = 100  
@@ -802,7 +805,9 @@ class Game:
             if current_time - getattr(enemy, 'spawn_time', 0) < 3:
                 continue
             for proj in self.projectiles:
-                proj_rect = pygame.Rect(proj['pos'][0] * GRID_SIZE, proj['pos'][1] * GRID_SIZE, GRID_SIZE, GRID_SIZE)
+                proj_rect = pygame.Rect(proj['pos'][0] * GRID_SIZE,
+                                        proj['pos'][1] * GRID_SIZE,
+                                        GRID_SIZE, GRID_SIZE)
                 if enemy_rect.colliderect(proj_rect):
                     enemy.health -= 1
                     if enemy.health <= 0:
@@ -819,40 +824,101 @@ class Game:
                     break
         # Kollisionsprüfung Spieler (Singleplayer)
         if self.player_count == 1 and self.snake:
-            head_rect = pygame.Rect(self.snake[0][0] * GRID_SIZE, self.snake[0][1] * GRID_SIZE, GRID_SIZE, GRID_SIZE)
+            head_rect = pygame.Rect(self.snake[0][0] * GRID_SIZE,
+                                    self.snake[0][1] * GRID_SIZE,
+                                    GRID_SIZE, GRID_SIZE)
             if self.portal and head_rect.colliderect(self.portal.get_rect()):
                 self.activate_portal(self.portal.event)
                 self.portal_effect_active = True
                 self.portal = None
-            # Selbstkollision: Ersetze colliderect_multiple mit any()-Abfrage
-            if not invincible and any(head_rect.colliderect(pygame.Rect(seg[0]*GRID_SIZE, seg[1]*GRID_SIZE, GRID_SIZE, GRID_SIZE)) for seg in self.snake[1:]):
-                self.handle_death()
+            # Prüfe, ob der Spieler stillsteht (kein Positionswechsel)
+            current_head = self.snake[0]
+            if self.last_head_pos is None or current_head != self.last_head_pos:
+                # Bewegung festgestellt → Timer zurücksetzen
+                self.last_head_pos = current_head
+                self.still_timer = None
             else:
-                for enemy in self.enemies:
-                    enemy_rect = enemy.get_rect()
-                    enemy_rect.x += (GRID_SIZE - enemy_rect.width) // 2
-                    enemy_rect.y += (GRID_SIZE - enemy_rect.height) // 2
-                    if not invincible and head_rect.colliderect(enemy_rect):
-                        self.player_health -= 10
-                        if self.player_health <= 0:
-                            self.handle_death()
-                        break
+                # Kein Positionswechsel – Timer starten bzw. fortschreiben
+                if self.still_timer is None:
+                    self.still_timer = current_time
+                else:
+                    still_elapsed = current_time - self.still_timer
+                    # Zeige den Countdown an (2,5 Sek. Gesamtzeit)
+                    countdown = max(0.0, 2.5 - still_elapsed)
+                    countdown_text = pygame.font.SysFont('Arial', 40, bold=True).render(f"{countdown:.1f}", True, RED)
+                    self.screen.blit(countdown_text, ((WINDOW_WIDTH - countdown_text.get_width()) // 2,
+                                                      (WINDOW_HEIGHT - countdown_text.get_height()) // 2))
+                    # Wenn der Spieler insgesamt 2,5 Sek. stillgestanden hat → Respawn auslösen
+                    if still_elapsed >= 2.5:
+                        self.handle_self_collision()
+                        self.still_timer = None  # Timer zurücksetzen, damit nicht mehrfach ausgelöst wird
+
+            # Zusätzlich die herkömmliche Kollisionsprüfung mit Gegnern:
+            # (Falls der Kopf mit einem Gegner kollidiert)
+            for enemy in self.enemies:
+                enemy_rect = enemy.get_rect()
+                enemy_rect.x += (GRID_SIZE - enemy_rect.width) // 2
+                enemy_rect.y += (GRID_SIZE - enemy_rect.height) // 2
+                if not invincible and head_rect.colliderect(enemy_rect):
+                    self.player_health -= 10
+                    if self.player_health <= 0:
+                        self.handle_death()
+                    break
         elif self.player_count == 2:
-            for snake, health_attr in [(self.snake1, 'player_health_p1'), (self.snake2, 'player_health_p2')]:
+            # Mehrspieler-Kollisionen (unverändert)
+            for snake, health_attr in [(self.snake1, 'player_health_p1'),
+                                         (self.snake2, 'player_health_p2')]:
                 if snake:
-                    head_rect = pygame.Rect(snake[0][0] * GRID_SIZE, snake[0][1] * GRID_SIZE, GRID_SIZE, GRID_SIZE)
+                    head_rect = pygame.Rect(snake[0][0] * GRID_SIZE,
+                                            snake[0][1] * GRID_SIZE,
+                                            GRID_SIZE, GRID_SIZE)
                     if self.portal and head_rect.colliderect(self.portal.get_rect()):
                         self.activate_portal(self.portal.event)
                         self.portal_effect_active = True
                         self.portal = None
-                    if not invincible and any(head_rect.colliderect(pygame.Rect(seg[0]*GRID_SIZE, seg[1]*GRID_SIZE, GRID_SIZE, GRID_SIZE)) for seg in snake[1:]):
-                        self.handle_death()
+                    if not invincible and any(
+                        head_rect.colliderect(pygame.Rect(seg[0] * GRID_SIZE,
+                                                          seg[1] * GRID_SIZE,
+                                                          GRID_SIZE, GRID_SIZE))
+                        for seg in self.snake[1:]
+                    ):
+                        self.handle_self_collision()
                     else:
                         for enemy in self.enemies:
                             enemy_rect = enemy.get_rect()
                             enemy_rect.x += (GRID_SIZE - enemy_rect.width) // 2
                             enemy_rect.y += (GRID_SIZE - enemy_rect.height) // 2
                             if not invincible and head_rect.colliderect(enemy_rect):
+                                current_health = getattr(self, health_attr)
+                                current_health -= 10
+                                setattr(self, health_attr, current_health)
+                                if current_health <= 0:
+                                    self.handle_death()
+                                break
+        for proj in self.projectiles:
+            if proj.get("from_boss", False):
+                if self.player_count == 1 and self.snake:
+                    head_rect = pygame.Rect(self.snake[0][0] * GRID_SIZE,
+                                            self.snake[0][1] * GRID_SIZE,
+                                            GRID_SIZE, GRID_SIZE)
+                    proj_rect = pygame.Rect(proj['pos'][0] * GRID_SIZE,
+                                            proj['pos'][1] * GRID_SIZE,
+                                            GRID_SIZE, GRID_SIZE)
+                    if not invincible and head_rect.colliderect(proj_rect):
+                        self.player_health -= 10
+                        if self.player_health <= 0:
+                            self.handle_death()
+                elif self.player_count == 2:
+                    for snake, health_attr in [(self.snake1, 'player_health_p1'),
+                                                 (self.snake2, 'player_health_p2')]:
+                        if snake:
+                            head_rect = pygame.Rect(snake[0][0] * GRID_SIZE,
+                                                    snake[0][1] * GRID_SIZE,
+                                                    GRID_SIZE, GRID_SIZE)
+                            proj_rect = pygame.Rect(proj['pos'][0] * GRID_SIZE,
+                                                    proj['pos'][1] * GRID_SIZE,
+                                                    GRID_SIZE, GRID_SIZE)
+                            if not invincible and head_rect.colliderect(proj_rect):
                                 current_health = getattr(self, health_attr)
                                 current_health -= 10
                                 setattr(self, health_attr, current_health)
@@ -1139,6 +1205,40 @@ class Game:
         if self.experience >= self.exp_to_next_level:
             self.level_up()
 
+    def handle_self_collision(self):
+        # Spiele den Schadens-Sound (sofern vorhanden)
+        if SOUNDS.get("damage"):
+            SOUNDS["damage"].play()
+        # Ziehe ein Leben ab, aber nur, wenn noch Leben übrig sind
+        self.lives -= 1
+        print("DEBUG: Selbstkollision erkannt – Leben abgezogen, verbleibende Leben:", self.lives)
+    
+        # Falls noch Leben vorhanden, respawne die Schlange (nur im Singleplayer; in Mehrspieler anpassen)
+        if self.lives > 0:
+            if self.player_count == 1:
+                self.snake = [(GRID_WIDTH // 2, GRID_HEIGHT // 2)]
+                self.snake_direction = Direction.RIGHT
+                self.next_direction = Direction.RIGHT
+                self.player_health = 100  # Setze den Gesundheitswert zurück
+            else:
+                # Für Mehrspieler können ähnlich beide Schlangen zurückgesetzt werden
+                self.snake1 = [(GRID_WIDTH // 2, GRID_HEIGHT // 2)]
+                self.snake2 = [(GRID_WIDTH // 2, GRID_HEIGHT // 2)]
+                self.snake_direction1 = Direction.RIGHT
+                self.snake_direction2 = Direction.RIGHT
+                self.next_direction1 = Direction.RIGHT
+                self.next_direction2 = Direction.RIGHT
+                self.player_health_p1 = 100
+                self.player_health_p2 = 100
+            # Setze eine kurze Invincibility, um erneute sofortige Kollision zu vermeiden
+            self.respawn_invincible_until = time.time() + 3
+        else:
+            # Falls keine Leben mehr vorhanden sind, gehe auf Game Over
+            self.game_state = GameState.GAME_OVER
+            self.game_over_time = time.time()
+        if len(self.leaderboard) < 10 or self.score > self.leaderboard[-1][1]:
+            self.leaderboard_mode = True
+
     def handle_death(self):
         if self.player_count == 1:
             if self.player_health > 0:
@@ -1267,6 +1367,17 @@ class Game:
                                 print("DEBUG: ExtraZone erzeugt, aber KEIN Effektbild gefunden!")
                             else:
                                 print("DEBUG: ExtraZone mit Effektbild erzeugt an Position:", pos)
+                        elif event.unicode == "ü":
+                            from modules.aoe_zones import BackgroundEffectZone
+                            try:
+                                bg_image = pygame.image.load("assets/graphics/AOEEffekte/Backround0021.png").convert_alpha()
+                            except Exception as e:
+                                print(f"DEBUG: Fehler beim Laden des Hintergrundbildes: {e}")
+                                bg_image = None
+                            if bg_image:
+                                zone = BackgroundEffectZone(bg_image, 7)
+                                self.aoe_zones.insert(0, zone)
+                                print("DEBUG: BackgroundEffectZone (Hintergrund-Effekt) erzeugt!")
                         if self.player_count == 1:
                             if event.key in (pygame.K_UP, pygame.K_w) and self.snake_direction != Direction.DOWN:
                                 self.next_direction = Direction.UP
