@@ -1,231 +1,171 @@
-1. Configuration and Global Constants
+<!-- Coverbild oben in der README -->
+<p align="center">
+  <img src="Dark_Snake/assets/graphics/2222124.png" alt="Dark Snake Game Cover" width="800px">
+</p>
 
-File: config.py
+<hr />
 
-    Purpose:
-    Sets up essential game constants and scaling factors. This file initializes Pygame (with a temporary display for proper image conversion), sets a view scaling factor (e.g. 1.5), and calculates dimensions such as GRID_SIZE, WINDOW_WIDTH, WINDOW_HEIGHT, and the grid’s dimensions (GRID_WIDTH and GRID_HEIGHT).
+# Dark Snake Game
 
-    Other constants:
+**Ein fortschrittliches Snake-Game mit Anpassungsmöglichkeiten, Bosskämpfen, Spezialeffekten und einer modernen, modularen Architektur.**
 
-        Frames per second (FPS)
+---
 
-        Colors (e.g. DARK_GREY, WHITE, GREEN, RED, PURPLE, ORANGE)
+## Inhaltsverzeichnis
 
-        UI‐related sizes (e.g. BORDER_SIZE, UI_CONTAINER_HEIGHT)
+- [Konfiguration und Globale Konstanten](#konfiguration-und-globale-konstanten)
+- [Aufzählungen (Enums)](#aufzählungen-enums)
+- [Grafik- und Asset-Management](#grafik--und-asset-management)
+- [UI-Komponenten](#ui-komponenten)
+- [Menüs für Optionen, Anpassungen und Steuerungen](#men%C3%BCs-f%C3%BCr-optionen-anpassungen-und-steuerungen)
+- [Kern-Spielmechanik](#kern-spielmechanik)
+- [Audio](#audio)
+- [Gesamtarchitektur](#gesamtarchitektur)
+- [Verwendung](#verwendung)
 
-        Font sizes: The module creates scaled fonts (FONT_SMALL, FONT_MEDIUM, FONT_LARGE, FONT_TITLE) for a consistent look on different screen sizes.
+---
 
-        Game mechanics constants, for example, START_SPEED, MAX_SPEED, and PROJECTILE_SPEED_FACTOR.
+## Konfiguration und Globale Konstanten
 
-        A constant for the leaderboard file name.
+**Datei:** `config.py`
 
-Why it’s useful:
-Centralizing these values makes it easy to tweak the game’s appearance, scaling, and basic mechanics without digging through multiple files.
-2. Enumerations
+*Zweck:*  
+Diese Datei legt wesentliche Spielkonstanten (wie Bildschirmgröße, Skalierungsfaktoren, Farben, Schriftgrößen und Gameplay-Konstanten) fest. Dadurch können grundlegende Parameter an einer zentralen Stelle angepasst werden, ohne den gesamten Code durchsuchen zu müssen.
 
-File: enums.py
+*Beispiele:*  
+- **FPS:** Bilder pro Sekunde  
+- **Farben:** `DARK_GREY`, `WHITE`, `GREEN`, `RED`, `PURPLE`, `ORANGE`  
+- **UI-Größen:** `BORDER_SIZE`, `UI_CONTAINER_HEIGHT`  
+- **Spielmechanik:** `START_SPEED`, `MAX_SPEED`, `PROJECTILE_SPEED_FACTOR`
 
-    Purpose:
-    Define enumerated types to standardize various game states and values:
+---
 
-        GameState: Lists the discrete states of the game (e.g. INTRO, GAME, PAUSE, GAME_OVER, BOSS_FIGHT, SETTINGS, LEADERBOARD, CONTROLS, CUSTOMIZATION). This helps the main game loop switch between different screens and behaviors.
+## Aufzählungen (Enums)
 
-        Direction: Provides tuple values for movement directions (UP, DOWN, LEFT, RIGHT). These are used when updating the snake’s position.
+**Datei:** `enums.py`
 
-        ItemType: Enumerates different types of items (such as FOOD, SPEED_BOOST, SPEED_REDUCTION, SCORE_BOOST, INVINCIBILITY, LOOT_BOX, LENGTH_SHORTENER, LENGTH_DOUBLE, DICE_EVENT, SPECIAL_DAMAGE, PROJECTILE_SHOOT) that the snake can pick up. Each item type can trigger different effects (e.g. health restoration, speed changes, score bonuses, or triggering special events like a dice event).
+*Zweck:*  
+Definition von Aufzählungstypen für Spielzustände und Steuerungsoptionen:
 
-Why it’s useful:
-Using enums creates a well‑defined vocabulary throughout the code. It reduces bugs (by avoiding “magic numbers” or inconsistent strings) and makes the control flow easier to follow.
-3. Graphics and Asset Management
+- **GameState:** z. B. `INTRO`, `GAME`, `PAUSE`, `GAME_OVER`, `BOSS_FIGHT`, `SETTINGS` etc.
+- **Direction:** Bewegungsrichtungen (`UP`, `DOWN`, `LEFT`, `RIGHT`)
+- **ItemType:** Verschiedene Item-Arten, wie `FOOD`, `SPEED_BOOST`, `SPEED_REDUCTION` u. a.
 
-File: graphics.py
+*Warum es nützlich ist:*  
+Enums ermöglichen eine saubere, konsistente Handhabung von Status- und Steuerungswerten und reduzieren die Wahrscheinlichkeit von Tippfehlern oder inkonsistenten Werten.
 
-    Purpose:
-    Handles the loading and scaling of game images.
+---
 
-    Key functions and variables:
+## Grafik- und Asset-Management
 
-        load_image(filename): Central function that loads an image from the assets/graphics folder, applying convert_alpha() for proper transparency.
+**Datei:** `graphics.py`
 
-        scale_to_thumbnail(image, factor): Used especially in the customization and options menus to create smaller thumbnail versions of larger images.
+*Zweck:*  
+Lädt und skaliert sämtliche Spielbilder. Dazu gehören Schlangen-, Projektil-, Boss-, Portal- und UI-Bilder.
 
-        Asset definitions:
-        The file loads images for various game objects:
+*Wichtige Funktionen:*  
+- `load_image(filename)` – Lädt ein Bild aus dem Ordner `assets/graphics` und nutzt `convert_alpha()` für transparente Darstellungen.  
+- `scale_to_thumbnail(image, factor)` – Erstellt kleine Vorschaubilder für z. B. Menüs.
 
-            Snake graphics: Different snake head images (SNAKE_HEAD_IMG and variations such as SNAKE_HEAD1G20, SNAKE_HEAD2G20, SNAKE_HEAD3G20, SNAKE_HEAD_BETA) and body images.
+*Warum es nützlich ist:*  
+Ein zentrales Grafikmodul erleichtert das Vorladen und Austauschen von Bildern und sorgt für ein konsistentes Erscheinungsbild.
 
-            Projectile images: For firing projectiles (PROJECTILE_IMG, PROJECTILE2_IMG, etc.).
+---
 
-            Title image, Boss images: Including alternate graphics for bosses (BOSS_IMG, BOSS_ALT_IMG, etc.) to support different boss encounters.
+## UI-Komponenten
 
-            Portal images: Various images for portals that trigger special events.
+**Datei:** `ui.py`
 
-            Item images: A dictionary mapping ItemType names (like "FOOD", "SPEED_BOOST", etc.) to their corresponding graphics.
+*Zweck:*  
+Implementiert interaktive Widgets wie Buttons, Slider, Checkboxen und Dropdown-Menüs, die in den Menüs und Optionenscreens verwendet werden.
 
-            Enemy images and UI button images: These images keep the look consistent throughout the game.
+*Beispiele:*  
+- **Button:** Klickelement mit optionalem Bild, Hover-Effekten und einem Callback.  
+- **Slider:** Ermöglicht die Einstellung numerischer Werte über einen Schieberegler.  
+- **CheckBox und Dropdown:** Dienen zur Auswahl oder zum Umschalten von Einstellungen.
 
-Why it’s useful:
-Having a central graphics module allows for asset pre‑loading, scaling, and easy replacement of images if you wish to update the visual style later on.
-4. UI Components
+*Warum es nützlich ist:*  
+Die Wiederverwendbarkeit dieser UI-Komponenten vereinfacht den Aufbau moderner Menüs und erhöht die Benutzerfreundlichkeit.
 
-File: ui.py
+---
 
-    Purpose:
-    Implements interactive elements like buttons, sliders, check boxes, and dropdown menus that are used in menus for controls, options, and customization.
+## Menüs für Optionen, Anpassungen und Steuerungen
 
-    Key classes:
+### Optionsmenü
 
-        Button:
-        A clickable element that can display text and an optional image. It handles hover states by changing the drawn color (using a “hover_color”) and calls a callback (action) when clicked.
+**Datei:** `options_menu.py`
 
-        Slider:
-        Allows the player to adjust numeric values (such as speed, difficulty, projectile speed, etc.). It includes a draggable handle that updates the current value.
+*Zweck:*  
+Ein modernes Menü, das Einstellungen zu Gameplay und Audio sowie die Auswahl von Grafikoptionen (z. B. Schlangendesign) bietet.
 
-        CheckBox:
-        A simple toggle option with a visual indicator (filled when checked).
+### Anpassungsmenü
 
-        Dropdown:
-        Provides a scrollable list of options—ideal for listing background music choices or similar items.
+**Datei:** `customization.py`
 
-Why it’s useful:
-These custom UI widgets encapsulate the functionality needed to build the menus and option screens. They keep input-handling (like mouse clicks and movement) separate from game logic.
-5. Menus for Options, Customization, and Controls
-Options Menu
+*Zweck:*  
+Ermöglicht es Spielern, individuelle Schlangenköpfe und -körper auszuwählen und anzupassen.
 
-File: options_menu.py
+### Steuerungsmenü
 
-    Purpose:
-    Implements a modern options menu that consolidates game settings (gameplay, audio) and also provides a “graphic inventory” for assigning snake images. It is designed with a dark art style using a consistent color scheme (dark background with green, purple, and orange accents).
+**Datei:** `controls.py`
 
-    Features:
+*Zweck:*  
+Zeigt die Tastenzuweisungen für Einzel- und Mehrspieler an.
 
-        It has three columns:
+*Warum diese Menüs nützlich sind:*  
+Durch benutzerfreundliche Menüs kann der Spieler das Spiel individuell konfigurieren und erhält einen direkten Überblick über die Steuerung und Einstellungen.
 
-            Settings Panel: Contains sliders for gameplay settings (speed, difficulty, spawn rate) and audio settings.
+---
 
-            Image Inventory: Shows thumbnails (e.g. snake heads and bodies) that players can scroll through and assign.
+## Kern-Spielmechanik
 
-            Final Preview: Displays a preview of the chosen graphics (in game‑sized format) for at least one player.
+**Datei:** `game.py`
 
-        Global control buttons remain at the top of the screen.
+*Zweck:*  
+Implementiert die zentrale Logik des Spiels, von der Schlangenbewegung über Kollisionsprüfung, Item-Management bis hin zu Gegner- und Bosskämpfen.
 
-Customization Menu
+*Wichtige Aspekte:*
 
-File: customization.py
+- **Spielzustände:** Steuerung des Spielablaufs (Intro, Spiel, Pause, Game Over usw.).  
+- **Schlangenbewegung:** Verwaltung der Schlangen (als Liste von Segmenten) im Ein- und Mehrspielermodus.  
+- **Items und Power-Ups:** Zufälliges Spawnen von Gegenständen, die verschiedene Effekte auslösen können.  
+- **Kollisionsdetektion:** Überprüfung von Kollisionen mittels Pygame-Methoden.  
+- **Projektile, Gegner und Bosskämpfe:** Dynamisches Gameplay durch zusätzliche Herausforderungen und Spezialeffekte.
 
-    Purpose:
-    Provides an interface for players to select custom images for the snake’s head and body.
+*Warum es nützlich ist:*  
+Die zentrale Spiel-Logik schafft eine klare Struktur, die zur Erweiterbarkeit und Wartbarkeit des Codes beiträgt.
 
-    Key functionality:
+---
 
-        Loads a predetermined set of snake head options (with thumbnails) defined in the module.
+## Audio
 
-        Dynamically loads additional snake body images from a folder (using the os.listdir function) and creates thumbnails.
+**Datei:** `audio.py`
 
-        Creates buttons for each option so that when clicked the selected option is stored in the game’s settings.
+*Zweck:*  
+Lädt und spielt Soundeffekte sowie Hintergrundmusik ab und ermöglicht die Anpassung von Lautstärke über das Optionsmenü.
 
-        A “back” button lets players return to the previous menu.
+*Warum es nützlich ist:*  
+Gute Audioeffekte steigern die Immersion und sorgen für ein intensiveres Spielerlebnis.
 
-Controls Menu
+---
 
-File: controls.py
+## Gesamtarchitektur
 
-    Purpose:
-    Displays the key bindings for both single‑player and two‑player modes. It shows which keys are used for movement (using arrow keys or WASD for Player 1, and separate arrows for Player 2) as well as the key for shooting.
+Das Dark Snake Game nutzt eine modulare Struktur, die folgende Vorteile bietet:
 
-    Features:
-    A “back” button is included to return to the main intro menu.
+- **Klar getrennte Module:** Jede Komponente (Grafik, UI, Audio, Gameplay) ist in separate Dateien ausgelagert – dies erleichtert Wartung und Erweiterung.  
+- **State-Management:** Durch den Einsatz von enums (etwa in `GameState`) werden verschiedene Spielphasen sauber voneinander getrennt.  
+- **Benutzerfreundliche Menüs:** Spieler können das Spiel individuell anpassen und Einstellungen bequem über die integrierten Menüs vornehmen.
 
-Why these menus are useful:
-They improve the player experience by offering a user‑friendly configuration interface. Instead of hard‑coding images and controls, the player can select the aesthetic and gameplay settings to suit their preferences.
-6. Core Game Logic
+---
 
-File: game.py (multiple versions/truncated parts)
+## Verwendung
 
-    Purpose:
-    Implements the main game loop and overall game logic. This file ties together the inputs, updates, drawing of objects, collision detection, scoring, and level progression.
+Um das Spiel zu starten:
+- **Direkt aus dem Quellcode:** Starte `main.py` in deiner Python-Umgebung.
+- **Build-Artifact nutzen:** Lade die über GitHub Actions erstellte EXE herunter und führe diese auf einem Windows-System aus.
 
-    Key aspects:
+---
 
-        Game States and Transitions:
-        Uses the GameState enum (from enums.py) to switch between modes (Intro, Game, Pause, Game Over, Boss Fight, Settings, etc.). For example, when the game state changes to GAME, the update loop starts moving the snake, checking collisions, and updating scores.
-
-        Snake Handling:
-        The snake is represented as a list of segments (each a coordinate tuple on the grid). Depending on whether it’s a one‑player or two‑player game, there are separate lists for each snake (snake, snake1, snake2) and separate direction variables.
-        The update loop moves the snake by adding a new head in the direction of movement and removing the tail segment unless food is picked up (in which case the snake grows).
-
-        Item Spawning and Pickup:
-        Items (using the Item class) are spawned randomly on the grid. The handle_item_pickup function checks when the snake’s head collides with an item and then applies its effect—adjusting speed, score, or even triggering special effects like a dice event.
-
-        Enemy and Boss Logic:
-        Enemies are spawned based on a probability (controlled by a spawn rate from settings) and are updated every frame. Special “boss” enemies appear in boss fights (using the Boss and Boss2 classes). Bosses not only move (with random wandering using a “chase_speed”) but also have animations (with frames loaded and cycled through) and can perform special attacks such as area‑of‑effect damage (“aoe”) or shooting projectiles.
-
-        Projectiles and Collisions:
-        The game supports automatic shooting (especially when certain power‑ups are active) using a function that calculates the direction toward the nearest enemy or fires straight ahead. Collision detection is done using Pygame’s Rect methods (e.g. colliderect) to see if projectiles hit enemies or if the snake collides with obstacles or itself.
-
-        Area‑of‑Effect Zones (AoE):
-        The game features temporary zones (from the aoe_zones.py file) that can cause damage, slow the snake (debuff), or heal it. These zones are updated continuously and check if the snake’s head or players’ positions fall within their radius.
-
-        Scoring, Leveling, and Achievements:
-        The game tracks the player’s score and experience. When sufficient experience is gathered, the level increases (which in turn may increase the game speed and trigger a boss fight). Achievement messages are maintained and displayed (with a time‑limit) for notable events, such as defeating an enemy, leveling up, or specific dice events.
-
-        Game Over and Leaderboard:
-        When the player loses all lives or health, the game state changes to GAME_OVER, and if the score qualifies, the player can enter their name for the leaderboard. The leaderboard is stored in a text file (LEADERBOARD_FILE) and loaded/sorted accordingly.
-
-        Input Handling:
-        The handle_events method captures keyboard events for controlling the snake (using WASD or arrow keys, depending on the mode) and for triggering special events (such as spawning an AoE zone manually during debugging with keys like R, T, Z, etc.). The game responds to the ESC key to exit or go back to menus.
-
-        Drawing and Updating:
-        The main update loop is responsible for updating game objects’ positions, detecting collisions, handling special effects (such as invincibility right after respawn), and finally drawing everything to the screen (background, snakes, items, enemies, boss, projectiles, AoE zones, UI elements, HUD, and achievement messages).
-
-Why it’s useful:
-All these components work together to create a dynamic, challenging, and visually engaging snake game variant. The overall architecture is designed to allow significant customization, varied gameplay mechanics (with power‑ups, boss fights, and AoE effects), and a smooth user interface that can be extended or modified.
-7. Audio
-
-File: audio.py (referenced in game.py)
-
-    Purpose:
-    Although the full code isn’t shown in the excerpts above, this module is referenced throughout the game (for example, when a boss is spawned or when an item is picked up). It likely handles:
-
-        Loading sound effects and background music.
-
-        Playing sounds for different events (such as eating food, getting hit, or boss events).
-
-        Adjusting volumes for music and sound effects based on user settings.
-
-Why it’s useful:
-Adding sound effects and music increases the game’s immersion and overall quality. Volume can be adjusted from the options menu.
-8. Summary of the Overall Architecture
-
-    Modular Structure:
-    The game is divided into logical modules (configuration, UI, graphics, audio, game logic, menus, etc.), which makes maintenance and further development easier. For instance, if you wish to change the style of the UI, you can update the UI module without touching the game loop.
-
-    State Management:
-    The game uses a well‑structured state machine (based on the GameState enum) to switch between game modes (intro, in‑game, pause, game over, settings, customization, controls, leaderboard). This separation ensures that input handling, drawing, and updating logic are tailored to what the player should see or interact with at any moment.
-
-    Customization and Options:
-    The presence of a customization menu and an advanced options menu shows that the project was built to be player‑friendly. It allows players to change the snake’s appearance as well as tweak gameplay (speed, difficulty, spawn rate) and audio settings on the fly.
-
-    Extensive Gameplay Features:
-    With features such as multi‑player (two‑player support), boss fights with animations and special attacks, AoE zones that apply various effects (damage, healing, slow), and a variety of item types, the code indicates that the developer intended to offer a gameplay experience that is both challenging and varied.
-
-    Collision Detection and Game Physics:
-    The use of Pygame’s Rect objects for collision detection (between snake segments, items, enemies, projectiles, and AoE zones) demonstrates an approach that keeps the collision logic relatively simple and fast while supporting the gameplay’s complexity.
-
-    Performance Considerations:
-    The update loops use timers (based on time.time() comparisons) to ensure that actions like moving the snake or updating animations occur at appropriate intervals (for example, speed increases as levels go up).
-
-Concluding Remarks
-
-This “Dark‑Snake” game project is an excellent example of a complex Pygame application that builds upon the simple snake game concept with a host of advanced features:
-
-    Customization and Modern UI:
-    Players can personalize the game’s appearance and adjust numerous gameplay parameters through a detailed options menu.
-
-    Enhanced Gameplay Mechanics:
-    In addition to the traditional snake mechanics, the game includes power‑ups, dynamic enemy and boss encounters, and environmental effects via AoE zones.
-
-    Well‑Organized Code:
-    The code is structured into separate modules (graphics, UI, controls, audio, etc.), which enhances readability and maintainability.
-
-If you have any specific questions—whether about debugging certain modules, extending a feature, or improving performance—please let me know, and I’d be happy to dive deeper into that area.
+Diese README-Datei bietet einen umfassenden Überblick über die Struktur und Funktionsweise des Dark Snake Games und sorgt gleichzeitig für einen ansprechenden visuellen Auftritt dank des Coverbildes und der klaren Gliederung.  
+Falls du weitere Anpassungen wünschst, z. B. zusätzliche Farbgestaltung oder weitere Grafikelemente, kannst du HTML-Elemente (z. B. `<hr style="border: 2px solid #FF6600;">`) in Markdown einbinden, um das Design weiter zu verfeinern.
