@@ -11,7 +11,8 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
       - name: List repository files
         run: dir /s /B
@@ -38,9 +39,12 @@ jobs:
           else
             echo "File does not exist."
             exit 1
+          fi
 
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v3
         with:
           name: dark-snake-exe
           path: dist/main.exe
+
+
