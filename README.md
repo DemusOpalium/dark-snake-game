@@ -80,12 +80,12 @@ _Tauche ein in ein Spielerlebnis, das so einzigartig ist wie dein Humor – dunk
   
 - **Boss Fight 1:**
   <p align="center">
-    <img src="Dark_Snake/assets/graphics/Boss-DemusG60.png" alt="Boss Fight 1" width="600px">
+    <img src="Dark_Snake/assets/graphics/Boss-DemusG60.png" alt="Boss Fight 1" width="200px">
   </p>
   
 - **Portal Event:**
   <p align="center">
-    <img src="Dark_Snake/assets/graphics/PortalTempelG60.png" alt="Portal Event" width="600px">
+    <img src="Dark_Snake/assets/graphics/PortalTempelG60.png" alt="Portal Event" width="150px">
   </p>
   
 - **AOE Effekte:**
