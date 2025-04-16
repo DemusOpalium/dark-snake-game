@@ -13,7 +13,7 @@ from pygame.math import Vector2
 from modules.enums import GameState, Direction, ItemType
 from config import (WINDOW_WIDTH, WINDOW_HEIGHT, GRID_SIZE, FPS, GRID_WIDTH, GRID_HEIGHT,
                     DARK_GREY, WHITE, GREEN, RED, PURPLE, ORANGE, GOLDEN, LEADERBOARD_FILE,
-                    START_SPEED, MAX_SPEED, PROJECTILE_SPEED_FACTOR, BORDER_SIZE, UI_CONTAINER_HEIGHT)
+                    START_SPEED, MAX_SPEED, PROJECTILE_SPEED_FACTOR, AUTO_SHOOT_INTERVAL, BORDER_SIZE, UI_CONTAINER_HEIGHT)
 # <-- Hier den fehlenden Import hinzufügen:
 from modules.graphics import load_image, SNAKE_HEAD_IMG, SNAKE_HEAD1G20, SNAKE_HEAD2G20, SNAKE_HEAD3G20, SNAKE_HEAD_BETA, SNAKE_BODY_IMG, SNAKE_BODY_BETA, SNAKE_BODY_Body7, SNAKE_BODY_Body5, SNAKE_BODY_Body4, SNAKE_BODY_Body2, SNAKE_BODY_Body6, PROJECTILE_IMG, TITLE_IMG, BOSS_IMG, BOSS_ALT_IMG, PORTAL_IMAGES, ITEM_IMAGES, OPTIONS_BUTTON_IMG, PLAY_BUTTON_IMG
 
@@ -361,8 +361,8 @@ class Game:
             'initial_speed': START_SPEED,
             'fullscreen': False,
             'music_volume': 0.2,
-            'sfx_volume': 0.9,
-            'bg_music_volume': 0.5,
+            'sfx_volume': 2.0,
+            'bg_music_volume': 0.3,
             'difficulty': 1.0,
             'field_scale': 1.0,
             'snake_design': 0,
@@ -371,6 +371,7 @@ class Game:
             'custom_head_p2': None,
             'custom_body_p2': None,
             'projectile_speed_factor': PROJECTILE_SPEED_FACTOR,
+            'auto_shoot_interval': AUTO_SHOOT_INTERVAL,  # Neuer konfigurierbarer Parameter für die Schussfrequenz
             'enemy_spawn_rate': 0.002,
             'boss_health_multiplier': 1.0
         }
@@ -771,17 +772,19 @@ class Game:
 
     def auto_shoot(self):
         current_time = time.time()
+            # Prüft, ob der Effekt noch aktiv ist
         if self.effects['projectile_shoot'] > current_time:
             if self.player_count == 1:
-                if current_time - self.last_auto_shoot < 3:
+                # Verwende den konfigurierten Auto-Shoot-Intervall statt 3 Sekunden
+                if current_time - self.last_auto_shoot < self.settings.get('auto_shoot_interval', 0.5):
                     return
                 self.last_auto_shoot = current_time
                 self.auto_shoot_for_head(self.snake[0], self.snake_direction)
             elif self.player_count == 2:
-                if self.snake1 and current_time - self.last_auto_shoot1 >= 3:
+                if self.snake1 and current_time - self.last_auto_shoot1 >= self.settings.get('auto_shoot_interval', 0.5):
                     self.last_auto_shoot1 = current_time
                     self.auto_shoot_for_head(self.snake1[0], self.snake_direction1)
-                if self.snake2 and current_time - self.last_auto_shoot2 >= 3:
+                if self.snake2 and current_time - self.last_auto_shoot2 >= self.settings.get('auto_shoot_interval', 0.5):
                     self.last_auto_shoot2 = current_time
                     self.auto_shoot_for_head(self.snake2[0], self.snake_direction2)
 
@@ -1197,7 +1200,7 @@ class Game:
                         SOUNDS["powerup"].play()
                     self.score += 100
         elif item.type == ItemType.PROJECTILE_SHOOT:
-            self.effects['projectile_shoot'] = current_time + 30
+            self.effects['projectile_shoot'] = max(self.effects['projectile_shoot'], current_time) + 900
             self.extra_auto_shots = min(6, self.extra_auto_shots + 1)
             self.score += 40
             self.experience += 20
@@ -1587,7 +1590,7 @@ class Game:
                 proj_img = pygame.transform.scale(proj.get("image", PROJECTILE_IMG),
                                                   (GRID_SIZE * 2, GRID_SIZE * 2))
             else:
-                proj_img = pygame.transform.scale(PROJECTILE_IMG, (GRID_SIZE // 2, GRID_SIZE // 2))
+                proj_img = pygame.transform.scale(PROJECTILE_IMG, (int(GRID_SIZE * 1.5), int(GRID_SIZE * 1.5)))
             self.screen.blit(proj_img, (proj_x, proj_y))
         self.draw_hud()
         if self.dice_result is not None and time.time() <= self.dice_display_until:
