@@ -42,5 +42,6 @@ except Exception as e:
 
 START_SPEED = 8
 MAX_SPEED = 15
-PROJECTILE_SPEED_FACTOR = 1.0  # NEW: Projektilgeschwindigkeitsfaktor (Default 1.0)
+PROJECTILE_SPEED_FACTOR = 0.5  # NEW: Projektilgeschwindigkeitsfaktor (Default 1.0)
+AUTO_SHOOT_INTERVAL = 2
 LEADERBOARD_FILE = "leaderboard.txt"
