@@ -1,18 +1,56 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-#
-# Modul: aoe_zones.py
-# Zweck: Temporäre AoE-Flächen (Area of Effect) mit verschiedenen Effekten
-#        implementieren: Schadenszonen, Debuff-Zonen, Heilzonen und Auren.
-# Kontext: Diese Zonen wirken über Zeit auf Entitys, die sich in ihrem Wirkungsbereich befinden.
-#
+// [SUCHTAG: AOE_ZONES_MODIFICATION - EFFECT IMAGE LAYOUT]
+"""
+Modul: aoe_zones.py
+Zweck: Temporäre AoE-Flächen (Area of Effect) mit verschiedenen Effekten implementieren.
+       Zusätzlich werden nun für Schadens- und Heilzonen (sowie Slow/Aura) passende Effektbilder aus dem
+       vorbereiteten Ordner geladen und skaliert dargestellt.
+Kontext: Erweiterung des bestehenden aoe_zones-Systems; die Effektbilder ersetzen die klassischen
+         farbigen Kreise.
+"""
+
 import os
-import random  # <-- Diese Zeile hinzufügen
+import random
 import pygame, time, math
 from pygame.math import Vector2
 from config import GRID_SIZE, WINDOW_WIDTH, WINDOW_HEIGHT
 
-# Funktion zum Laden eines AoE-Effektbilds, jetzt auf Modul-Ebene
+# Neue Hilfsfunktion zum Laden des Effektbilds für einen bestimmten Typ
+def get_effect_by_type(effect_type):
+    """
+    Lädt ein spezifisches Effektbild anhand des Typ-Parameters.
+    Mögliche effect_type-Werte: "damage", "heal", "slow", "aura"
+    """
+    effect_folder = os.path.join("assets", "graphics", "AOEEffekte")
+    
+    # Hier werden für die einzelnen Typen feste Bilddateien definiert:
+    if effect_type == "damage":
+        filename = "FireAOE1.png"
+    elif effect_type == "heal":
+        filename = "HolyAOE1.png"
+    elif effect_type == "slow":
+        # Beispiel: für Slow-Effekt kann hier ein alternatives Bild gewählt werden
+        filename = "DarkAOE1.png"
+    elif effect_type == "aura":
+        # Beispiel: für Aura-Effekt
+        filename = "MagicAOE1.png"
+    else:
+        return None
+
+    path = os.path.join(effect_folder, filename)
+    if os.path.exists(path):
+        try:
+            img = pygame.image.load(path).convert_alpha()
+            # Skaliere das Bild auf einen sinnvollen Effektbereich – hier analog zur Skalierung in get_aoe_effect()
+            img = pygame.transform.scale(img, (int(GRID_SIZE * 3), int(GRID_SIZE * 3)))
+            print("DEBUG: Effektbild geladen für", effect_type, ":", img)
+            return img
+        except Exception as e:
+            print(f"Fehler beim Laden von {filename}: {e}")
+            return None
+    print("DEBUG: Kein Effektbild gefunden im Ordner", effect_folder)
+    return None
+
+# Bereits bestehende Funktion (kann unverändert bleiben, falls gebraucht)
 def get_aoe_effect():
     effect_folder = os.path.join("assets", "graphics", "AOEEffekte")
     effect_files = [
@@ -60,8 +98,8 @@ class AoEZone:
         pos: Startposition als (x,y)-Tuple (in Pixeln)
         radius: Wirkradius der Zone in Pixeln
         duration: Dauer der Zone in Sekunden
-        color: (R,G,B,A) – Farbe für die Darstellung (z.B. halbtransparent)
-        effect_type: z.B. "damage", "heal", "slow", "aura"
+        color: (R,G,B,A) – Farbe (z. B. halbtransparent)
+        effect_type: z. B. "damage", "heal", "slow", "aura"
         """
         self.pos = Vector2(pos)
         self.radius = radius
@@ -70,6 +108,8 @@ class AoEZone:
         self.effect_type = effect_type
         self.created_time = time.time()
         self.alive = True
+        # Eigentliches Effektbild (falls gesetzt) – ansonsten None
+        self.image = None
 
     def update(self):
         if time.time() - self.created_time >= self.duration:
@@ -77,9 +117,11 @@ class AoEZone:
 
     def draw(self, surface):
         diameter = self.radius * 2
-        if hasattr(self, "image") and self.image:
+        if self.image:
+            # Skaliere das Effektbild nur für diese Zone (nicht wie beim Background auf das ganze Fenster)
             scaled_img = pygame.transform.scale(self.image, (diameter, diameter))
-            scaled_img.set_alpha(self.color[3] if len(self.color) == 4 else 128)
+            # Setze die Alphawerte analog zur aktuellen Farbe
+            scaled_img.set_alpha(self.color[3] if len(self.color) == 4 else 255)
             surface.blit(scaled_img, (self.pos.x - self.radius, self.pos.y - self.radius))
         else:
             overlay = pygame.Surface((diameter, diameter), pygame.SRCALPHA)
@@ -95,6 +137,11 @@ class AoEZone:
 
 # Schadenszone: fügt Schaden zu
 class DamageZone(AoEZone):
+    def __init__(self, pos, radius, duration, color, effect_type="damage"):
+        super().__init__(pos, radius, duration, color, effect_type)
+        # Lade das spezifische Effektbild für Schadenszonen (z. B. Feuer-Effekt)
+        self.image = get_effect_by_type("damage")
+    
     def apply_effect(self, entity):
         elapsed = time.time() - self.created_time
         damage = 10 * (elapsed / self.duration)
@@ -102,6 +149,11 @@ class DamageZone(AoEZone):
 
 # Heilzone: regeneriert Gesundheit
 class HealZone(AoEZone):
+    def __init__(self, pos, radius, duration, color, effect_type="heal"):
+        super().__init__(pos, radius, duration, color, effect_type)
+        # Lade das spezifische Effektbild für Heilungszonen (z. B. Holy-Effekt)
+        self.image = get_effect_by_type("heal")
+    
     def apply_effect(self, entity):
         elapsed = time.time() - self.created_time
         healing = 5 * (elapsed / self.duration)
@@ -109,15 +161,25 @@ class HealZone(AoEZone):
 
 # DebuffZone: verringert die Geschwindigkeit (hier Beispiel: 50 %)
 class DebuffZone(AoEZone):
+    def __init__(self, pos, radius, duration, color, effect_type="slow"):
+        super().__init__(pos, radius, duration, color, effect_type)
+        # Lade das spezifische Effektbild für Slow-Zonen
+        self.image = get_effect_by_type("slow")
+    
     def apply_effect(self, entity):
         entity.speed = max(entity.base_speed * 0.5, 1)
 
 # FollowZone: Beispiel einer Aura – hier ohne konkreten Effekt (erweiterbar)
 class FollowZone(AoEZone):
+    def __init__(self, pos, radius, duration, color, effect_type="aura"):
+        super().__init__(pos, radius, duration, color, effect_type)
+        # Lade das spezifische Effektbild für Aura-Zonen
+        self.image = get_effect_by_type("aura")
+    
     def apply_effect(self, entity):
         pass
 
-# BackgroundEffectZone: Vollflächiger AOE-Hintergrundeffekt
+# BackgroundEffectZone: Vollflächiger AOE-Hintergrundeffekt (bleibt unverändert)
 class BackgroundEffectZone(AoEZone):
     """
     Modul: BackgroundEffectZone
@@ -135,3 +197,4 @@ class BackgroundEffectZone(AoEZone):
         scaled_img = pygame.transform.scale(self.image, (WINDOW_WIDTH, WINDOW_HEIGHT))
         scaled_img.set_alpha(self.color[3] if len(self.color) == 4 else 255)
         surface.blit(scaled_img, (0, 0))
+
