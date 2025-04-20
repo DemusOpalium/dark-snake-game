@@ -23,6 +23,7 @@ from modules.controls import ControlsMenu
 from modules.customization import CustomizationMenu
 from modules.enemies import NormalEnemy
 from modules.options_menu import OptionsMenu, ExtendedOptionsMenu
+from modules.admin_panel import AdminPanel
 
 # Boss-Projektil-Grafiken (zufällige Auswahl)
 BOSS_PROJECTILES = []
@@ -435,6 +436,9 @@ class Game:
         self.create_additional_ui()
         self.achievement_manager = AchievementManager(self)
         # Respawn-Unbesiegbarkeit: 3 Sekunden direkt nach dem Spawn
+        self.boss_fight_active = False  # [KS_TAG: ADMIN_BOSS_INIT]
+        self.boss = None
+        self.admin_panel = AdminPanel(self)
         self.respawn_invincible_until = 0
 
     def create_ui_elements(self):
@@ -524,6 +528,7 @@ class Game:
         self.screen.blit(overlay, (0, 0))
         msg = pygame.font.SysFont('Comic Sans MS', 30).render("Zum Hauptmenü?", True, WHITE)
         self.screen.blit(msg, (WINDOW_WIDTH // 2 - msg.get_width() // 2, WINDOW_HEIGHT // 2 - msg.get_height() // 2))
+        self.admin_panel.draw(self.screen)
         pygame.display.update()
         time.sleep(2)
         self.set_state(self.intro_state())
@@ -1275,7 +1280,12 @@ class Game:
             self.respawn_invincible_until = time.time() + 3
 
     def handle_events(self):
+        keys = pygame.key.get_pressed()
+
         for event in pygame.event.get():
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_TAB:
+                self.admin_panel.toggle()
+            self.admin_panel.handle_event(event)
             if event.type == pygame.QUIT:
                 sys.exit()
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
@@ -1435,6 +1445,7 @@ class Game:
         self.draw_hud()
         self.achievement_manager.draw_achievements(self.screen)
         self.achievement_manager.draw_portal_event(self.screen)
+        self.admin_panel.draw(self.screen)
         pygame.display.update()
 
     def draw_hud(self):
@@ -1671,6 +1682,9 @@ class Game:
         back_btn = Button(WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT - 80, 200, 60, "ZURÜCK", color=PURPLE, action=lambda: self.confirm_back_to_main())
         back_btn.draw(self.screen)
         for event in pygame.event.get():
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_TAB:
+                self.admin_panel.toggle()
+            self.admin_panel.handle_event(event)
             if event.type == pygame.QUIT:
                 sys.exit()
             elif event.type == pygame.MOUSEBUTTONDOWN:
@@ -1689,6 +1703,63 @@ class Game:
             self.draw()
             self.clock.tick(FPS)
 
+
+# [KS_TAG: FLAME_PROJECTILE_CLASS]
+class FlameProjectile:
+    def __init__(self, x, y, direction):
+        from modules.graphics import load_image
+        self.image = load_image("projectiles/FlameProjectile1.png")
+        self.rect = self.image.get_rect(center=(x, y))
+        self.speed = 6
+        self.direction = direction
+        self.damage = 3
+        self.lifetime = 180  # 3 Sekunden bei 60 FPS
+
+    def update(self):
+        self.rect.x += self.speed * self.direction[0]
+        self.rect.y += self.speed * self.direction[1]
+        self.lifetime -= 1
+        return self.lifetime > 0
+
+    def draw(self, screen):
+        screen.blit(self.image, self.rect)
+
+
 if __name__ == "__main__":
     game = Game()
     game.run()
+
+
+    # [KS_TAG: ADMIN_HOOKS]
+    def spawn_item_at(self, item_type, x, y):
+        from modules.enums import ItemType
+        from modules.items import Item
+        if hasattr(self, "items"):
+            self.items.append(Item(item_type, x, y))
+            print("[ADMIN] Item gespawnt an", x, y)
+
+    def create_damage_zone(self, x, y):
+        from modules.aoe_zones import DamageZone
+        if hasattr(self, "aoe_zones"):
+            self.aoe_zones.append(DamageZone(x, y, radius=2))
+            print("[ADMIN] DamageZone erzeugt")
+
+    def create_slow_zone(self, x, y):
+        from modules.aoe_zones import SlowZone
+        if hasattr(self, "aoe_zones"):
+            self.aoe_zones.append(SlowZone(x, y, radius=2))
+            print("[ADMIN] SlowZone erzeugt")
+
+    def spawn_explosive_projectile(self):
+        from modules.special_projectiles import ExplosiveProjectile
+        if hasattr(self, "projectiles"):
+            x, y = self.snake.head.x, self.snake.head.y
+            self.projectiles.append(ExplosiveProjectile(x, y, direction=(0, -1)))
+            print("[ADMIN] Explosiver Schuss gespawnt")
+
+    def start_boss_fight(self):
+        from modules.bosses import Boss
+        if not self.boss_fight_active:
+            self.boss = Boss()
+            self.boss_fight_active = True
+            print("[ADMIN] Bossfight gestartet")
