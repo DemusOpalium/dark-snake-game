@@ -1,3 +1,4 @@
+
 import pygame
 from config import DARK_GREY, WHITE, ORANGE, PURPLE, FONT_SMALL, FONT_MEDIUM, WINDOW_WIDTH, WINDOW_HEIGHT
 from modules.graphics import PLAY_BUTTON_IMG  # z. B. für Skalierung im Optionsmenü
