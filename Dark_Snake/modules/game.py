@@ -15,8 +15,17 @@ from config import (WINDOW_WIDTH, WINDOW_HEIGHT, GRID_SIZE, FPS, GRID_WIDTH, GRI
                     DARK_GREY, WHITE, GREEN, RED, PURPLE, ORANGE, GOLDEN, LEADERBOARD_FILE,
                     START_SPEED, MAX_SPEED, PROJECTILE_SPEED_FACTOR, AUTO_SHOOT_INTERVAL, BORDER_SIZE, UI_CONTAINER_HEIGHT)
 # <-- Hier den fehlenden Import hinzufügen:
-from modules.graphics import load_image, SNAKE_HEAD_IMG, SNAKE_HEAD1G20, SNAKE_HEAD2G20, SNAKE_HEAD3G20, SNAKE_HEAD_BETA, SNAKE_BODY_IMG, SNAKE_BODY_BETA, SNAKE_BODY_Body7, SNAKE_BODY_Body5, SNAKE_BODY_Body4, SNAKE_BODY_Body2, SNAKE_BODY_Body6, PROJECTILE_IMG, TITLE_IMG, BOSS_IMG, BOSS_ALT_IMG, PORTAL_IMAGES, ITEM_IMAGES, OPTIONS_BUTTON_IMG, PLAY_BUTTON_IMG
-
+from modules.graphics import (
+    load_image,                          # the helper itself
+    SNAKE_HEAD_IMG, SNAKE_HEAD1G20, SNAKE_HEAD2G20, SNAKE_HEAD3G20,
+    SNAKE_HEAD_BETA,
+    SNAKE_BODY_IMG, SNAKE_BODY_BETA, SNAKE_BODY_Body7, SNAKE_BODY_Body5,
+    SNAKE_BODY_Body4, SNAKE_BODY_Body2, SNAKE_BODY_Body6,
+    PROJECTILE_IMG, TITLE_IMG,
+    BOSS_IMG, BOSS_ALT_IMG,
+    PORTAL_IMAGES, ITEM_IMAGES,
+    OPTIONS_BUTTON_IMG, PLAY_BUTTON_IMG,
+)
 from modules.audio import SOUNDS, get_music_library, play_background_music, set_music_volume
 from modules.ui import Button, Slider, CheckBox, Dropdown
 from modules.controls import ControlsMenu
@@ -24,6 +33,7 @@ from modules.customization import CustomizationMenu
 from modules.enemies import NormalEnemy
 from modules.options_menu import OptionsMenu, ExtendedOptionsMenu
 from modules.admin_panel import AdminPanel
+from modules.fire_explosion import FireExplosionAnimation
 
 # Boss-Projektil-Grafiken (zufällige Auswahl)
 BOSS_PROJECTILES = []
@@ -423,6 +433,11 @@ class Game:
         self.portal_effect_end = 0
         self.portal_effect_type = None
         self.projectiles = []
+        # FlameProjectile-System initialisieren
+        self.flame_projectiles = []
+        self.explosions = []  # reset explosions list
+        self.explosions = []  # list of active explosion animations
+        self.fireball_cooldown = 0
         self.achievement_messages = []
         self.enemies = []
         self.controls_menu = ControlsMenu(self)
@@ -585,6 +600,9 @@ class Game:
         self.portal_effect_type = None
         self.portal_spawn_cooldown = time.time() + 30
         self.projectiles = []
+        # FlameProjectile-System initialisieren
+        self.flame_projectiles = []
+        self.fireball_cooldown = 0
         self.achievement_messages = []
         self.enemies = []
         self.last_auto_shoot = time.time()
@@ -705,6 +723,11 @@ class Game:
 
     def update_projectiles(self):
         current_time = time.time()
+        # Flammenprojektile und Cooldown aktualisieren
+        if self.fireball_cooldown > 0:
+            self.fireball_cooldown -= 1
+        self.flame_projectiles = [p for p in self.flame_projectiles if p.update()]
+        self.explosions = [e for e in self.explosions if e.update()]
         new_proj = []
         for proj in self.projectiles:
             dx, dy = proj['dir']
@@ -793,43 +816,98 @@ class Game:
                     self.last_auto_shoot2 = current_time
                     self.auto_shoot_for_head(self.snake2[0], self.snake_direction2)
 
+    # === Haupt‑Update‑Schleife ===============================================
     def update(self):
         current_time = time.time()
+
+        # ───────────────────────── 1) Cooldowns & Auto‑Shoot ─────────────────────────
+        if self.fireball_cooldown > 0:
+            self.fireball_cooldown -= 1
+        # Flammen­geschosse leben lassen / entfernen
+        self.flame_projectiles = [p for p in self.flame_projectiles if p.update()]
+
         invincible = current_time < self.respawn_invincible_until
         if self.effects['projectile_shoot'] > current_time:
             self.auto_shoot()
+
+        # ───────────────────────── 2) Enemy‑Spawn & Update ───────────────────────────
         if random.random() < self.settings.get('enemy_spawn_rate', 0.002):
             enemy = NormalEnemy()
             enemy.spawn_time = time.time()
             self.enemies.append(enemy)
+
         for enemy in self.enemies:
             enemy.update()
+
+        # AoE‑Zonen zeichnen (wird später noch gebraucht)
         for zone in self.aoe_zones:
             zone.draw(self.screen)
+        for explosion in self.explosions:
+            explosion.draw(self.screen)
+
+        # ───────────────────────── 3) Kollisions­prüfungen ───────────────────────────
         for enemy in self.enemies[:]:
             enemy_rect = enemy.get_rect()
+            # mittig auf das Grid ausrichten
             enemy_rect.x += (GRID_SIZE - enemy_rect.width) // 2
             enemy_rect.y += (GRID_SIZE - enemy_rect.height) // 2
-            if current_time - getattr(enemy, 'spawn_time', 0) < 3:
+
+            # Spawn‑Grace‑Time (3 s): Gegner noch unverwundbar
+            if current_time - getattr(enemy, "spawn_time", 0) < 3:
                 continue
+
+            # ---------- 3a)  **FlameProjectile**  ----------
+            for flame in self.flame_projectiles[:]:
+                # → Boss treffen
+                if self.boss and flame.rect.colliderect(self.boss.get_rect()):
+                    self.boss.health -= flame.damage
+                    self.spawn_fire_explosion(flame.rect.center)
+                    self.flame_projectiles.remove(flame)
+                    continue
+
+                # → normalen Gegner treffen
+                if flame.rect.colliderect(enemy_rect):
+                    enemy.health -= flame.damage
+                    if flame in self.flame_projectiles:
+                        self.spawn_fire_explosion(flame.rect.center)
+                    # Gegner down?
+                    if enemy.health <= 0:
+                        if enemy in self.enemies:
+                            self.enemies.remove(enemy)
+                        self.score += 20
+                        self.add_achievement("Enemy roasted!")
+                    # Flame verschwindet nach einem Treffer
+                    if flame in self.flame_projectiles:
+                        self.flame_projectiles.remove(flame)
+
+            # ---------- 3b)  **klassische Projektile**  ----------
             for proj in self.projectiles:
-                proj_rect = pygame.Rect(proj['pos'][0] * GRID_SIZE,
-                                        proj['pos'][1] * GRID_SIZE,
-                                        GRID_SIZE, GRID_SIZE)
+                proj_rect = pygame.Rect(
+                    proj["pos"][0] * GRID_SIZE,
+                    proj["pos"][1] * GRID_SIZE,
+                    GRID_SIZE,
+                    GRID_SIZE,
+                )
+
                 if enemy_rect.colliderect(proj_rect):
                     enemy.health -= 1
                     if enemy.health <= 0:
-                        try:
-                            self.enemies.remove(enemy)
-                        except ValueError:
-                            pass
+                        # sicher entfernen – falls schon weg durch Flame‑Treffer
+                        if enemy in self.enemies:
+                            if enemy in self.enemies:
+                                self.enemies.remove(enemy)
                         self.score += 20
-                        self.add_achievement("Nice One! Enemy Down!")
+                        self.add_achievement("!")
                     if SOUNDS.get("gegner"):
                         SOUNDS["gegner"].play()
+
+                    # Erstes Mal ein Portal spawnen?
                     if self.portal is None and current_time >= self.portal_spawn_cooldown:
                         self.portal = Portal()
-                    break
+                    break  # zum nächsten Gegner
+
+        # … (Spieler‑ und Boss‑Kollisionen, AoE‑Handling, Bewegung,
+        #     Item‑Aufnahme, Boss‑Logik, Projektil‑Update usw. – unverändert wie besprochen) …
         # Kollisionsprüfung Spieler (Singleplayer)
         if self.player_count == 1 and self.snake:
             head_rect = pygame.Rect(self.snake[0][0] * GRID_SIZE,
@@ -1326,27 +1404,37 @@ class Game:
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_p:
                         self.set_state(GameState.PAUSE)
+                    elif event.key == pygame.K_SPACE:
+                        # feuert immer in Blickrichtung der Schlange
+                        dir_vec = self.snake_direction.value            # (dx, dy)
+                        if self.fireball_cooldown <= 0:
+                            head_px = self.snake[0][0] * GRID_SIZE
+                            head_py = self.snake[0][1] * GRID_SIZE
+                            flame = FlameProjectile(head_px, head_py, dir_vec)
+                            self.flame_projectiles.append(flame)
+                            self.fireball_cooldown = 180 
                     else:
                         from math import sqrt, pi
                         zone_radius = int(sqrt(0.25 * WINDOW_WIDTH * WINDOW_HEIGHT / pi))
                         if event.key == pygame.K_r:
                             from modules.aoe_zones import DamageZone
-                            pos = (self.snake[0][0] * GRID_SIZE, self.snake[0][1] * GRID_SIZE) if self.player_count == 1 else (self.snake1[0][0] * GRID_SIZE, self.snake1[0][1] * GRID_SIZE)
+                            pos = (self.snake[0][0] * GRID_SIZE, self.snake[0][1] * GRID_SIZE)
                             zone = DamageZone(pos, zone_radius, 5, (255, 0, 0, 128), effect_type="damage")
                             self.aoe_zones.append(zone)
                             print("DEBUG: DamageZone erzeugt an Position:", pos)
                         elif event.key == pygame.K_t:
                             from modules.aoe_zones import DebuffZone
-                            pos = (self.snake[0][0] * GRID_SIZE, self.snake[0][1] * GRID_SIZE) if self.player_count == 1 else (self.snake1[0][0] * GRID_SIZE, self.snake1[0][1] * GRID_SIZE)
+                            pos = (self.snake[0][0] * GRID_SIZE, self.snake[0][1] * GRID_SIZE)
                             zone = DebuffZone(pos, zone_radius, 6, (0, 0, 255, 128), effect_type="slow")
                             self.aoe_zones.append(zone)
                             print("DEBUG: DebuffZone erzeugt an Position:", pos)
                         elif event.key == pygame.K_z:
                             from modules.aoe_zones import HealZone
-                            pos = (self.snake[0][0] * GRID_SIZE, self.snake[0][1] * GRID_SIZE) if self.player_count == 1 else (self.snake1[0][0] * GRID_SIZE, self.snake1[0][1] * GRID_SIZE)
+                            pos = (self.snake[0][0] * GRID_SIZE, self.snake[0][1] * GRID_SIZE)
                             zone = HealZone(pos, zone_radius, 8, (0, 255, 0, 128), effect_type="heal")
                             self.aoe_zones.append(zone)
                             print("DEBUG: HealZone erzeugt an Position:", pos)
+
                         elif event.key == pygame.K_u:
                             from modules.aoe_zones import FollowZone
                             dummy = type("Dummy", (), {})()
@@ -1500,6 +1588,11 @@ class Game:
             item.draw(self.screen)
         for enemy in self.enemies:
             enemy.draw(self.screen)
+        # Flammenprojektile zeichnen
+        for flame in self.flame_projectiles:
+            flame.draw(self.screen)
+        for explosion in self.explosions:
+            explosion.draw(self.screen)
         # Spieler (Snake) zeichnen:
         if self.player_count == 2:
             # Spieler 1 zeichnen:
@@ -1702,33 +1795,64 @@ class Game:
                 self.update()
             self.draw()
             self.clock.tick(FPS)
-
-
-# [KS_TAG: FLAME_PROJECTILE_CLASS]
+     # [KS_TAG: FLAME_PROJECTILE_CLASS]
+        # ------------------------------------------------------
+    # Explosion Animation Handling
+    # ------------------------------------------------------
+    def spawn_fire_explosion(self, center_pos):
+        """Erzeugt eine Explosion an der gegebenen Pixel-Position."""
+        import random
+        scale_factor = random.randint(1, 5)  # W5 – 1 klein, 5 groß
+        explosion = FireExplosionAnimation(center_pos, scale_factor)
+        self.explosions.append(explosion)
 class FlameProjectile:
+    """
+    Ein einfaches Flammen­geschoss, das sich in Blickrichtung der Schlange
+    bewegt und das Sprite passend rotiert darstellt.
+    """
     def __init__(self, x, y, direction):
         from modules.graphics import load_image
-        self.image = load_image("projectiles/FlameProjectile1.png")
-        self.rect = self.image.get_rect(center=(x, y))
-        self.speed = 6
-        self.direction = direction
-        self.damage = 3
-        self.lifetime = 180  # 3 Sekunden bei 60 FPS
+        from math import atan2, degrees
 
+        # Ursprungs­grafik laden
+        self.image_orig = load_image("projectiles/FlameProjectile1.png")
+
+        # Bewegungs­richtung (z. B. (1,0), (0,-1) …)
+        self.direction = direction            # Tupel (dx, dy) – kein Normieren nötig
+        self.speed = 6
+        self.damage = 3
+        self.lifetime = 180                  # 3 Sek. bei 60 FPS
+
+        # --------------------------------------------------
+        # Bild in Flugrichtung ausrichten
+        # --------------------------------------------------
+        # atan2 liefert den Winkel relativ zur X‑Achse; für pygame.rotate:
+        #   0 ° = nach rechts, 90 ° = nach oben  …
+        angle = degrees(atan2(-self.direction[1], self.direction[0]))
+        self.image = pygame.transform.rotate(self.image_orig, angle)
+
+        # Startposition (Koordinaten stammen aus Kopf‑Pixelposition)
+        self.rect = self.image.get_rect(center=(x, y))
+
+    # ------------------------------------------------------
+    #  Tick‑Update  – Rückgabe =  True => Projektil bleibt
+    # ------------------------------------------------------
     def update(self):
         self.rect.x += self.speed * self.direction[0]
         self.rect.y += self.speed * self.direction[1]
         self.lifetime -= 1
         return self.lifetime > 0
 
+    # ------------------------------------------------------
+    #  Zeichnen
+    # ------------------------------------------------------
     def draw(self, screen):
         screen.blit(self.image, self.rect)
-
 
 if __name__ == "__main__":
     game = Game()
     game.run()
-
+    input("\n[Drücke Enter zum Schließen des Spiels...]")
 
     # [KS_TAG: ADMIN_HOOKS]
     def spawn_item_at(self, item_type, x, y):
