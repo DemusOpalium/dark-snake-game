@@ -1,17 +1,19 @@
+# [KS_TAG: GRAPHICS_INIT]
 import os
 import pygame
 from config import WINDOW_WIDTH, WINDOW_HEIGHT, GRID_SIZE
 
-def load_image(filename):
-    path = os.path.join("assets", "graphics", filename)
+# Einheitliche Ladefunktion für Grafiken aus Kategorieordnern
+def load_image(name, category=""):
+    path = os.path.join("assets", "graphics", category, name)
     try:
         image = pygame.image.load(path).convert_alpha()
         return image
     except Exception as e:
-        print(f"Bild {filename} konnte nicht geladen werden: {e}")
-        return None
+        print(f"[Fehler] Grafik nicht gefunden: {path} ({e})")
+        return pygame.Surface((32, 32), pygame.SRCALPHA)
 
-# Neue Hilfsfunktion zum Skalieren für Thumbnails
+# Thumbnail-Helper für UI/Inventar
 def scale_to_thumbnail(image, factor=0.75):
     if image:
         width = int(GRID_SIZE * factor)
@@ -19,7 +21,7 @@ def scale_to_thumbnail(image, factor=0.75):
         return pygame.transform.scale(image, (width, height))
     return image
 
-# Snake-Grafiken – passe hier ggf. die Skalierung an (Beispiel: Skalierung auf GRID_SIZE x GRID_SIZE)
+# Snake-Grafiken
 SNAKE_HEAD_IMG = load_image("SnakeHeadAlpha1.png")
 if SNAKE_HEAD_IMG:
     SNAKE_HEAD_IMG = pygame.transform.scale(SNAKE_HEAD_IMG, (GRID_SIZE, GRID_SIZE))
@@ -35,7 +37,7 @@ SNAKE_BODY_Body4 = load_image("SnakeBody4.png")
 SNAKE_BODY_Body2 = load_image("SnakeBody2.png")
 SNAKE_BODY_Body6 = load_image("SnakeBody6.png")
 
-# Projectile
+# Projektile
 PROJECTILE_IMG = load_image("Projektil.png")
 PROJECTILE2_IMG = load_image("Projektil2.png")
 PROJECTILE3_IMG = load_image("Projektil3.png")
@@ -45,7 +47,7 @@ PROJECTILE5_IMG = load_image("Projektil5.png")
 # Titelbild
 TITLE_IMG = load_image("titel1.png")
 
-# Boss-Grafiken
+# Bosse
 BOSS_IMG = load_image("Boss-RingG60.png")
 BOSS_ALT_IMG = load_image("Boss-SkullPurPurG60.png")
 BOSS_ALEX_IMG = load_image("Boss-AlexG60.png")
@@ -55,14 +57,14 @@ BOSS_FIN_IMG = load_image("Boss-FinG60.png")
 BOSS_GLOBY_IMG = load_image("Boss-GlobyG60.png")
 BOSS_NEO_IMG = load_image("Boss-NeoG60.png")
 
-# Portal-Grafiken
+# Portale
 PORTAL_IMAGES = [
     load_image("PortalBlauG40.png"),
     load_image("PortalG40.png"),
     load_image("PortalTempelG60.png")
 ]
 
-# Item-Grafiken
+# Items
 ITEM_IMAGES = {
     "FOOD": load_image("ItemgruenG20.png"),
     "SPEED_BOOST": load_image("ItemOrangeradG20.png"),
@@ -77,12 +79,26 @@ ITEM_IMAGES = {
     "PROJECTILE_SHOOT": load_image("Projektil.png")
 }
 
-# Gegner-Grafiken
+# Gegner
 ENEMY_TIM_IMG = load_image("gegner-TimG40.png")
 ENEMY_SPOONG_IMG = load_image("gegner-SpoongG40.png")
 ENEMY_OMNI_IMG = load_image("gegner-OmniG40.png")
 ENEMY_GLUBS_IMG = load_image("gegner-glubsG40.png")
 
-# UI-Grafiken
+# UI
 OPTIONS_BUTTON_IMG = load_image("optionsButton1.png")
 PLAY_BUTTON_IMG = load_image("PlayButton1.png")
+
+# [KS_TAG: GRAPHICS_DICT] – Zentrale Mapping-Struktur
+GRAPHICS = {
+    "FireExplosionDetail1": load_image("FireExplosionDetail1.png", "FlameExplosion"),
+    "FireExplosionDetail2": load_image("FireExplosionDetail2.png", "FlameExplosion"),
+    "FireExplosionDetail3": load_image("FireExplosionDetail3.png", "FlameExplosion"),
+    "FireExplosionDetail4": load_image("FireExplosionDetail4.png", "FlameExplosion"),
+    "FireExplosionDetail5": load_image("FireExplosionDetail5.png", "FlameExplosion"),
+    "FireExplosionDetail6": load_image("FireExplosionDetail6.png", "FlameExplosion"),
+}
+
+# Zugriffsfunktion für zentral verwaltete Grafiken
+def get_image(name):
+    return GRAPHICS.get(name, pygame.Surface((32, 32), pygame.SRCALPHA))
