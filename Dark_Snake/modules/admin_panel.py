@@ -20,14 +20,15 @@ class AdminPanel:
 
     def _setup_buttons(self):
         icons = [
-            ("emoji1.png", self.spawn_item),          # Item: Fireshoot
-            ("emoji2.png", self.spawn_boss),          # Boss
-            ("emoji3.png", self.spawn_enemy),         # Enemy
-            ("emoji5.png", self.trigger_portal_event),# Portal Event
-            ("emoji6.png", self.placeholder),
-            ("emoji7.png", self.placeholder),
-            ("emoji8.png", self.placeholder),
-            ("emoji9.png", self.placeholder)
+            ("emoji1.png", self.spawn_flameball_item),
+            ("emoji2.png", self.spawn_boss),
+            ("emoji3.png", self.full_heal),
+            ("emoji4.png", self.enable_fire_shoot),  # FireProjectile aktivieren
+            ("emoji5.png", self.spawn_aoe_damage),
+            ("emoji6.png", self.spawn_slow_zone),
+            ("emoji7.png", self.spawn_explosive),
+            ("emoji8.png", self.effect_test),
+            ("emoji9.png", self.random_effect),
         ]
 
         x0, y0 = 30, 70
@@ -49,7 +50,7 @@ class AdminPanel:
         self.active = not self.active
         self.debug_log("AdminPanel toggled: {}".format("Aktiv" if self.active else "Inaktiv"))
 
-    def spawn_item(self):
+    def spawn_flameball_item(self):
         if hasattr(self.game, "spawn_item_at"):
             head = getattr(self.game.snake, "head", None)
             if head:
@@ -61,22 +62,43 @@ class AdminPanel:
             self.game.start_boss_fight()
             self.debug_log("Boss-Spawn ausgelöst")
 
-    def spawn_enemy(self):
-        if hasattr(self.game, "spawn_enemy"):
-            self.game.spawn_enemy()
-            self.debug_log("Enemy gespawnt")
-        else:
-            self.debug_log("Enemy-Spawning noch nicht implementiert")
+    def full_heal(self):
+        if hasattr(self.game.snake, "health"):
+            self.game.snake.health = self.game.snake.max_health
+            self.debug_log("Gesundheit vollständig wiederhergestellt")
 
-    def trigger_portal_event(self):
-        if hasattr(self.game, "activate_portal"):
-            self.game.activate_portal("event")
-            self.debug_log("Portal Event getriggert")
+    def enable_fire_shoot(self):
+        if hasattr(self.game, "fireball_active"):
+            self.game.fireball_active = True
+            self.game.fireball_timer = 90
+            self.debug_log("FireProjectile aktiviert (90 Sekunden)")
         else:
-            self.debug_log("Portal Event nicht verfügbar")
+            self.debug_log("GPT ist Schuld.")
 
-    def placeholder(self):
-        self.debug_log("Platzhalter – bald verfügbar")
+    def spawn_aoe_damage(self):
+        if hasattr(self.game, "create_damage_zone"):
+            head = getattr(self.game.snake, "head", None)
+            if head:
+                self.game.create_damage_zone(head.x, head.y)
+                self.debug_log("Damage-Zone erstellt")
+
+    def spawn_slow_zone(self):
+        if hasattr(self.game, "create_slow_zone"):
+            head = getattr(self.game.snake, "head", None)
+            if head:
+                self.game.create_slow_zone(head.x, head.y)
+                self.debug_log("Slow-Zone erstellt")
+
+    def spawn_explosive(self):
+        if hasattr(self.game, "spawn_explosive_projectile"):
+            self.game.spawn_explosive_projectile()
+            self.debug_log("Explosiver Schuss gespawnt")
+
+    def random_effect(self):
+        self.debug_log("Zufallseffekt (Platzhalter) aktiviert")
+
+    def effect_test(self):
+        self.debug_log("Effekt-Test durchgeführt")
 
     def handle_event(self, event):
         if self.active:
@@ -89,8 +111,7 @@ class AdminPanel:
             screen.blit(self.background, (10, 30))
             current_time = time.time()
             for i, btn in enumerate(self.buttons):
-                if btn.image:
-                    screen.blit(btn.image, btn.rect)
+                btn.draw(screen)
                 if i in self.clicked_effects:
                     elapsed = current_time - self.clicked_effects[i]
                     if elapsed <= 1.0:
