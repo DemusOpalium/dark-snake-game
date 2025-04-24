@@ -28,6 +28,7 @@ from modules.graphics import (
 )
 from modules.audio import SOUNDS, get_music_library, play_background_music, set_music_volume
 from modules.ui import Button, Slider, CheckBox, Dropdown
+from modules.aoe_zones import AoEZone, DamageZone, HealZone, DebuffZone, FollowZone, GrowingBossAOEZone  # [KS_TAG: BOSS_AOE]
 from modules.controls import ControlsMenu
 from modules.customization import CustomizationMenu
 from modules.enemies import NormalEnemy
@@ -433,6 +434,7 @@ class Game:
         self.portal_effect_end = 0
         self.portal_effect_type = None
         self.projectiles = []
+        self.boss_flame_projectiles = []  # [KS_TAG: BOSS_FLAME_LIST]
         # FlameProjectile-System initialisieren
         self.flame_projectiles = []
         self.explosions = []  # reset explosions list
@@ -454,6 +456,7 @@ class Game:
         self.boss_fight_active = False  # [KS_TAG: ADMIN_BOSS_INIT]
         self.boss = None
         self.admin_panel = AdminPanel(self)
+        self.debug_show_hitboxes = False  # [KS_TAG: DEBUG_HITBOX]
         self.respawn_invincible_until = 0
 
     def create_ui_elements(self):
@@ -600,6 +603,7 @@ class Game:
         self.portal_effect_type = None
         self.portal_spawn_cooldown = time.time() + 30
         self.projectiles = []
+        self.boss_flame_projectiles = []  # [KS_TAG: BOSS_FLAME_LIST]
         # FlameProjectile-System initialisieren
         self.flame_projectiles = []
         self.fireball_cooldown = 0
@@ -727,6 +731,7 @@ class Game:
         if self.fireball_cooldown > 0:
             self.fireball_cooldown -= 1
         self.flame_projectiles = [p for p in self.flame_projectiles if p.update()]
+        self.boss_flame_projectiles = [p for p in self.boss_flame_projectiles if p.update()]
         self.explosions = [e for e in self.explosions if e.update()]
         new_proj = []
         for proj in self.projectiles:
@@ -825,6 +830,7 @@ class Game:
             self.fireball_cooldown -= 1
         # Flammen­geschosse leben lassen / entfernen
         self.flame_projectiles = [p for p in self.flame_projectiles if p.update()]
+        self.boss_flame_projectiles = [p for p in self.boss_flame_projectiles if p.update()]
 
         invincible = current_time < self.respawn_invincible_until
         if self.effects['projectile_shoot'] > current_time:
@@ -846,15 +852,59 @@ class Game:
             explosion.draw(self.screen)
 
         # ───────────────────────── 3) Kollisions­prüfungen ───────────────────────────
+            # --- Sichere Kollisionsprüfung für klassische Projektile ---
         for enemy in self.enemies[:]:
             enemy_rect = enemy.get_rect()
-            # mittig auf das Grid ausrichten
+            enemy_rect.x += (GRID_SIZE - enemy_rect.width) // 2
+            enemy_rect.y += (GRID_SIZE - enemy_rect.height) // 2
+            if current_time - getattr(enemy, 'spawn_time', 0) < 3:
+                continue
+            for proj in self.projectiles:
+                proj_rect = pygame.Rect(
+                    proj['pos'][0] * GRID_SIZE,
+                    proj['pos'][1] * GRID_SIZE,
+                    GRID_SIZE,
+                    GRID_SIZE
+                )
+                if enemy_rect.colliderect(proj_rect):
+                    enemy.health -= 1
+                    if enemy.health <= 0 and enemy in self.enemies:
+                        self.enemies.remove(enemy)
+                        self.score += 20
+                        self.add_achievement("!")
+                    if SOUNDS.get("gegner"):
+                        SOUNDS["gegner"].play()
+                    if self.portal is None and current_time >= self.portal_spawn_cooldown:
+                        self.portal = Portal()
+                    break
+            enemy_rect = enemy.get_rect()
             enemy_rect.x += (GRID_SIZE - enemy_rect.width) // 2
             enemy_rect.y += (GRID_SIZE - enemy_rect.height) // 2
 
-            # Spawn‑Grace‑Time (3 s): Gegner noch unverwundbar
-            if current_time - getattr(enemy, "spawn_time", 0) < 3:
+            # Spawn-Grace-Time: Gegner unverwundbar direkt nach Spawn
+            if time.time() - enemy.spawn_time < 3:
                 continue
+
+            for proj in self.projectiles:
+                proj_rect = pygame.Rect(
+                    proj["pos"][0] * GRID_SIZE,
+                    proj["pos"][1] * GRID_SIZE,
+                    GRID_SIZE,
+                    GRID_SIZE,
+                )
+
+                if enemy_rect.colliderect(proj_rect):
+                    enemy.health -= 1
+                    if enemy.health <= 0 and enemy in self.enemies:
+                        self.enemies.remove(enemy)
+                        self.score += 20
+                        self.add_achievement("!")
+                    if SOUNDS.get("gegner"):
+                        SOUNDS["gegner"].play()
+                    # Erstes Mal ein Portal spawnen?
+                    if self.portal is None and time.time() >= self.portal_spawn_cooldown:
+                        self.portal = Portal()
+                    break
 
             # ---------- 3a)  **FlameProjectile**  ----------
             for flame in self.flame_projectiles[:]:
@@ -880,31 +930,27 @@ class Game:
                     if flame in self.flame_projectiles:
                         self.flame_projectiles.remove(flame)
 
-            # ---------- 3b)  **klassische Projektile**  ----------
-            for proj in self.projectiles:
-                proj_rect = pygame.Rect(
-                    proj["pos"][0] * GRID_SIZE,
-                    proj["pos"][1] * GRID_SIZE,
-                    GRID_SIZE,
-                    GRID_SIZE,
-                )
+            
+        # [KS_TAG: BOSS_FLAME_COLLISION]
+        for proj in self.boss_flame_projectiles[:]:
+            if self.player_count == 1 and self.snake:
+                head_rect = pygame.Rect(self.snake[0][0] * GRID_SIZE, self.snake[0][1] * GRID_SIZE, GRID_SIZE, GRID_SIZE)
+                if proj.collides_with(head_rect):
+                    print("[DEBUG] BossFlameProjectile trifft Spieler 1!")
+                    self.spawn_fire_explosion(proj.rect.center)
+                    self.player_health -= proj.damage
+                    self.boss_flame_projectiles.remove(proj)
+            elif self.player_count == 2:
+                for snake, attr in [(self.snake1, 'player_health_p1'), (self.snake2, 'player_health_p2')]:
+                    if snake:
+                        head_rect = pygame.Rect(snake[0][0] * GRID_SIZE, snake[0][1] * GRID_SIZE, GRID_SIZE, GRID_SIZE)
+                        if proj.collides_with(head_rect):
+                            print(f"[DEBUG] BossFlameProjectile trifft {attr}!")
+                            self.spawn_fire_explosion(proj.rect.center)
+                            current = getattr(self, attr)
+                            setattr(self, attr, current - proj.damage)
+                            self.boss_flame_projectiles.remove(proj)
 
-                if enemy_rect.colliderect(proj_rect):
-                    enemy.health -= 1
-                    if enemy.health <= 0:
-                        # sicher entfernen – falls schon weg durch Flame‑Treffer
-                        if enemy in self.enemies:
-                            if enemy in self.enemies:
-                                self.enemies.remove(enemy)
-                        self.score += 20
-                        self.add_achievement("!")
-                    if SOUNDS.get("gegner"):
-                        SOUNDS["gegner"].play()
-
-                    # Erstes Mal ein Portal spawnen?
-                    if self.portal is None and current_time >= self.portal_spawn_cooldown:
-                        self.portal = Portal()
-                    break  # zum nächsten Gegner
 
         # … (Spieler‑ und Boss‑Kollisionen, AoE‑Handling, Bewegung,
         #     Item‑Aufnahme, Boss‑Logik, Projektil‑Update usw. – unverändert wie besprochen) …
@@ -1164,6 +1210,19 @@ class Game:
                     else:
                         act = self.boss.update(current_time)
                         if act == "aoe":
+
+                            from modules.aoe_zones import GrowingBossAOEZone
+                            zone = GrowingBossAOEZone(
+                                (self.boss.x * GRID_SIZE + (self.boss.size * GRID_SIZE) // 2,
+                                 self.boss.y * GRID_SIZE + (self.boss.size * GRID_SIZE) // 2),
+                                int(GRID_SIZE * 1.2),
+                                int(GRID_SIZE * 2.5),
+                                duration=4.0,
+                                color=(255, 0, 0, 150),
+                                effect_type="damage",
+                                source="boss"
+                            )
+                            self.aoe_zones.append(zone)
                             boss_rect = self.boss.get_rect()
                             target = self.snake[0] if self.player_count == 1 and self.snake else (self.snake1[0] if self.player_count == 2 and self.snake1 else None)
                             if target:
@@ -1173,6 +1232,7 @@ class Game:
                                         SOUNDS["damage"].play()
                                     self.handle_death()
                         elif act == "boss_shoot":
+                            self.boss_shoots_flame()
                             target = self.snake[0] if self.player_count == 1 and self.snake else (self.snake1[0] if self.player_count == 2 and self.snake1 else None)
                             if target and not invincible:
                                 dx = 1 if target[0] > self.boss.x else -1 if target[0] < self.boss.x else 0
@@ -1589,6 +1649,8 @@ class Game:
         for enemy in self.enemies:
             enemy.draw(self.screen)
         # Flammenprojektile zeichnen
+        for proj in self.boss_flame_projectiles:
+            proj.draw(self.screen)
         for flame in self.flame_projectiles:
             flame.draw(self.screen)
         for explosion in self.explosions:
@@ -1696,6 +1758,60 @@ class Game:
             else:
                 proj_img = pygame.transform.scale(PROJECTILE_IMG, (int(GRID_SIZE * 1.5), int(GRID_SIZE * 1.5)))
             self.screen.blit(proj_img, (proj_x, proj_y))
+
+        # --- DEBUG: hitbox overlay ---
+        if self.debug_show_hitboxes:
+            color = (255, 0, 255)
+            # snake segments
+            if self.player_count == 1:
+                for x, y in self.snake:
+                    pygame.draw.rect(self.screen, color, (x * GRID_SIZE, y * GRID_SIZE, GRID_SIZE, GRID_SIZE), 1)
+            else:
+                for x, y in self.snake1 + self.snake2:
+                    pygame.draw.rect(self.screen, color, (x * GRID_SIZE, y * GRID_SIZE, GRID_SIZE, GRID_SIZE), 1)
+            # enemies
+            for e in self.enemies:
+                r = e.get_rect()
+                r.x += (GRID_SIZE - r.width) // 2
+                r.y += (GRID_SIZE - r.height) // 2
+                pygame.draw.rect(self.screen, color, r, 1)
+            # projectiles
+            for proj in self.projectiles:
+                px = int(proj['pos'][0] * GRID_SIZE)
+                py = int(proj['pos'][1] * GRID_SIZE)
+                size = GRID_SIZE * 2 if proj.get("from_boss") else int(GRID_SIZE * 1.5)
+                pygame.draw.rect(self.screen, color, (px, py, size, size), 1)
+            # boss
+            if self.boss:
+                br = self.boss.get_rect()
+                pygame.draw.rect(self.screen, color, br, 1)
+            # portal
+            if self.portal:
+                pr = self.portal.get_rect()
+                pygame.draw.rect(self.screen, color, pr, 1)
+
+        # [KS_TAG: DEBUG_HITBOX_DRAW]
+        if self.debug_show_hitboxes:
+            for enemy in self.enemies:
+                pygame.draw.rect(self.screen, RED, enemy.get_rect(), 2)
+            if self.boss:
+                pygame.draw.rect(self.screen, RED, self.boss.get_rect(), 2)
+            for item in self.items:
+                pygame.draw.rect(self.screen, RED,
+                    pygame.Rect(item.x * GRID_SIZE, item.y * GRID_SIZE, GRID_SIZE, GRID_SIZE), 2)
+            for proj in self.projectiles:
+                x = int(proj['pos'][0] * GRID_SIZE)
+                y = int(proj['pos'][1] * GRID_SIZE)
+                pygame.draw.rect(self.screen, ORANGE, pygame.Rect(x, y, GRID_SIZE, GRID_SIZE), 2)
+            if self.player_count == 2:
+                for seg in self.snake1 + self.snake2:
+                    pygame.draw.rect(self.screen, GREEN,
+                        pygame.Rect(seg[0] * GRID_SIZE, seg[1] * GRID_SIZE, GRID_SIZE, GRID_SIZE), 2)
+            else:
+                for seg in self.snake:
+                    pygame.draw.rect(self.screen, GREEN,
+                        pygame.Rect(seg[0] * GRID_SIZE, seg[1] * GRID_SIZE, GRID_SIZE, GRID_SIZE), 2)
+
         self.draw_hud()
         if self.dice_result is not None and time.time() <= self.dice_display_until:
             self.draw_dice_result()
@@ -1725,6 +1841,16 @@ class Game:
         else:
             desc = pygame.font.SysFont('Arial', 20).render("Fehlschlag", True, RED)
         self.screen.blit(desc, (WINDOW_WIDTH // 2 - desc.get_width() // 2, WINDOW_HEIGHT // 2 + 40))
+
+
+
+    # [KS_TAG: SPAWN_BOSS_AOE]
+    def spawn_boss_aoe_zone(self, center_pos):
+        radius_start = int(GRID_SIZE * 1.2)
+        radius_max = int(GRID_SIZE * 2.5)
+        duration = 3.0  # Sekunden
+        zone = GrowingBossAOEZone(center_pos, radius_start, radius_max, duration, (255, 0, 0, 180), "damage")
+        self.aoe_zones.append(zone)
 
     def draw_pause(self):
         overlay = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.SRCALPHA)
@@ -1796,58 +1922,90 @@ class Game:
             self.draw()
             self.clock.tick(FPS)
      # [KS_TAG: FLAME_PROJECTILE_CLASS]
+
+    # [KS_TAG: CUSTOM_PROJECTILE_SPAWN]
+    
+    # [KS_TAG: BOSS_FLAME_PROJECTILE]
+    def boss_shoots_flame(self):
+        from modules.boss_projectiles import BossFlameProjectile
+        if not self.boss:
+            print("[DEBUG] Kein Boss vorhanden – BossFlameProjectile nicht erzeugt.")
+            return
+
+        if self.player_count == 1 and self.snake:
+            target = self.snake[0]
+        elif self.player_count == 2 and self.snake1:
+            target = self.snake1[0]
+        else:
+            print("[DEBUG] Kein Ziel vorhanden – BossFlameProjectile nicht erzeugt.")
+            return
+
+        dx = target[0] - self.boss.x
+        dy = target[1] - self.boss.y
+        distance = max(1, (dx**2 + dy**2)**0.5)
+        direction = (dx / distance, dy / distance)
+
+        center_x = self.boss.x * GRID_SIZE + (self.boss.size * GRID_SIZE) // 2
+        center_y = self.boss.y * GRID_SIZE + (self.boss.size * GRID_SIZE) // 2
+
+        proj = BossFlameProjectile(center_x, center_y, direction)
+        self.boss_flame_projectiles.append(proj)
+        print("[DEBUG] BossFlameProjectile aktiv mit Explosion bei Treffer!")
+    
+    def spawn_custom_projectile(self, x, y, direction, speed=6, damage=3, lifetime=180, image_name="projectiles/FlameProjectile1.png"):
+        from math import atan2, degrees
+        image_orig = load_image(image_name)
+        angle = degrees(atan2(-direction[1], direction[0]))
+        image = pygame.transform.rotate(image_orig, angle)
+        rect = image.get_rect(center=(x, y))
+        projectile = {
+            "image": image,
+            "rect": rect,
+            "speed": speed,
+            "dir": direction,
+            "damage": damage,
+            "lifetime": lifetime,
+            "from_boss": False,
+            "effect": "custom"
+        }
+        self.projectiles.append(projectile)
+        print(f"[DEBUG] Benutzerdefiniertes Projektil gespawnt: {image_name}, Dmg: {damage}, Speed: {speed}")
+
+
         # ------------------------------------------------------
     # Explosion Animation Handling
     # ------------------------------------------------------
     def spawn_fire_explosion(self, center_pos):
-        """Erzeugt eine Explosion an der gegebenen Pixel-Position."""
-        import random
-        scale_factor = random.randint(1, 5)  # W5 – 1 klein, 5 groß
-        explosion = FireExplosionAnimation(center_pos, scale_factor)
+        """Erzeugt eine Explosion an der gegebenen Pixel-Position mit 9 Frames."""
+        explosion = FireExplosionAnimation(center_pos, scale_factor=3)
         self.explosions.append(explosion)
+
 class FlameProjectile:
     """
-    Ein einfaches Flammen­geschoss, das sich in Blickrichtung der Schlange
-    bewegt und das Sprite passend rotiert darstellt.
+    Erweiterte Version eines Flammenprojektils mit parametrisierbaren Attributen.
     """
-    def __init__(self, x, y, direction):
+    def __init__(self, x, y, direction, image_name="projectiles/FlameProjectile1.png", speed=6, damage=3, lifetime=180):
         from modules.graphics import load_image
         from math import atan2, degrees
 
-        # Ursprungs­grafik laden
-        self.image_orig = load_image("projectiles/FlameProjectile1.png")
-
-        # Bewegungs­richtung (z. B. (1,0), (0,-1) …)
-        self.direction = direction            # Tupel (dx, dy) – kein Normieren nötig
-        self.speed = 6
-        self.damage = 3
-        self.lifetime = 180                  # 3 Sek. bei 60 FPS
-
-        # --------------------------------------------------
-        # Bild in Flugrichtung ausrichten
-        # --------------------------------------------------
-        # atan2 liefert den Winkel relativ zur X‑Achse; für pygame.rotate:
-        #   0 ° = nach rechts, 90 ° = nach oben  …
+        self.direction = direction
+        self.speed = speed
+        self.damage = damage
+        self.lifetime = lifetime
+        self.image_orig = load_image(image_name)
         angle = degrees(atan2(-self.direction[1], self.direction[0]))
         self.image = pygame.transform.rotate(self.image_orig, angle)
-
-        # Startposition (Koordinaten stammen aus Kopf‑Pixelposition)
         self.rect = self.image.get_rect(center=(x, y))
 
-    # ------------------------------------------------------
-    #  Tick‑Update  – Rückgabe =  True => Projektil bleibt
-    # ------------------------------------------------------
     def update(self):
         self.rect.x += self.speed * self.direction[0]
         self.rect.y += self.speed * self.direction[1]
         self.lifetime -= 1
         return self.lifetime > 0
 
-    # ------------------------------------------------------
-    #  Zeichnen
-    # ------------------------------------------------------
     def draw(self, screen):
         screen.blit(self.image, self.rect)
+
 
 if __name__ == "__main__":
     game = Game()
