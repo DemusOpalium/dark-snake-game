@@ -1,46 +1,48 @@
+# modules/fire_explosion.py
+import pygame
+import os
 
-import pygame, time
-from modules.graphics import get_image
-from pygame.math import Vector2
+# Globale Konstante für die Anzahl der Frames
+EXPLOSION_FRAMES = 9
 
 class FireExplosionAnimation:
-    """6‑Frame Feuerexplosion, gespielt mit 6 FPS (~1 s)"""
-
-    FRAME_KEYS = [
-        "FireExplosionDetail1",
-        "FireExplosionDetail2",
-        "FireExplosionDetail3",
-        "FireExplosionDetail4",
-        "FireExplosionDetail5",
-        "FireExplosionDetail6",
-    ]
-
-    def __init__(self, center_pos, scale_factor=1):
-        self.frames = [pygame.transform.scale(get_image(k),
-                                              (int(get_image(k).get_width() * scale_factor),
-                                               int(get_image(k).get_height() * scale_factor)))
-                       for k in self.FRAME_KEYS]
-        self.center = Vector2(center_pos)
+    def __init__(self, center_pos, scale_factor=3):
+        self.frames = []
         self.frame_index = 0
-        self.frame_duration = 10      # 10 Ticks @60 FPS = 6 FPS
-        self.ticks = 0
-        self.alive = True
-        # Pre‑compute rect positions per frame for draw‑effizienz
-        self.rects = []
-        for img in self.frames:
-            r = img.get_rect(center=self.center)
-            self.rects.append(r)
+        self.frame_timer = 0
+        self.frame_delay = 4  # niedrigere Werte = schnellere Animation
+
+        # Bilder laden
+        for i in range(1, EXPLOSION_FRAMES + 1):
+            filename = f"assets/graphics/FlameExplosion/FireExplosionDetail_Centered_{i}.png"
+            if os.path.exists(filename):
+                try:
+                    img = pygame.image.load(filename).convert_alpha()
+                    size = img.get_width() * scale_factor
+                    img = pygame.transform.scale(img, (size, size))
+                    self.frames.append(img)
+                except Exception as e:
+                    print(f"[Fehler] Explosion-Bild konnte nicht geladen werden: {filename} ({e})")
+            else:
+                print(f"[Fehler] Grafik nicht gefunden: {filename}")
+
+        self.position = center_pos
+        self.finished = False
 
     def update(self):
-        if not self.alive:
+        if self.finished:
             return False
-        self.ticks += 1
-        if self.ticks % self.frame_duration == 0:
+        self.frame_timer += 1
+        if self.frame_timer >= self.frame_delay:
             self.frame_index += 1
+            self.frame_timer = 0
             if self.frame_index >= len(self.frames):
-                self.alive = False
-        return self.alive
+                self.finished = True
+                return False
+        return True
 
-    def draw(self, screen):
-        if self.alive:
-            screen.blit(self.frames[self.frame_index], self.rects[self.frame_index])
+    def draw(self, surface):
+        if not self.finished and self.frame_index < len(self.frames):
+            img = self.frames[self.frame_index]
+            rect = img.get_rect(center=self.position)
+            surface.blit(img, rect)
