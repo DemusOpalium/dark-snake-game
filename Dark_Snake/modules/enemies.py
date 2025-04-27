@@ -1,32 +1,30 @@
-import pygame, random, time
-from config import GRID_SIZE, GRID_WIDTH, GRID_HEIGHT, WHITE, RED, DARK_GREY
+import pygame
+import random
+import time
+from config import GRID_SIZE, GRID_WIDTH, GRID_HEIGHT, RED
 from modules.graphics import ENEMY_TIM_IMG, ENEMY_SPOONG_IMG, ENEMY_OMNI_IMG, ENEMY_GLUBS_IMG
 
 class NormalEnemy:
     def __init__(self):
-        # Position zufällig innerhalb des Spielfelds
         self.x = random.randint(0, GRID_WIDTH - 1)
         self.y = random.randint(0, GRID_HEIGHT - 1)
-        # Standardgeschwindigkeit
+        self.spawn_time = time.time()
         self.speed = random.uniform(0.5, 1.5)
-        self.last_move = time.time()
-        self.move_interval = 1.0 / self.speed
-        # Gesundheit (z. B. 1-3 Treffer)
         self.health = random.randint(1, 3)
-        # Wähle zufälliges Bild und skaliere es passend zur aktuellen GRID_SIZE
-        self.image = random.choice([ENEMY_TIM_IMG, ENEMY_SPOONG_IMG, ENEMY_OMNI_IMG, ENEMY_GLUBS_IMG])
-        if self.image:
-            size = random.choice([GRID_SIZE, int(GRID_SIZE * 1.5)])  # passe ggf. den Faktor an
-            self.image = pygame.transform.scale(self.image, (size, size))
-            self.width, self.height = self.image.get_size()
-        else:
-            self.width = self.height = GRID_SIZE
-        # Sprint-Attribute
+        self.last_move = time.time()
         self.sprint_chance = 0.05
         self.sprint_speed_multiplier = 3
         self.sprint_duration = 0.5
         self.sprint_active = False
         self.sprint_end_time = 0
+
+        self.image = random.choice([ENEMY_TIM_IMG, ENEMY_SPOONG_IMG, ENEMY_OMNI_IMG, ENEMY_GLUBS_IMG])
+        if self.image:
+            size = random.choice([GRID_SIZE, int(GRID_SIZE * 1.5)])
+            self.image = pygame.transform.scale(self.image, (size, size))
+            self.width, self.height = self.image.get_size()
+        else:
+            self.width = self.height = GRID_SIZE
 
     def update(self, player_x=None, player_y=None):
         current_time = time.time()
@@ -34,15 +32,11 @@ class NormalEnemy:
             self.sprint_active = True
             self.sprint_end_time = current_time + self.sprint_duration
             if player_x is not None and player_y is not None:
-                if random.choice([True, False]):
-                    dx = 1 if player_x > self.x else -1
-                    dy = 1 if player_y > self.y else -1
-                else:
-                    dx = -1 if player_x > self.x else 1
-                    dy = -1 if player_y > self.y else 1
+                dx = 1 if player_x > self.x else -1 if player_x < self.x else 0
+                dy = 1 if player_y > self.y else -1 if player_y < self.y else 0
                 self.sprint_dir = (dx, dy)
             else:
-                self.sprint_dir = (random.choice([-1,0,1]), random.choice([-1,0,1]))
+                self.sprint_dir = (random.choice([-1, 0, 1]), random.choice([-1, 0, 1]))
 
         current_speed = self.speed * (self.sprint_speed_multiplier if self.sprint_active else 1)
         interval = 1.0 / current_speed
@@ -63,6 +57,6 @@ class NormalEnemy:
             screen.blit(self.image, (self.x * GRID_SIZE, self.y * GRID_SIZE))
         else:
             pygame.draw.rect(screen, RED, (self.x * GRID_SIZE, self.y * GRID_SIZE, GRID_SIZE, GRID_SIZE))
-            
+
     def get_rect(self):
         return pygame.Rect(self.x * GRID_SIZE, self.y * GRID_SIZE, self.width, self.height)
