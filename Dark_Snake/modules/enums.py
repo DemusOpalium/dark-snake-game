@@ -30,3 +30,4 @@ class ItemType(Enum):
     DICE_EVENT = 8
     SPECIAL_DAMAGE = 9
     PROJECTILE_SHOOT = 10
+    SPAWN_BOLBU = auto()
