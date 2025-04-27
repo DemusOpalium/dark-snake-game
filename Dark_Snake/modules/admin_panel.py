@@ -24,8 +24,8 @@ class AdminPanel:
             ("emoji2.png", self.spawn_boss),
             ("emoji3.png", self.full_heal),
             ("emoji4.png", self.enable_fire_shoot),  # FireProjectile aktivieren
-            ("emoji5.png", self.spawn_aoe_damage),
-            ("emoji6.png", self.spawn_slow_zone),
+            ("emoji5.png", self.toggle_hitboxes),  # Hitbox-Overlay ein/aus
+            ("emoji6.png", self.spawn_bolbu_item),
             ("emoji7.png", self.spawn_explosive),
             ("emoji8.png", self.effect_test),
             ("emoji9.png", self.random_effect),
@@ -50,6 +50,13 @@ class AdminPanel:
         self.active = not self.active
         self.debug_log("AdminPanel toggled: {}".format("Aktiv" if self.active else "Inaktiv"))
 
+    
+    def spawn_bolbu_item(self):
+        snake_list = self.game.snake if self.game.player_count==1 else self.game.snake1
+        if snake_list:
+            hx, hy = snake_list[0]
+        self.game.spawn_item_at(ItemType.SPAWN_BOLBU, hx+1, hy)
+        self.debug_log("SPAWN_BOLBU-Item gespawnt")
     def spawn_flameball_item(self):
         if hasattr(self.game, "spawn_item_at"):
             head = getattr(self.game.snake, "head", None)
@@ -93,6 +100,12 @@ class AdminPanel:
         if hasattr(self.game, "spawn_explosive_projectile"):
             self.game.spawn_explosive_projectile()
             self.debug_log("Explosiver Schuss gespawnt")
+
+    
+
+    def toggle_hitboxes(self):
+        self.game.debug_show_hitboxes = not getattr(self.game, "debug_show_hitboxes", False)
+        self.debug_log(f"Hitboxen {'aktiviert' if self.game.debug_show_hitboxes else 'deaktiviert'}")
 
     def random_effect(self):
         self.debug_log("Zufallseffekt (Platzhalter) aktiviert")
