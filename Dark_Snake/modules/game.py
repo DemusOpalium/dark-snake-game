@@ -6,7 +6,7 @@
 #        Projektil‑Schusstiming, Health-System, AoE-Effekten etc.
 #
 
-import pygame, sys, random, time, os
+import pygame, sys, random, time, os, datetime
 from math import sqrt, atan2, cos, sin
 from pygame.math import Vector2
 
@@ -32,6 +32,7 @@ from modules.aoe_zones import AoEZone, DamageZone, HealZone, DebuffZone, FollowZ
 from modules.controls import ControlsMenu
 from modules.customization import CustomizationMenu
 from modules.enemies import NormalEnemy
+from modules.bolbu_enemy import BolbuEnemy
 from modules.options_menu import OptionsMenu, ExtendedOptionsMenu
 from modules.admin_panel import AdminPanel
 from modules.fire_explosion import FireExplosionAnimation
@@ -329,8 +330,8 @@ class AchievementManager:
         if self.game.portal_effect_active and self.game.portal_effect_type:
             txt = pygame.font.SysFont('Arial', 24, bold=True).render("Portal: " + str(self.game.portal_effect_type), True, PURPLE)
             surface.blit(txt, (WINDOW_WIDTH - txt.get_width() - 20, 60))
+        # === Health-Bar-Funktion für 2-Spieler-Modus ===
 
-# === Zusätzliche Health-Bar-Funktionen für Zweispielermodus ===
 def draw_health_bar_two(game):
     # Spieler 1 Health-Bar (links)
     bar_width = 200
@@ -356,7 +357,7 @@ def draw_health_bar_two(game):
     pygame.draw.rect(game.screen, color2, (x2, y, int(bar_width * health_percent2), bar_height))
     pygame.draw.rect(game.screen, WHITE, (x2, y, bar_width, bar_height), 2)
 
-# === Hauptklasse Game (Finale Version mit Respawn-Unbesiegbarkeit und verbesserter Kollisionsprüfung) ===
+            # === Hauptklasse Game (Finale Version mit Respawn-Unbesiegbarkeit und verbesserter Kollisionsprüfung) ===
 class Game:
     def __init__(self):
         global WINDOW_WIDTH, WINDOW_HEIGHT, GRID_WIDTH, GRID_HEIGHT
@@ -384,7 +385,7 @@ class Game:
             'custom_body_p2': None,
             'projectile_speed_factor': PROJECTILE_SPEED_FACTOR,
             'auto_shoot_interval': AUTO_SHOOT_INTERVAL,  # Neuer konfigurierbarer Parameter für die Schussfrequenz
-            'enemy_spawn_rate': 0.002,
+            'enemy_spawn_rate': 0.01,
             'boss_health_multiplier': 1.0
         }
         self.get_music_library = get_music_library
@@ -435,11 +436,14 @@ class Game:
         self.portal_effect_type = None
         self.projectiles = []
         self.boss_flame_projectiles = []  # [KS_TAG: BOSS_FLAME_LIST]
+        self.enemy_projectiles = []
         # FlameProjectile-System initialisieren
         self.flame_projectiles = []
         self.explosions = []  # reset explosions list
         self.explosions = []  # list of active explosion animations
         self.fireball_cooldown = 0
+        self.fireball_cooldown_p1 = 0
+        self.fireball_cooldown_p2 = 0
         self.achievement_messages = []
         self.enemies = []
         self.controls_menu = ControlsMenu(self)
@@ -604,9 +608,12 @@ class Game:
         self.portal_spawn_cooldown = time.time() + 30
         self.projectiles = []
         self.boss_flame_projectiles = []  # [KS_TAG: BOSS_FLAME_LIST]
+        self.enemy_projectiles = []
         # FlameProjectile-System initialisieren
         self.flame_projectiles = []
         self.fireball_cooldown = 0
+        self.fireball_cooldown_p1 = 0
+        self.fireball_cooldown_p2 = 0
         self.achievement_messages = []
         self.enemies = []
         self.last_auto_shoot = time.time()
@@ -637,8 +644,11 @@ class Game:
             itype = ItemType.LENGTH_SHORTENER
         elif chance < 0.86:
             itype = ItemType.LENGTH_DOUBLE
-        elif chance < 0.90:
+        elif chance < 0.9:
             itype = ItemType.LOOT_BOX
+        elif chance < 0.93:
+            itype = ItemType.SPAWN_BOLBU  # <-- !!! Hier jetzt häufiger !!!
+            print('[DEBUG] SPAWN_BOLBU Item erzeugt')
         elif chance < 0.98:
             itype = ItemType.DICE_EVENT
         else:
@@ -727,12 +737,19 @@ class Game:
 
     def update_projectiles(self):
         current_time = time.time()
+
+        # ---- Portal Effect Timeout ----
+        if self.portal_effect_active and current_time >= self.portal_effect_end:
+            print("[DEBUG] Portal-Effekt endet")
+            self.portal_effect_active = False
+            self.portal_effect_type = None
         # Flammenprojektile und Cooldown aktualisieren
         if self.fireball_cooldown > 0:
             self.fireball_cooldown -= 1
         self.flame_projectiles = [p for p in self.flame_projectiles if p.update()]
         self.boss_flame_projectiles = [p for p in self.boss_flame_projectiles if p.update()]
         self.explosions = [e for e in self.explosions if e.update()]
+        self.enemy_projectiles = [p for p in self.enemy_projectiles if p.update()]
         new_proj = []
         for proj in self.projectiles:
             dx, dy = proj['dir']
@@ -826,6 +843,10 @@ class Game:
         current_time = time.time()
 
         # ───────────────────────── 1) Cooldowns & Auto‑Shoot ─────────────────────────
+        if self.fireball_cooldown_p1 > 0:
+            self.fireball_cooldown_p1 -= 1
+        if self.fireball_cooldown_p2 > 0:
+            self.fireball_cooldown_p2 -= 1
         if self.fireball_cooldown > 0:
             self.fireball_cooldown -= 1
         # Flammen­geschosse leben lassen / entfernen
@@ -835,15 +856,25 @@ class Game:
         invincible = current_time < self.respawn_invincible_until
         if self.effects['projectile_shoot'] > current_time:
             self.auto_shoot()
-
-        # ───────────────────────── 2) Enemy‑Spawn & Update ───────────────────────────
-        if random.random() < self.settings.get('enemy_spawn_rate', 0.002):
-            enemy = NormalEnemy()
-            enemy.spawn_time = time.time()
-            self.enemies.append(enemy)
+            # -- Gegner-Spawn ---------------------------------------------
+            if random.random() < 0.002:
+                enemy = NormalEnemy()
+                enemy.spawn_time = time.time()
+                self.enemies.append(enemy)
+#             enemy.spawn_time = time.time()    # removed by patch to avoid UnboundLocalError
+#             self.enemies.append(enemy)    # removed by patch to avoid UnboundLocalError
 
         for enemy in self.enemies:
-            enemy.update()
+            # Pass Spielerposition für smartere Gegner
+            if self.player_count == 1 and self.snake:
+                px, py = self.snake[0]
+            elif self.player_count == 2 and self.snake1:
+                px, py = self.snake1[0]
+            else:
+                px = py = None
+            enemy.update(px, py)
+            if hasattr(enemy, 'projectiles'):
+                self.enemy_projectiles.extend(enemy.projectiles)
 
         # AoE‑Zonen zeichnen (wird später noch gebraucht)
         for zone in self.aoe_zones:
@@ -880,10 +911,7 @@ class Game:
             enemy_rect = enemy.get_rect()
             enemy_rect.x += (GRID_SIZE - enemy_rect.width) // 2
             enemy_rect.y += (GRID_SIZE - enemy_rect.height) // 2
-
-            # Spawn-Grace-Time: Gegner unverwundbar direkt nach Spawn
-            if time.time() - enemy.spawn_time < 3:
-                continue
+            continue
 
             for proj in self.projectiles:
                 proj_rect = pygame.Rect(
@@ -906,32 +934,59 @@ class Game:
                         self.portal = Portal()
                     break
 
-            # ---------- 3a)  **FlameProjectile**  ----------
-            for flame in self.flame_projectiles[:]:
-                # → Boss treffen
-                if self.boss and flame.rect.colliderect(self.boss.get_rect()):
+        # ---------- 3a)  **FlameProjectile**  ----------
+        for flame in self.flame_projectiles[:]:
+            # → Boss treffen
+            if self.boss:
+                boss_rect = self.boss.get_rect().inflate(-10, -10)
+                if flame.rect.colliderect(boss_rect):
                     self.boss.health -= flame.damage
                     self.spawn_fire_explosion(flame.rect.center)
                     self.flame_projectiles.remove(flame)
+                    break  # <-- korrekt beendet
+
+            # → normalen Gegner treffen
+            for enemy in self.enemies[:]:
+                enemy_rect = enemy.get_rect()
+                enemy_rect.x += (GRID_SIZE - enemy_rect.width) // 2
+                enemy_rect.y += (GRID_SIZE - enemy_rect.height) // 2
+
+                if time.time() - getattr(enemy, 'spawn_time', 0) < 2:
                     continue
 
-                # → normalen Gegner treffen
                 if flame.rect.colliderect(enemy_rect):
                     enemy.health -= flame.damage
-                    if flame in self.flame_projectiles:
-                        self.spawn_fire_explosion(flame.rect.center)
-                    # Gegner down?
+                    self.spawn_fire_explosion(flame.rect.center)
                     if enemy.health <= 0:
                         if enemy in self.enemies:
                             self.enemies.remove(enemy)
                         self.score += 20
                         self.add_achievement("Enemy roasted!")
-                    # Flame verschwindet nach einem Treffer
                     if flame in self.flame_projectiles:
                         self.flame_projectiles.remove(flame)
+                    break
+
 
             
-        # [KS_TAG: BOSS_FLAME_COLLISION]
+        # [KS_TAG: BOSS_FLAME_COLLISION]        # ----- ENEMY PROJECTILE COLLISION -----
+        for proj in self.enemy_projectiles[:]:
+            if self.player_count == 1 and self.snake:
+                head_rect = pygame.Rect(self.snake[0][0] * GRID_SIZE, self.snake[0][1] * GRID_SIZE, GRID_SIZE, GRID_SIZE)
+                if proj.rect.colliderect(head_rect):
+                    self.spawn_fire_explosion(proj.rect.center)
+                    self.player_health -= proj.damage
+                    if proj in self.enemy_projectiles:
+                     self.enemy_projectiles.remove(proj)
+            elif self.player_count == 2:
+                for snake, attr in [(self.snake1, 'player_health_p1'), (self.snake2, 'player_health_p2')]:
+                    if snake:
+                        head_rect = pygame.Rect(snake[0][0] * GRID_SIZE, snake[0][1] * GRID_SIZE, GRID_SIZE, GRID_SIZE)
+                        if proj.rect.colliderect(head_rect):
+                            self.spawn_fire_explosion(proj.rect.center)
+                            current = getattr(self, attr)
+                            setattr(self, attr, current - proj.damage)
+                            if proj in self.enemy_projectiles:
+                             self.enemy_projectiles.remove(proj)
         for proj in self.boss_flame_projectiles[:]:
             if self.player_count == 1 and self.snake:
                 head_rect = pygame.Rect(self.snake[0][0] * GRID_SIZE, self.snake[0][1] * GRID_SIZE, GRID_SIZE, GRID_SIZE)
@@ -1266,6 +1321,28 @@ class Game:
                                 if SOUNDS.get("damage"):
                                     SOUNDS["damage"].play()
                                 self.handle_death()
+             #  Admin-Shortcut: Item exakt an Koordinate spawnen
+    def spawn_item_at(self, item_type, grid_x, grid_y):
+        """
+        Wird vom Admin-Panel (Button 6) benutzt, um z.B. ein SPAWN_BOLBU-Item
+        direkt neben dem Schlangenkopf zu erzeugen.
+        """
+        if not hasattr(self, "items"):
+            return
+        # Spielfeldbegrenzung
+        grid_x = max(0, min(int(grid_x), GRID_WIDTH  - 1))
+        grid_y = max(0, min(int(grid_y), GRID_HEIGHT - 1))
+
+        # Vermeide Spawn auf Kopf-Segment
+        occ = (self.snake1 + self.snake2) if self.player_count == 2 else self.snake
+        if (grid_x, grid_y) in occ:
+            grid_y = (grid_y + 1) % GRID_HEIGHT
+
+        item = Item(item_type)
+        item.x, item.y = grid_x, grid_y
+        self.items.append(item)
+        print(f"[ADMIN] Item {item_type.name} gespawnt an ({grid_x},{grid_y})")
+
         # Ende Update
     def handle_item_pickup(self, item):
         current_time = time.time()
@@ -1342,6 +1419,18 @@ class Game:
                     if SOUNDS.get("powerup"):
                         SOUNDS["powerup"].play()
                     self.score += 100
+        
+        elif item.type == ItemType.SPAWN_BOLBU:
+            print('[DEBUG] SPAWN_BOLBU Item aufgenommen')
+            from modules.bolbu_enemy import BolbuEnemy
+            spawn_count = random.randint(1,3)
+            for _ in range(spawn_count):
+                bolbu = BolbuEnemy()
+                bolbu.spawn_time = current_time
+                self.enemies.append(bolbu)
+            self.score += 25 * spawn_count
+            self.add_achievement(f"{spawn_count} Bolbu gespawnt!")
+
         elif item.type == ItemType.PROJECTILE_SHOOT:
             self.effects['projectile_shoot'] = max(self.effects['projectile_shoot'], current_time) + 900
             self.extra_auto_shots = min(6, self.extra_auto_shots + 1)
@@ -1464,15 +1553,37 @@ class Game:
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_p:
                         self.set_state(GameState.PAUSE)
-                    elif event.key == pygame.K_SPACE:
-                        # feuert immer in Blickrichtung der Schlange
-                        dir_vec = self.snake_direction.value            # (dx, dy)
-                        if self.fireball_cooldown <= 0:
-                            head_px = self.snake[0][0] * GRID_SIZE
-                            head_py = self.snake[0][1] * GRID_SIZE
-                            flame = FlameProjectile(head_px, head_py, dir_vec)
-                            self.flame_projectiles.append(flame)
-                            self.fireball_cooldown = 180 
+                    elif event.key in (pygame.K_SPACE, pygame.K_PLUS, pygame.K_KP_PLUS):
+                        # Spieler 1: SPACE, Spieler 2: PLUS oder CONTROLLER
+                        if self.player_count == 1:
+                            if self.fireball_cooldown_p1 <= 0:
+                                head = self.snake[0]
+                                direction = self.snake_direction
+                                head_px = head[0] * GRID_SIZE
+                                head_py = head[1] * GRID_SIZE
+                                flame = FlameProjectile(head_px, head_py, direction.value)
+                                self.flame_projectiles.append(flame)
+                                self.fireball_cooldown_p1 = FPS * 2  # 2 Sekunden
+                        else:
+                            if event.key == pygame.K_SPACE:  # Spieler 1 schießt mit SPACE
+                                if self.fireball_cooldown_p1 <= 0:
+                                    head = self.snake1[0]
+                                    direction = self.snake_direction1
+                                    head_px = head[0] * GRID_SIZE
+                                    head_py = head[1] * GRID_SIZE
+                                    flame = FlameProjectile(head_px, head_py, direction.value)
+                                    self.flame_projectiles.append(flame)
+                                    self.fireball_cooldown_p1 = FPS * 2
+                            elif event.key in (pygame.K_PLUS, pygame.K_KP_PLUS):  # Spieler 2 schießt mit PLUS/Controller
+                                if self.fireball_cooldown_p2 <= 0:
+                                    head = self.snake2[0]
+                                    direction = self.snake_direction2
+                                    head_px = head[0] * GRID_SIZE
+                                    head_py = head[1] * GRID_SIZE
+                                    flame = FlameProjectile(head_px, head_py, direction.value)
+                                    self.flame_projectiles.append(flame)
+                                    self.fireball_cooldown_p2 = FPS * 2
+
                     else:
                         from math import sqrt, pi
                         zone_radius = int(sqrt(0.25 * WINDOW_WIDTH * WINDOW_HEIGHT / pi))
@@ -1653,6 +1764,8 @@ class Game:
             proj.draw(self.screen)
         for flame in self.flame_projectiles:
             flame.draw(self.screen)
+        for proj in self.enemy_projectiles:
+            proj.draw(self.screen)
         for explosion in self.explosions:
             explosion.draw(self.screen)
         # Spieler (Snake) zeichnen:
