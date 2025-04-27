@@ -91,12 +91,8 @@ PLAY_BUTTON_IMG = load_image("PlayButton1.png")
 
 # [KS_TAG: GRAPHICS_DICT] – Zentrale Mapping-Struktur
 GRAPHICS = {
-    "FireExplosionDetail1": load_image("FireExplosionDetail1.png", "FlameExplosion"),
-    "FireExplosionDetail2": load_image("FireExplosionDetail2.png", "FlameExplosion"),
-    "FireExplosionDetail3": load_image("FireExplosionDetail3.png", "FlameExplosion"),
-    "FireExplosionDetail4": load_image("FireExplosionDetail4.png", "FlameExplosion"),
-    "FireExplosionDetail5": load_image("FireExplosionDetail5.png", "FlameExplosion"),
-    "FireExplosionDetail6": load_image("FireExplosionDetail6.png", "FlameExplosion"),
+    "BOLBU_PROJECTILE": load_image("bolbu_projectile.png", "projectiles"),
+    "SPAWN_BOLBU": load_image("SPAWN_BOLBU.png", "items")  # <-- Fixierter Pfad
 }
 
 # Zugriffsfunktion für zentral verwaltete Grafiken
