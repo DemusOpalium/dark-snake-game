@@ -1,4 +1,4 @@
-// [SUCHTAG: AOE_ZONES_MODIFICATION - EFFECT IMAGE LAYOUT]
+#// [SUCHTAG: AOE_ZONES_MODIFICATION - EFFECT IMAGE LAYOUT]
 """
 Modul: aoe_zones.py
 Zweck: Temporäre AoE-Flächen (Area of Effect) mit verschiedenen Effekten implementieren.
