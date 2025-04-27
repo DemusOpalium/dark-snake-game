@@ -1,3 +1,62 @@
+🐍🔥 Dark Snake – Großes Update | 27.04.2025
+
+    Ein Indie-Projekt, das mit Leidenschaft wächst!
+
+🚀 Was ist neu?
+
+✅ Zweiter Boss-Schuss: BossFlameProjectile
+→ Der Boss kann jetzt mächtige Flammenattacken direkt auf euch abfeuern!
+
+✅ Admin-Item: Bolbu-Spawn freigeschaltet
+→ Über das Admin-Panel könnt ihr neue Gegner (Bolbu-Minions) spawnen – gesteuert durch Würfel-Events (Dice System)!
+
+✅ Smarter Gegner-Spawn
+→ Gegner erscheinen gezielter und dynamischer, vor allem im Bossfight.
+
+✅ Verbesserte Schuss-Logik:
+
+    Zwei getrennte Cooldowns für Feuerbälle (je 2 Sekunden).
+
+    Unabhängiges Schießen für Spieler 1 und Spieler 2.
+
+🎮 Steuerung (Stand 27.04.2025)
+Taste	Funktion
+P	Pause-Menü
+ESC	Hauptmenü
+TAB	Admin-Panel öffnen (Spawn, Debug, Effekte)
+WASD	Bewegung Spieler 1
++ (Plus)	Schuss Spieler 1 (Feuerball)
+Pfeiltasten	Bewegung Spieler 2
+Leertaste (SPACE)	Schuss Spieler 2 (Feuerball)
+Ü	Spezialeffekt Hintergrund aktivieren
+R / T / Z / U / I / O	AoE-Effekte testen (nur Debugmodus)
+📢 Hinweis zum Spielstart
+
+Falls der Launcher nicht sofort funktioniert:
+Einfach im Terminal (Linux/Windows/macOS) starten:
+
+python3 main.py
+
+✨ Über Dark Snake
+
+    Eigenes Boss‑System mit Animationen und Spezialattacken
+
+    Admin-Tools & Debug-Features für Experimente
+
+    Soundeffekte & Musikbibliothek integriert
+
+    Levelsystem, Leaderboard, AoE-Zonen, Powerups
+
+    🛠 Projekt wird laufend erweitert!
+
+❤️ Deine Unterstützung zählt!
+
+Wenn euch das Spiel gefällt: Ein kleines Feedback oder Kommentar hilft unglaublich, die Entwicklung weiter voranzutreiben! 🙏✨
+Mehr Bosse, neue Waffen und neue Maps sind schon in Planung! 🧪
+
+    🐍 Dark Snake – "Von Gamern, für Gamer."
+    Version: 27.04.2025 – Projektstart: 2024
+
 <!-- Coverbild oben in der README -->
 <p align="center">
   <img src="Dark_Snake/assets/graphics/2222124.png" alt="Dark Snake Game Cover" width="800px">
