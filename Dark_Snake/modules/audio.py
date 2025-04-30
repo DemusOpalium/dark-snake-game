@@ -47,4 +47,3 @@ def get_music_library():
     except Exception as e:
         print(f"Fehler beim Zugriff auf den Musikordner: {e}")
         return []
-
