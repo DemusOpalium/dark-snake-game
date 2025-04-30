@@ -30,3 +30,12 @@ Diese Datei beschreibt die wichtigsten Module des Dark Snake Game Projekts, ihre
 ## System
 
 - `enums.py` – GameState, Direction, ItemType
+---
+
+## 📚 Weitere Dokumentation
+
+- 📦 [Modulübersicht (DEV_STRUCTURE.md)](DEV_STRUCTURE.md)
+- 🎨 [Screenshot-Galerie (GALLERY.md)](GALLERY.md)
+- 🎮 [Steuerung (CONTROLS.md)](CONTROLS.md)
+- 🤖 [Prompt-Guide für GPT (PROMPT_GUIDE.md)](PROMPT_GUIDE.md)
+- 🛣️ [Projekt-Roadmap (ROADMAP.md)](ROADMAP.md)
