@@ -7,16 +7,17 @@ class ControlsMenu:
     def __init__(self, game):
         self.game = game
         self.controls = {
-            "Spieler1 - Oben": "Pfeiltaste ↑ / W",
-            "Spieler1 - Unten": "Pfeiltaste ↓ / S",
-            "Spieler1 - Links": "Pfeiltaste ← / A",
+            "Spieler1 - Oben":   "Pfeiltaste ↑ / W",
+            "Spieler1 - Unten":  "Pfeiltaste ↓ / S",
+            "Spieler1 - Links":  "Pfeiltaste ← / A",
             "Spieler1 - Rechts": "Pfeiltaste → / D",
-            "Schießen": "+",
-            "Spieler2 - Oben": "Pfeiltaste ↑",
-            "Spieler2 - Unten": "Pfeiltaste ↓",
-            "Spieler2 - Links": "Pfeiltaste ←",
+            "Spieler1 - Schießen": "+",
+
+            "Spieler2 - Oben":   "Pfeiltaste ↑",
+            "Spieler2 - Unten":  "Pfeiltaste ↓",
+            "Spieler2 - Links":  "Pfeiltaste ←",
             "Spieler2 - Rechts": "Pfeiltaste →",
-            "Schießen": "SPACE"
+            "Spieler2 - Schießen": "SPACE"
         }
         self.back_button = Button(WINDOW_WIDTH//2 - 100, WINDOW_HEIGHT - 80, 200, 60, "ZURÜCK", color=PURPLE, action=self.back)
 
