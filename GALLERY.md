@@ -19,3 +19,13 @@ Hier findest du eine Übersicht der wichtigsten Screenshots und UI-Elemente.
 
 ## Two Player Modus
 ![2P](assets/screenshots/TwoPlayerModus.png)
+
+---
+
+## 📚 Weitere Dokumentation
+
+- 📦 [Modulübersicht (DEV_STRUCTURE.md)](DEV_STRUCTURE.md)
+- 🎨 [Screenshot-Galerie (GALLERY.md)](GALLERY.md)
+- 🎮 [Steuerung (CONTROLS.md)](CONTROLS.md)
+- 🤖 [Prompt-Guide für GPT (PROMPT_GUIDE.md)](PROMPT_GUIDE.md)
+- 🛣️ [Projekt-Roadmap (ROADMAP.md)](ROADMAP.md)
