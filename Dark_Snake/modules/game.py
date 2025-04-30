@@ -6,7 +6,7 @@
 #        Projektil‑Schusstiming, Health-System, AoE-Effekten etc.
 #
 
-import pygame, sys, random, time, os, datetime
+import pygame, sys, random, time, os, datetime, json
 from math import sqrt, atan2, cos, sin
 from pygame.math import Vector2
 
@@ -26,6 +26,7 @@ from modules.graphics import (
     PORTAL_IMAGES, ITEM_IMAGES,
     OPTIONS_BUTTON_IMG, PLAY_BUTTON_IMG,
 )
+from modules.level_editor import LevelEditor
 from modules.audio import SOUNDS, get_music_library, play_background_music, set_music_volume
 from modules.ui import Button, Slider, CheckBox, Dropdown
 from modules.aoe_zones import AoEZone, DamageZone, HealZone, DebuffZone, FollowZone, GrowingBossAOEZone  # [KS_TAG: BOSS_AOE]
@@ -462,6 +463,7 @@ class Game:
         self.admin_panel = AdminPanel(self)
         self.debug_show_hitboxes = False  # [KS_TAG: DEBUG_HITBOX]
         self.respawn_invincible_until = 0
+        self.level_editor = LevelEditor(self)
 
     def create_ui_elements(self):
         center_x = WINDOW_WIDTH // 2
@@ -542,6 +544,19 @@ class Game:
     def start_game(self, players):
         self.player_count = players
         self.reset_game()
+        level_path = "assets/levels/custom_level.json"
+        if os.path.exists(level_path):
+            try:
+                with open(level_path) as f:
+                    self.level_map = json.load(f)
+                self.build_background_from_map()
+                self.background = self.level_background_surface
+                print("[INFO] Benutzerdefinierte Map als Hintergrund geladen.")
+            except Exception as e:
+                print(f"[WARN] Level konnte nicht geladen werden: {e}")
+        else:
+            print("[INFO] Kein Editor-Level vorhanden. Standardhintergrund wird verwendet.")
+
         self.set_state(GameState.GAME)
 
     def confirm_back_to_main(self):
@@ -628,35 +643,35 @@ class Game:
                 self.items.append(new_item)
                 break
 
+    # --------------------------------------------------------------------
+    # Gleichmäßiger Item-Spawn  –  jedes Item ≈ 9 %  (11 Einträge)
+    # --------------------------------------------------------------------
     def spawn_new_item(self):
-        chance = random.random()
-        if chance < 0.5:
-            itype = ItemType.FOOD
-        elif chance < 0.6:
-            itype = ItemType.SPEED_BOOST
-        elif chance < 0.7:
-            itype = ItemType.SPEED_REDUCTION
-        elif chance < 0.75:
-            itype = ItemType.SCORE_BOOST
-        elif chance < 0.8:
-            itype = ItemType.INVINCIBILITY
-        elif chance < 0.83:
-            itype = ItemType.LENGTH_SHORTENER
-        elif chance < 0.86:
-            itype = ItemType.LENGTH_DOUBLE
-        elif chance < 0.9:
-            itype = ItemType.LOOT_BOX
-        elif chance < 0.93:
-            itype = ItemType.SPAWN_BOLBU  # <-- !!! Hier jetzt häufiger !!!
-            print('[DEBUG] SPAWN_BOLBU Item erzeugt')
-        elif chance < 0.98:
-            itype = ItemType.DICE_EVENT
-        else:
-            itype = ItemType.SPECIAL_DAMAGE
+        # Liste der möglichen Items – Mehrfach­einträge = höhere Chance
+        items = [
+            ItemType.FOOD,
+            ItemType.SPEED_BOOST,
+            ItemType.SPEED_REDUCTION,
+            ItemType.SCORE_BOOST,
+            ItemType.INVINCIBILITY,
+            ItemType.LENGTH_SHORTENER,
+            ItemType.LENGTH_DOUBLE,
+            ItemType.LOOT_BOX,
+            ItemType.SPAWN_BOLBU,      #  → unsere Bolbu-Kapsel
+            ItemType.DICE_EVENT,
+            ItemType.SPECIAL_DAMAGE,
+        ]
+
+        itype = random.choice(items)
+        if itype == ItemType.SPAWN_BOLBU:
+            print("[DEBUG] Zufälliges SPAWN_BOLBU-Item erzeugt")
+
+        # freie Feld­position suchen
         while True:
             new_item = Item(itype)
             occ = (self.snake1 + self.snake2) if self.player_count == 2 else self.snake
-            if (new_item.x, new_item.y) not in occ and not any(item.x == new_item.x and item.y == new_item.y for item in self.items):
+            pos_belegt = any(i.x == new_item.x and i.y == new_item.y for i in self.items)
+            if (new_item.x, new_item.y) not in occ and not pos_belegt:
                 self.items.append(new_item)
                 break
 
@@ -1510,9 +1525,12 @@ class Game:
         keys = pygame.key.get_pressed()
 
         for event in pygame.event.get():
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_F2:
+                self.level_editor.toggle()
             if event.type == pygame.KEYDOWN and event.key == pygame.K_TAB:
                 self.admin_panel.toggle()
             self.admin_panel.handle_event(event)
+            self.level_editor.handle_event(event)
             if event.type == pygame.QUIT:
                 sys.exit()
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
@@ -1678,6 +1696,10 @@ class Game:
                                 self.next_direction2 = Direction.RIGHT
 
     def draw(self):
+        if self.level_editor.active:
+            self.level_editor.draw(self.screen)
+            pygame.display.update()
+            return
         if self.game_state == GameState.INTRO:
             self.draw_intro()
         elif self.game_state == GameState.CONTROLS:
@@ -2014,9 +2036,12 @@ class Game:
         back_btn = Button(WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT - 80, 200, 60, "ZURÜCK", color=PURPLE, action=lambda: self.confirm_back_to_main())
         back_btn.draw(self.screen)
         for event in pygame.event.get():
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_F2:
+                self.level_editor.toggle()
             if event.type == pygame.KEYDOWN and event.key == pygame.K_TAB:
                 self.admin_panel.toggle()
             self.admin_panel.handle_event(event)
+            self.level_editor.handle_event(event)
             if event.type == pygame.QUIT:
                 sys.exit()
             elif event.type == pygame.MOUSEBUTTONDOWN:
@@ -2034,10 +2059,27 @@ class Game:
                 self.update()
             self.draw()
             self.clock.tick(FPS)
-     # [KS_TAG: FLAME_PROJECTILE_CLASS]
 
-    # [KS_TAG: CUSTOM_PROJECTILE_SPAWN]
-    
+    # [KS_TAG: LEVEL_EDITOR_BACKGROUND]
+    def build_background_from_map(self):
+        """
+        Wandelt die Level-Karte in eine Hintergrund-Oberfläche um.
+        Wird vom LevelEditor beim Simulieren verwendet.
+        """
+        from modules.graphics import get_tile  # Zentrale Tile-Zugriffs-Funktion
+        if not hasattr(self, "level_map") or not self.level_map:
+            print("[DEBUG] Keine Level-Karte gesetzt – Hintergrund bleibt leer.")
+            return
+
+        surf = pygame.Surface((GRID_WIDTH * GRID_SIZE, GRID_HEIGHT * GRID_SIZE), pygame.SRCALPHA)
+        for y, row in enumerate(self.level_map):
+            for x, tile in enumerate(row):
+                if tile:
+                    img = get_tile(tile)
+                    if img:
+                        surf.blit(img, (x * GRID_SIZE, y * GRID_SIZE))
+        self.level_background_surface = surf
+        print("[DEBUG] Hintergrund aus Level-Karte aufgebaut.")
     # [KS_TAG: BOSS_FLAME_PROJECTILE]
     def boss_shoots_flame(self):
         from modules.boss_projectiles import BossFlameProjectile
