@@ -1,3 +1,4 @@
+
 # [KS_TAG: GRAPHICS_INIT]
 import os
 import pygame
@@ -64,19 +65,19 @@ PORTAL_IMAGES = [
     load_image("PortalTempelG60.png")
 ]
 
-# Items
 ITEM_IMAGES = {
-    "FOOD": load_image("ItemgruenG20.png"),
-    "SPEED_BOOST": load_image("ItemOrangeradG20.png"),
-    "SPEED_REDUCTION": load_image("ItemGrauradG20.png"),
-    "SCORE_BOOST": load_image("ItemblauG20.png"),
-    "INVINCIBILITY": load_image("ItemDiamantG20.png"),
-    "LOOT_BOX": load_image("ItemLavaG20.png"),
+    "FOOD":             load_image("ItemgruenG20.png"),
+    "SPEED_BOOST":      load_image("ItemOrangeradG20.png"),
+    "SPEED_REDUCTION":  load_image("ItemGrauradG20.png"),
+    "SCORE_BOOST":      load_image("ItemblauG20.png"),
+    "INVINCIBILITY":    load_image("ItemDiamantG20.png"),
+    "LOOT_BOX":         load_image("ItemLavaG20.png"),
     "LENGTH_SHORTENER": load_image("ItemRotradG20.png"),
-    "LENGTH_DOUBLE": load_image("ItemTrank1G20.png"),
-    "DICE_EVENT": load_image("ItemTrank2G20.png"),
-    "SPECIAL_DAMAGE": load_image("ItemTrank3FG20.png"),
-    "PROJECTILE_SHOOT": load_image("Projektil.png")
+    "LENGTH_DOUBLE":    load_image("ItemTrank1G20.png"),
+    "DICE_EVENT":       load_image("ItemTrank2G20.png"),
+    "SPECIAL_DAMAGE":   load_image("ItemTrank3FG20.png"),
+    "PROJECTILE_SHOOT": load_image("Projektil.png"),
+    "SPAWN_BOLBU":      load_image("SPAWN_BOLBU.png", "items"),
 }
 
 # Gegner
@@ -89,12 +90,30 @@ ENEMY_GLUBS_IMG = load_image("gegner-glubsG40.png")
 OPTIONS_BUTTON_IMG = load_image("optionsButton1.png")
 PLAY_BUTTON_IMG = load_image("PlayButton1.png")
 
+# Tile graphics
+
+TILE_IMAGES = {}
+_tile_dir = os.path.join("assets", "graphics", "tiles")
+if os.path.isdir(_tile_dir):
+    for fname in os.listdir(_tile_dir):
+        if fname.lower().endswith(".png"):
+            key = os.path.splitext(fname)[0]
+            img = load_image(fname, "tiles")
+            if img:
+                img = pygame.transform.scale(img, (GRID_SIZE, GRID_SIZE))
+            TILE_IMAGES[key] = img
+
+
+# Zugriffsfunktion für Tile
+def get_tile(name):
+    return TILE_IMAGES.get(name)
+
 # [KS_TAG: GRAPHICS_DICT] – Zentrale Mapping-Struktur
 GRAPHICS = {
     "BOLBU_PROJECTILE": load_image("bolbu_projectile.png", "projectiles"),
-    "SPAWN_BOLBU": load_image("SPAWN_BOLBU.png", "items")  # <-- Fixierter Pfad
+    "SPAWN_BOLBU": load_image("SPAWN_BOLBU.png", "items")
 }
 
-# Zugriffsfunktion für zentral verwaltete Grafiken
+# Zugriffsfunktion für zentrale Grafiken
 def get_image(name):
     return GRAPHICS.get(name, pygame.Surface((32, 32), pygame.SRCALPHA))
