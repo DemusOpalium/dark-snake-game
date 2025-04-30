@@ -306,6 +306,17 @@ Definiert alle relevanten Enums (GameState, Direction, ItemType) für einen kons
 <a name="spiel-logik-gamepy"></a>
 Spiel-Logik (game.py)
 
+---
+
+## 📚 Weitere Dokumentation
+
+- 📦 [Modulübersicht (DEV_STRUCTURE.md)](DEV_STRUCTURE.md)
+- 🎨 [Screenshot-Galerie (GALLERY.md)](GALLERY.md)
+- 🎮 [Steuerung (CONTROLS.md)](CONTROLS.md)
+- 🤖 [Prompt-Guide für GPT (PROMPT_GUIDE.md)](PROMPT_GUIDE.md)
+- 🛣️ [Projekt-Roadmap (ROADMAP.md)](ROADMAP.md)
+
+
 Das Herzstück des Spiels – verwaltet Spielzustände, Schlangenbewegung, Kollisionsprüfungen, Bosskämpfe, Items, Power-Ups und mehr.
 
 <a name="options-menü-options_menupy"></a>
