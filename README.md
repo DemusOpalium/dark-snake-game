@@ -1,3 +1,31 @@
+# 🐍 Dark Snake – Complete Snake Game: Dark Art Edition
+
+![Dark Snake Header](assets/graphics/ui/DarkSnake_header_banner_fixed.png)  
+*Eine düstere Snake-Reinkarnation mit Bossfights, Portalen, Effekten und Leveleditor.*
+
+---
+
+## 🔷 Allgemein
+
+### 🐍 Was ist *Dark Snake*?
+Dark Snake ist ein künstlerisch gestaltetes, modernes Snake-Game mit Bosskämpfen, Debugpanel, Items und Leveleditor – modular gebaut und GPT-unterstützt entwickelt.
+
+### 🏆 Was wurde erreicht?
+- Über 25 dokumentierte Module
+- Bossfight mit AOE & Spezialanimation
+- Itemsystem, Level-Editor, AdminPanel
+- UI-Komponenten, Audio, Portalmechanik
+- GPT-Dokumentation, Markdown-Unterstützung
+
+### ⚙ Technologien
+- Python 3.12, Pygame
+- JSON-Maploader, Modular-Rendering
+- get_image()-System, KS_TAG-Kommentierung
+- Audio mit pygame.mixer
+
+
+---
+
 🐍🔥 Dark Snake – Großes Update | 27.04.2025
 
     Ein Indie-Projekt, das mit Leidenschaft wächst!
