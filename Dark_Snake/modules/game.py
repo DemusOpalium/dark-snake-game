@@ -856,6 +856,14 @@ class Game:
     # === Haupt‑Update‑Schleife ===============================================
     def update(self):
         current_time = time.time()
+        # === [KS_FIX: PORTAL VISUAL RESTORE] ===
+        if self.portal_effect_active and time.time() >= self.portal_effect_end:
+            print("[DEBUG] Portal-Effekt endet")
+            self.portal_effect_active = False
+            self.portal_effect_type = None
+            self.build_background_from_map()
+            self.background = self.level_background_surface
+            print("[DEBUG] Editor-Karte neu geladen und gesetzt.")
 
         # ───────────────────────── 1) Cooldowns & Auto‑Shoot ─────────────────────────
         if self.fireball_cooldown_p1 > 0:
