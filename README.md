@@ -83,7 +83,7 @@
 ### Spielszene mit AOE-Zonen und Items
 
 <p align="center">
-  <img src="GamePICs/SpielebeneEDETIERT.png" alt="Gameplay Szene" width="600">
+  <img src="https://github.com/DemusOpalium/dark-snake-game/blob/main/GamePICs/AOE-Zonen.png" alt="AOE Zonen" width="600">
 </p>
 
 ### Optionen / Snake-Designs
@@ -96,7 +96,7 @@
 ### AdminPanel & Effekte
 
 <p align="center">
-  <img src="GamePICs/Spiel-AdminPanel-open.png" width="300">
+  <img src="https://github.com/DemusOpalium/dark-snake-game/blob/main/GamePICs/Spiel%2BAdminPanel-open22.4.2025.png" width="300">
   <img src="GamePICs/Boss-Game-Over.png" width="300">
 </p>
 
