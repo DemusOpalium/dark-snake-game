@@ -17,6 +17,10 @@
   <img src="https://github.com/DemusOpalium/dark-snake-game/blob/main/GamePICs/LvLEDITOR.png" alt="Level Editor" width="600">
 </p>
 
+<p align="center">
+  <img src="https://github.com/DemusOpalium/dark-snake-game/blob/main/GamePICs/output(1).png" alt="Modulstruktur-Diagramm" width="800">
+</p>
+
 ---
 
 ## 🔹 Was ist *Dark Snake*?
@@ -37,7 +41,7 @@
 
 ---
 
-## 🔹 Inhaltsverzeichnis
+## 🔸 Inhaltsverzeichnis
 
 * [Features im Überblick](#features-im-überblick)
 * [LevelEditor Highlights](#leveleditor-highlights)
@@ -55,19 +59,19 @@
 | ------------------ | ------------------------------------------------------------------- |
 | 🧠 KI-Gegner       | Gegner mit Spawnverhalten, Health, Projektile                       |
 | 🔥 FireProjectile  | Spieler-Feuerball mit Explosionseffekt bei Aufprall                 |
-| 🌀 AOE-Zonen       | Damage / Heal / Slow / Buff-Aura / Hintergrundbild                  |
-| 🦁 Boss-System     | Flammenangriffe, Spezialeffekte, Animation, AoE                     |
+| 🌌 AOE-Zonen       | Damage / Heal / Slow / Buff-Aura / Hintergrundbild                  |
+| 🐉 Boss-System     | Flammenangriffe, Spezialeffekte, Animation, AoE                     |
 | 🎨 Editor          | 500+ Tiles, Favoriten, Drag2Draw, Simulation (F2)                   |
 | 🛠️ Adminpanel     | Spawn von Items, Feinden, AOE-Zonen, Effekte (TAB)                  |
 | 👥 2-Spieler-Modus | Geteilte Healthbars, getrennte Steuerung & Designs                  |
-| 📱 Musikplayer     | Eigene Musikdateien auswählbar im Optionen-Menü (dauerhaft loopbar) |
-| 👤 Anpassung       | Spieler-Kopf- und Körpergrafiken über Inventarsystem auswählbar     |
+| 🎵 Musikplayer     | Eigene Musikdateien auswählbar im Optionen-Menü (dauerhaft loopbar) |
+| 🎭 Anpassung       | Spieler-Kopf- und Körpergrafiken über Inventarsystem auswählbar     |
 
 ---
 
-## 🔨 LevelEditor Highlights
+## 🔧 LevelEditor Highlights
 
-* 🌟 **500+ Tiles** im dunklen Stil (Galaxie, Altar, Hanf, Lava, Frost, Venom u.v.m.)
+* 🌠 **500+ Tiles** im dunklen Stil (Galaxie, Altar, Hanf, Lava, Frost, Venom u.v.m.)
 * 🔄 Favoriten, Undo/Redo, Karten speichern und sofort starten
 * ☑️ Mitgelieferte Beispiele in `assets/levels/`
 * ⚖️ Aufrufbar im Spiel per Taste **F2** – nahtlos zwischen Menü und Simulation
@@ -92,7 +96,7 @@
 ### AdminPanel & Effekte
 
 <p align="center">
-  <img src="GamePICs/StartMenü.png" width="300">
+  <img src="Spiel+AdminPanel-open22.4.2025.png" width="300">
   <img src="GamePICs/Boss-Game-Over.png" width="300">
 </p>
 
