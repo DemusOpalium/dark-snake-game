@@ -96,8 +96,8 @@
 ### AdminPanel & Effekte
 
 <p align="center">
-  <img src="Spiel+AdminPanel-open22.4.2025.png" width="300">
-  <img src="GamePICs/Spiel+AdminPanel-open22.4.2025.png" width="300">
+  <img src="GamePICs/Spiel-AdminPanel-open.png" width="300">
+  <img src="GamePICs/Boss-Game-Over.png" width="300">
 </p>
 
 ### Musik- und Hintergrundoptionen
