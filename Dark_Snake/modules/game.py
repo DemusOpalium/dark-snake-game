@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 #
 # Modul: game.py
-# Zweck: Hauptlogik für Dark-Snake inkl. Kollisionsprüfung, Schadensberechnung,
-#        Projektil‑Schusstiming, Health-System, AoE-Effekten etc.
+# Zweck: Hauptlogik fÃ¼r Dark-Snake inkl. KollisionsprÃ¼fung, Schadensberechnung,
+#        Projektilâ€‘Schusstiming, Health-System, AoE-Effekten etc.
 #
 
 import pygame, sys, random, time, os, datetime, json
@@ -14,7 +14,7 @@ from modules.enums import GameState, Direction, ItemType
 from config import (WINDOW_WIDTH, WINDOW_HEIGHT, GRID_SIZE, FPS, GRID_WIDTH, GRID_HEIGHT,
                     DARK_GREY, WHITE, GREEN, RED, PURPLE, ORANGE, GOLDEN, LEADERBOARD_FILE,
                     START_SPEED, MAX_SPEED, PROJECTILE_SPEED_FACTOR, AUTO_SHOOT_INTERVAL, BORDER_SIZE, UI_CONTAINER_HEIGHT)
-# <-- Hier den fehlenden Import hinzufügen:
+# <-- Hier den fehlenden Import hinzufÃ¼gen:
 from modules.graphics import (
     load_image,                          # the helper itself
     SNAKE_HEAD_IMG, SNAKE_HEAD1G20, SNAKE_HEAD2G20, SNAKE_HEAD3G20,
@@ -38,7 +38,7 @@ from modules.options_menu import OptionsMenu, ExtendedOptionsMenu
 from modules.admin_panel import AdminPanel
 from modules.fire_explosion import FireExplosionAnimation
 
-# Boss-Projektil-Grafiken (zufällige Auswahl)
+# Boss-Projektil-Grafiken (zufÃ¤llige Auswahl)
 BOSS_PROJECTILES = []
 for fname in ["Projektil2.png", "Projektil3.png", "Projektil4.png", "Projektil5.png"]:
     path = os.path.join("assets", "graphics", fname)
@@ -331,7 +331,7 @@ class AchievementManager:
         if self.game.portal_effect_active and self.game.portal_effect_type:
             txt = pygame.font.SysFont('Arial', 24, bold=True).render("Portal: " + str(self.game.portal_effect_type), True, PURPLE)
             surface.blit(txt, (WINDOW_WIDTH - txt.get_width() - 20, 60))
-        # === Health-Bar-Funktion für 2-Spieler-Modus ===
+        # === Health-Bar-Funktion fÃ¼r 2-Spieler-Modus ===
 
 def draw_health_bar_two(game):
     # Spieler 1 Health-Bar (links)
@@ -358,7 +358,7 @@ def draw_health_bar_two(game):
     pygame.draw.rect(game.screen, color2, (x2, y, int(bar_width * health_percent2), bar_height))
     pygame.draw.rect(game.screen, WHITE, (x2, y, bar_width, bar_height), 2)
 
-            # === Hauptklasse Game (Finale Version mit Respawn-Unbesiegbarkeit und verbesserter Kollisionsprüfung) ===
+            # === Hauptklasse Game (Finale Version mit Respawn-Unbesiegbarkeit und verbesserter KollisionsprÃ¼fung) ===
 class Game:
     def __init__(self):
         global WINDOW_WIDTH, WINDOW_HEIGHT, GRID_WIDTH, GRID_HEIGHT
@@ -385,7 +385,7 @@ class Game:
             'custom_head_p2': None,
             'custom_body_p2': None,
             'projectile_speed_factor': PROJECTILE_SPEED_FACTOR,
-            'auto_shoot_interval': AUTO_SHOOT_INTERVAL,  # Neuer konfigurierbarer Parameter für die Schussfrequenz
+            'auto_shoot_interval': AUTO_SHOOT_INTERVAL,  # Neuer konfigurierbarer Parameter fÃ¼r die Schussfrequenz
             'enemy_spawn_rate': 0.01,
             'boss_health_multiplier': 1.0
         }
@@ -496,7 +496,7 @@ class Game:
         self.pause_buttons = [
             Button(center_x - 100, WINDOW_HEIGHT // 2, button_width, button_height, "PAUSE",
                    action=lambda: self.set_state(GameState.PAUSE)),
-            Button(center_x - 100, WINDOW_HEIGHT // 2 + 80, button_width, button_height, "HAUPTMENÜ",
+            Button(center_x - 100, WINDOW_HEIGHT // 2 + 80, button_width, button_height, "HAUPTMENÃœ",
                    color=PURPLE, action=lambda: self.confirm_back_to_main()),
             Button(center_x - 100, WINDOW_HEIGHT // 2 + 160, button_width, button_height, "BEENDEN",
                    color=RED, action=lambda: sys.exit())
@@ -504,7 +504,7 @@ class Game:
         self.game_over_buttons = [
             Button(WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT // 2 + 100, button_width, button_height, "NEUSTART",
                    action=lambda: self.reset_game()),
-            Button(WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT // 2 + 180, button_width, button_height, "HAUPTMENÜ",
+            Button(WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT // 2 + 180, button_width, button_height, "HAUPTMENÃœ",
                    color=PURPLE, action=lambda: self.confirm_back_to_main())
         ]
 
@@ -539,7 +539,7 @@ class Game:
         self.settings['bg_music_volume'] = self.music_slider.current_val
         from modules.audio import play_background_music
         play_background_music(selected_option, self.settings['bg_music_volume'])
-        print(f"Hintergrundmusik geändert: {selected_option}")
+        print(f"Hintergrundmusik geÃ¤ndert: {selected_option}")
 
     def start_game(self, players):
         self.player_count = players
@@ -563,7 +563,7 @@ class Game:
         overlay = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.SRCALPHA)
         overlay.fill((0, 0, 0, 200))
         self.screen.blit(overlay, (0, 0))
-        msg = pygame.font.SysFont('Comic Sans MS', 30).render("Zum Hauptmenü?", True, WHITE)
+        msg = pygame.font.SysFont('Comic Sans MS', 30).render("Zum HauptmenÃ¼?", True, WHITE)
         self.screen.blit(msg, (WINDOW_WIDTH // 2 - msg.get_width() // 2, WINDOW_HEIGHT // 2 - msg.get_height() // 2))
         self.admin_panel.draw(self.screen)
         pygame.display.update()
@@ -644,10 +644,10 @@ class Game:
                 break
 
     # --------------------------------------------------------------------
-    # Gleichmäßiger Item-Spawn  –  jedes Item ≈ 9 %  (11 Einträge)
+    # GleichmÃ¤ÃŸiger Item-Spawn  â€“  jedes Item â‰ˆ 9 %  (11 EintrÃ¤ge)
     # --------------------------------------------------------------------
     def spawn_new_item(self):
-        # Liste der möglichen Items – Mehrfach­einträge = höhere Chance
+        # Liste der mÃ¶glichen Items â€“ MehrfachÂ­eintrÃ¤ge = hÃ¶here Chance
         items = [
             ItemType.FOOD,
             ItemType.SPEED_BOOST,
@@ -657,16 +657,16 @@ class Game:
             ItemType.LENGTH_SHORTENER,
             ItemType.LENGTH_DOUBLE,
             ItemType.LOOT_BOX,
-            ItemType.SPAWN_BOLBU,      #  → unsere Bolbu-Kapsel
+            ItemType.SPAWN_BOLBU,      #  â†’ unsere Bolbu-Kapsel
             ItemType.DICE_EVENT,
             ItemType.SPECIAL_DAMAGE,
         ]
 
         itype = random.choice(items)
         if itype == ItemType.SPAWN_BOLBU:
-            print("[DEBUG] Zufälliges SPAWN_BOLBU-Item erzeugt")
+            print("[DEBUG] ZufÃ¤lliges SPAWN_BOLBU-Item erzeugt")
 
-        # freie Feld­position suchen
+        # freie FeldÂ­position suchen
         while True:
             new_item = Item(itype)
             occ = (self.snake1 + self.snake2) if self.player_count == 2 else self.snake
@@ -837,7 +837,7 @@ class Game:
 
     def auto_shoot(self):
         current_time = time.time()
-            # Prüft, ob der Effekt noch aktiv ist
+            # PrÃ¼ft, ob der Effekt noch aktiv ist
         if self.effects['projectile_shoot'] > current_time:
             if self.player_count == 1:
                 # Verwende den konfigurierten Auto-Shoot-Intervall statt 3 Sekunden
@@ -853,7 +853,7 @@ class Game:
                     self.last_auto_shoot2 = current_time
                     self.auto_shoot_for_head(self.snake2[0], self.snake_direction2)
 
-    # === Haupt‑Update‑Schleife ===============================================
+    # === Hauptâ€‘Updateâ€‘Schleife ===============================================
     def update(self):
         current_time = time.time()
         # === [KS_FIX: PORTAL VISUAL RESTORE] ===
@@ -865,14 +865,14 @@ class Game:
             self.background = self.level_background_surface
             print("[DEBUG] Editor-Karte neu geladen und gesetzt.")
 
-        # ───────────────────────── 1) Cooldowns & Auto‑Shoot ─────────────────────────
+        # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ 1) Cooldowns & Autoâ€‘Shoot â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         if self.fireball_cooldown_p1 > 0:
             self.fireball_cooldown_p1 -= 1
         if self.fireball_cooldown_p2 > 0:
             self.fireball_cooldown_p2 -= 1
         if self.fireball_cooldown > 0:
             self.fireball_cooldown -= 1
-        # Flammen­geschosse leben lassen / entfernen
+        # FlammenÂ­geschosse leben lassen / entfernen
         self.flame_projectiles = [p for p in self.flame_projectiles if p.update()]
         self.boss_flame_projectiles = [p for p in self.boss_flame_projectiles if p.update()]
 
@@ -888,7 +888,7 @@ class Game:
 #             self.enemies.append(enemy)    # removed by patch to avoid UnboundLocalError
 
         for enemy in self.enemies:
-            # Pass Spielerposition für smartere Gegner
+            # Pass Spielerposition fÃ¼r smartere Gegner
             if self.player_count == 1 and self.snake:
                 px, py = self.snake[0]
             elif self.player_count == 2 and self.snake1:
@@ -899,14 +899,14 @@ class Game:
             if hasattr(enemy, 'projectiles'):
                 self.enemy_projectiles.extend(enemy.projectiles)
 
-        # AoE‑Zonen zeichnen (wird später noch gebraucht)
+        # AoEâ€‘Zonen zeichnen (wird spÃ¤ter noch gebraucht)
         for zone in self.aoe_zones:
             zone.draw(self.screen)
         for explosion in self.explosions:
             explosion.draw(self.screen)
 
-        # ───────────────────────── 3) Kollisions­prüfungen ───────────────────────────
-            # --- Sichere Kollisionsprüfung für klassische Projektile ---
+        # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ 3) KollisionsÂ­prÃ¼fungen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            # --- Sichere KollisionsprÃ¼fung fÃ¼r klassische Projektile ---
         for enemy in self.enemies[:]:
             enemy_rect = enemy.get_rect()
             enemy_rect.x += (GRID_SIZE - enemy_rect.width) // 2
@@ -959,7 +959,7 @@ class Game:
 
         # ---------- 3a)  **FlameProjectile**  ----------
         for flame in self.flame_projectiles[:]:
-            # → Boss treffen
+            # â†’ Boss treffen
             if self.boss:
                 boss_rect = self.boss.get_rect().inflate(-10, -10)
                 if flame.rect.colliderect(boss_rect):
@@ -968,7 +968,7 @@ class Game:
                     self.flame_projectiles.remove(flame)
                     break  # <-- korrekt beendet
 
-            # → normalen Gegner treffen
+            # â†’ normalen Gegner treffen
             for enemy in self.enemies[:]:
                 enemy_rect = enemy.get_rect()
                 enemy_rect.x += (GRID_SIZE - enemy_rect.width) // 2
@@ -1030,9 +1030,9 @@ class Game:
                             self.boss_flame_projectiles.remove(proj)
 
 
-        # … (Spieler‑ und Boss‑Kollisionen, AoE‑Handling, Bewegung,
-        #     Item‑Aufnahme, Boss‑Logik, Projektil‑Update usw. – unverändert wie besprochen) …
-        # Kollisionsprüfung Spieler (Singleplayer)
+        # â€¦ (Spielerâ€‘ und Bossâ€‘Kollisionen, AoEâ€‘Handling, Bewegung,
+        #     Itemâ€‘Aufnahme, Bossâ€‘Logik, Projektilâ€‘Update usw. â€“ unverÃ¤ndert wie besprochen) â€¦
+        # KollisionsprÃ¼fung Spieler (Singleplayer)
         if self.player_count == 1 and self.snake:
             head_rect = pygame.Rect(self.snake[0][0] * GRID_SIZE,
                                     self.snake[0][1] * GRID_SIZE,
@@ -1041,14 +1041,14 @@ class Game:
                 self.activate_portal(self.portal.event)
                 self.portal_effect_active = True
                 self.portal = None
-            # Prüfe, ob der Spieler stillsteht (kein Positionswechsel)
+            # PrÃ¼fe, ob der Spieler stillsteht (kein Positionswechsel)
             current_head = self.snake[0]
             if self.last_head_pos is None or current_head != self.last_head_pos:
-                # Bewegung festgestellt → Timer zurücksetzen
+                # Bewegung festgestellt â†’ Timer zurÃ¼cksetzen
                 self.last_head_pos = current_head
                 self.still_timer = None
             else:
-                # Kein Positionswechsel – Timer starten bzw. fortschreiben
+                # Kein Positionswechsel â€“ Timer starten bzw. fortschreiben
                 if self.still_timer is None:
                     self.still_timer = current_time
                 else:
@@ -1058,12 +1058,12 @@ class Game:
                     countdown_text = pygame.font.SysFont('Arial', 40, bold=True).render(f"{countdown:.1f}", True, RED)
                     self.screen.blit(countdown_text, ((WINDOW_WIDTH - countdown_text.get_width()) // 2,
                                                       (WINDOW_HEIGHT - countdown_text.get_height()) // 2))
-                    # Wenn der Spieler insgesamt 2,5 Sek. stillgestanden hat → Respawn auslösen
+                    # Wenn der Spieler insgesamt 2,5 Sek. stillgestanden hat â†’ Respawn auslÃ¶sen
                     if still_elapsed >= 2.5:
                         self.handle_self_collision()
-                        self.still_timer = None  # Timer zurücksetzen, damit nicht mehrfach ausgelöst wird
+                        self.still_timer = None  # Timer zurÃ¼cksetzen, damit nicht mehrfach ausgelÃ¶st wird
 
-            # Zusätzlich die herkömmliche Kollisionsprüfung mit Gegnern:
+            # ZusÃ¤tzlich die herkÃ¶mmliche KollisionsprÃ¼fung mit Gegnern:
             # (Falls der Kopf mit einem Gegner kollidiert)
             for enemy in self.enemies:
                 enemy_rect = enemy.get_rect()
@@ -1075,7 +1075,7 @@ class Game:
                         self.handle_death()
                     break
         elif self.player_count == 2:
-            # Mehrspieler-Kollisionen (unverändert)
+            # Mehrspieler-Kollisionen (unverÃ¤ndert)
             for snake, health_attr in [(self.snake1, 'player_health_p1'),
                                          (self.snake2, 'player_health_p2')]:
                 if snake:
@@ -1419,7 +1419,7 @@ class Game:
                 self.score += 300
                 self.experience = self.exp_to_next_level
             elif self.dice_result > 15:
-                self.add_achievement("Großer Erfolg!")
+                self.add_achievement("GroÃŸer Erfolg!")
                 self.score += self.dice_result * 5
                 self.experience += self.dice_result * 2
             elif self.dice_result > 10:
@@ -1467,9 +1467,9 @@ class Game:
         # Spiele den Schadens-Sound (sofern vorhanden)
         if SOUNDS.get("damage"):
             SOUNDS["damage"].play()
-        # Ziehe ein Leben ab, aber nur, wenn noch Leben übrig sind
+        # Ziehe ein Leben ab, aber nur, wenn noch Leben Ã¼brig sind
         self.lives -= 1
-        print("DEBUG: Selbstkollision erkannt – Leben abgezogen, verbleibende Leben:", self.lives)
+        print("DEBUG: Selbstkollision erkannt â€“ Leben abgezogen, verbleibende Leben:", self.lives)
     
         # Falls noch Leben vorhanden, respawne die Schlange (nur im Singleplayer; in Mehrspieler anpassen)
         if self.lives > 0:
@@ -1477,9 +1477,9 @@ class Game:
                 self.snake = [(GRID_WIDTH // 2, GRID_HEIGHT // 2)]
                 self.snake_direction = Direction.RIGHT
                 self.next_direction = Direction.RIGHT
-                self.player_health = 100  # Setze den Gesundheitswert zurück
+                self.player_health = 100  # Setze den Gesundheitswert zurÃ¼ck
             else:
-                # Für Mehrspieler können ähnlich beide Schlangen zurückgesetzt werden
+                # FÃ¼r Mehrspieler kÃ¶nnen Ã¤hnlich beide Schlangen zurÃ¼ckgesetzt werden
                 self.snake1 = [(GRID_WIDTH // 2, GRID_HEIGHT // 2)]
                 self.snake2 = [(GRID_WIDTH // 2, GRID_HEIGHT // 2)]
                 self.snake_direction1 = Direction.RIGHT
@@ -1591,7 +1591,7 @@ class Game:
                                 self.flame_projectiles.append(flame)
                                 self.fireball_cooldown_p1 = FPS * 2  # 2 Sekunden
                         else:
-                            if event.key == pygame.K_SPACE:  # Spieler 1 schießt mit SPACE
+                            if event.key == pygame.K_SPACE:  # Spieler 1 schieÃŸt mit SPACE
                                 if self.fireball_cooldown_p1 <= 0:
                                     head = self.snake1[0]
                                     direction = self.snake_direction1
@@ -1600,7 +1600,7 @@ class Game:
                                     flame = FlameProjectile(head_px, head_py, direction.value)
                                     self.flame_projectiles.append(flame)
                                     self.fireball_cooldown_p1 = FPS * 2
-                            elif event.key in (pygame.K_PLUS, pygame.K_KP_PLUS):  # Spieler 2 schießt mit PLUS/Controller
+                            elif event.key in (pygame.K_PLUS, pygame.K_KP_PLUS):  # Spieler 2 schieÃŸt mit PLUS/Controller
                                 if self.fireball_cooldown_p2 <= 0:
                                     head = self.snake2[0]
                                     direction = self.snake_direction2
@@ -1665,7 +1665,7 @@ class Game:
                                 print("DEBUG: ExtraZone erzeugt, aber KEIN Effektbild gefunden!")
                             else:
                                 print("DEBUG: ExtraZone mit Effektbild erzeugt an Position:", pos)
-                        elif event.unicode == "ü":
+                        elif event.unicode == "Ã¼":
                             from modules.aoe_zones import BackgroundEffectZone
                             try:
                                 bg_image = pygame.image.load("assets/graphics/AOEEffekte/Backround0021.png").convert_alpha()
@@ -1777,9 +1777,9 @@ class Game:
             btn.draw(self.screen)
 
     def draw_game(self):
-        # 1. Raster (Hintergrund) zeichnen – unterste Ebene
+        # 1. Raster (Hintergrund) zeichnen â€“ unterste Ebene
         self.screen.blit(self.background, (0, 0))
-        # 2. AoE-Effekte zeichnen – liegen zwischen Raster und dynamischen Objekten
+        # 2. AoE-Effekte zeichnen â€“ liegen zwischen Raster und dynamischen Objekten
         for zone in self.aoe_zones:
             zone.draw(self.screen)
         # 3. Dynamische Spielobjekte (Spielerebene) zeichnen:
@@ -1958,7 +1958,7 @@ class Game:
         self.draw_hud()
         if self.dice_result is not None and time.time() <= self.dice_display_until:
             self.draw_dice_result()
-    # Zeichnet das Ergebnis des Würfelwurfs in der Mitte des Bildschirms.
+    # Zeichnet das Ergebnis des WÃ¼rfelwurfs in der Mitte des Bildschirms.
     def draw_dice_result(self):
         dice_rect = pygame.Rect(WINDOW_WIDTH // 2 - 50, WINDOW_HEIGHT // 2 - 50, 100, 100)
         pygame.draw.rect(self.screen, PURPLE, dice_rect, border_radius=15)
@@ -1976,7 +1976,7 @@ class Game:
         elif self.dice_result == 20:
             desc = pygame.font.SysFont('Arial', 20).render("Kritischer Erfolg!", True, GOLDEN)
         elif self.dice_result > 15:
-            desc = pygame.font.SysFont('Arial', 20).render("Großer Erfolg!", True, GREEN)
+            desc = pygame.font.SysFont('Arial', 20).render("GroÃŸer Erfolg!", True, GREEN)
         elif self.dice_result > 10:
             desc = pygame.font.SysFont('Arial', 20).render("Erfolg", True, GREEN)
         elif self.dice_result > 5:
@@ -2033,7 +2033,7 @@ class Game:
         self.screen.blit(title_txt, (WINDOW_WIDTH // 2 - title_txt.get_width() // 2, 50))
         y_pos = 150
         if not self.leaderboard:
-            none_txt = pygame.font.SysFont('Arial', 30).render("Keine Einträge vorhanden", True, WHITE)
+            none_txt = pygame.font.SysFont('Arial', 30).render("Keine EintrÃ¤ge vorhanden", True, WHITE)
             self.screen.blit(none_txt, (WINDOW_WIDTH // 2 - none_txt.get_width() // 2, y_pos))
         else:
             for i, (name, score) in enumerate(self.leaderboard[:10]):
@@ -2041,7 +2041,7 @@ class Game:
                 entry_txt = pygame.font.SysFont('Arial', 30).render(f"{i+1}. {name}: {score}", True, col)
                 self.screen.blit(entry_txt, (WINDOW_WIDTH // 2 - 150, y_pos))
                 y_pos += 40
-        back_btn = Button(WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT - 80, 200, 60, "ZURÜCK", color=PURPLE, action=lambda: self.confirm_back_to_main())
+        back_btn = Button(WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT - 80, 200, 60, "ZURÃœCK", color=PURPLE, action=lambda: self.confirm_back_to_main())
         back_btn.draw(self.screen)
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN and event.key == pygame.K_F2:
@@ -2071,12 +2071,12 @@ class Game:
     # [KS_TAG: LEVEL_EDITOR_BACKGROUND]
     def build_background_from_map(self):
         """
-        Wandelt die Level-Karte in eine Hintergrund-Oberfläche um.
+        Wandelt die Level-Karte in eine Hintergrund-OberflÃ¤che um.
         Wird vom LevelEditor beim Simulieren verwendet.
         """
         from modules.graphics import get_tile  # Zentrale Tile-Zugriffs-Funktion
         if not hasattr(self, "level_map") or not self.level_map:
-            print("[DEBUG] Keine Level-Karte gesetzt – Hintergrund bleibt leer.")
+            print("[DEBUG] Keine Level-Karte gesetzt â€“ Hintergrund bleibt leer.")
             return
 
         surf = pygame.Surface((GRID_WIDTH * GRID_SIZE, GRID_HEIGHT * GRID_SIZE), pygame.SRCALPHA)
@@ -2092,7 +2092,7 @@ class Game:
     def boss_shoots_flame(self):
         from modules.boss_projectiles import BossFlameProjectile
         if not self.boss:
-            print("[DEBUG] Kein Boss vorhanden – BossFlameProjectile nicht erzeugt.")
+            print("[DEBUG] Kein Boss vorhanden â€“ BossFlameProjectile nicht erzeugt.")
             return
 
         if self.player_count == 1 and self.snake:
@@ -2100,7 +2100,7 @@ class Game:
         elif self.player_count == 2 and self.snake1:
             target = self.snake1[0]
         else:
-            print("[DEBUG] Kein Ziel vorhanden – BossFlameProjectile nicht erzeugt.")
+            print("[DEBUG] Kein Ziel vorhanden â€“ BossFlameProjectile nicht erzeugt.")
             return
 
         dx = target[0] - self.boss.x
@@ -2173,7 +2173,7 @@ class FlameProjectile:
 if __name__ == "__main__":
     game = Game()
     game.run()
-    input("\n[Drücke Enter zum Schließen des Spiels...]")
+    input("\n[DrÃ¼cke Enter zum SchlieÃŸen des Spiels...]")
 
     # [KS_TAG: ADMIN_HOOKS]
     def spawn_item_at(self, item_type, x, y):
