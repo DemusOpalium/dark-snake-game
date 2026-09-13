@@ -1,9 +1,12 @@
-"""In-game controls for the headless developer simulation."""
+"""Responsive in-game controls for the developer simulation."""
 
 from __future__ import annotations
 
 import json
-import threading
+import multiprocessing
+import queue
+import time
+import traceback
 
 import pygame
 
@@ -13,65 +16,182 @@ from modules.resources import user_data_path
 from modules.ui import Button
 
 
+def simulation_worker(messages, resume_event, cancel_event, options):
+    """Process entry point.  It deliberately contains no UI or pygame calls."""
+    control = SimulationControl(resume_event, cancel_event)
+    try:
+        messages.put({"type": "started"})
+        report = run_simulation(control=control, progress=messages.put, **options)
+        messages.put({"type": "finished", "report": report,
+                      "cancelled": control.cancelled})
+    except BaseException as exc:
+        messages.put({"type": "fatal", "error": f"{type(exc).__name__}: {exc}",
+                      "traceback": "".join(traceback.format_exception(exc))})
+
+
 class SimulationMenu:
-    """Small non-blocking front end; the pygame event loop stays on the main thread."""
+    """Non-blocking front end; pygame remains exclusively on the main thread."""
 
     SCENARIOS = ("1p", "2p", "boss", "portal", "aoe", "projectiles", "bolbu",
                  "restart", "game_over")
     SPEEDS = (0.25, 1.0, 5.0, 20.0)
+    TIMEOUT_SECONDS = 10.0
 
-    def __init__(self, game):
+    def __init__(self, game, process_context=None, monotonic=time.monotonic):
         self.game = game
+        self._context = process_context or multiprocessing.get_context("spawn")
+        self._monotonic = monotonic
         self.scenario_index = 0
         self.rounds = 3
         self.speed_index = 2
-        self.control = None
-        self.thread = None
+        self.process = self.messages = self.resume_event = self.cancel_event = None
         self.report = None
         self.status = "Bereit"
+        self.current_scenario = "–"
+        self.current_round = self.completed = self.errors = 0
+        self.total = self.rounds
+        self.last_error = None
+        self.last_message_at = None
         self.focus = 0
-        x, y, w, h = WINDOW_WIDTH // 2 - 260, 260, 155, 42
+
+        scale = WINDOW_HEIGHT / 620
+        w, h, gap = int(260 * scale), int(40 * scale), int(8 * scale)
+        x, y = WINDOW_WIDTH // 2 - w // 2, int(190 * scale)
         actions = (self.start, self.pause, self.cancel, self.save_text, self.save_json,
-                   lambda: game.set_state(game.intro_state()))
+                   self.back)
         labels = ("Start", "Pause", "Abbrechen", "TXT speichern", "JSON speichern", "Zurück")
-        self.buttons = [Button(x + (i % 3) * (w + 25), y + (i // 3) * 58, w, h,
-                               labels[i], color=RED if i == 2 else PURPLE, action=actions[i])
-                        for i in range(len(labels))]
+        self.buttons = [Button(x, y + i * (h + gap), w, h, label,
+                               color=RED if i == 2 else PURPLE, action=action)
+                        for i, (label, action) in enumerate(zip(labels, actions))]
 
     @property
     def running(self):
-        return bool(self.thread and self.thread.is_alive())
+        return bool(self.process and self.process.is_alive())
 
     def start(self):
+        self.poll()
         if self.running:
             return
+        self._dispose_worker()
         self.report = None
-        self.control = SimulationControl()
-        self.status = "Simulation läuft …"
-        scenario = self.SCENARIOS[self.scenario_index]
-
-        def worker():
-            self.report = run_simulation(self.rounds, steps=120,
-                                         step_seconds=self.SPEEDS[self.speed_index],
-                                         scenarios=(scenario,), control=self.control)
-            self.status = "Abgebrochen" if self.control.cancelled else "Abgeschlossen"
-
-        self.thread = threading.Thread(target=worker, name="DarkSnakeSimulation", daemon=True)
-        self.thread.start()
+        self.status = "Läuft"
+        self.current_scenario = self.SCENARIOS[self.scenario_index]
+        self.current_round = self.completed = self.errors = 0
+        self.total = self.rounds
+        self.last_error = None
+        self.messages = self._context.Queue()
+        self.resume_event = self._context.Event()
+        self.resume_event.set()
+        self.cancel_event = self._context.Event()
+        options = {"rounds": self.rounds, "steps": 120,
+                   "step_seconds": self.SPEEDS[self.speed_index],
+                   "scenarios": (self.current_scenario,)}
+        self.process = self._context.Process(
+            target=simulation_worker,
+            args=(self.messages, self.resume_event, self.cancel_event, options),
+            name="DarkSnakeSimulation", daemon=True)
+        self.last_message_at = self._monotonic()
+        self.process.start()
 
     def pause(self):
-        if self.control and self.running:
-            self.control.toggle_pause()
-            self.status = "Pausiert" if self.control.paused else "Simulation läuft …"
+        if not self.running or not self.resume_event:
+            return
+        if self.resume_event.is_set():
+            self.resume_event.clear()
+            self.status = "Pausiert"
+        else:
+            self.resume_event.set()
+            self.status = "Läuft"
+            self.last_message_at = self._monotonic()
 
     def cancel(self):
-        if self.control:
-            self.control.cancel()
-            self.status = "Abbruch wird ausgeführt …"
+        if not self.process:
+            return
+        if self.cancel_event:
+            self.cancel_event.set()
+        if self.resume_event:
+            self.resume_event.set()
+        self.status = "Abgebrochen"
+        self._stop_worker()
+
+    def back(self):
+        self.cancel()
+        self._reset_run_state()
+        self.game.set_state(self.game.intro_state())
+
+    def poll(self):
+        """Consume worker messages; call once per UI frame."""
+        if self.messages:
+            while True:
+                try:
+                    message = self.messages.get_nowait()
+                except queue.Empty:
+                    break
+                self.last_message_at = self._monotonic()
+                kind = message.get("type")
+                if kind == "progress":
+                    self.current_scenario = message["scenario"]
+                    self.current_round = message["round"]
+                    self.completed = message["completed"]
+                    self.total = message["total"]
+                    self.errors = message["errors"]
+                    self.last_error = message.get("last_error")
+                elif kind == "fatal":
+                    self.status = "Fehler"
+                    self.errors += 1
+                    self.last_error = message["error"]
+                    failure = {"seed": 0, "scenario": self.current_scenario,
+                               "game_time": 0.0, "game_state": "not_initialized",
+                               "level": 0, "score": 0, "exception": "WorkerError",
+                               "code_line": "simulation_worker", "stacktrace": message["traceback"]}
+                    self.report = {"configuration": {"base_seed": None}, "runs": [failure],
+                                   "failure_groups": {"WorkerError@simulation_worker": [failure]}}
+                    traceback_path = user_data_path("simulation-traceback.txt")
+                    with open(traceback_path, "w", encoding="utf-8") as output:
+                        output.write(message["traceback"])
+                    self._stop_worker()
+                    return
+                elif kind == "finished":
+                    self.report = message["report"]
+                    self.status = "Abgebrochen" if message["cancelled"] else "Fertig"
+                    self._dispose_worker()
+                    return
+
+        paused = self.resume_event is not None and not self.resume_event.is_set()
+        if (self.running and not paused and self.last_message_at is not None and
+                self._monotonic() - self.last_message_at > self.TIMEOUT_SECONDS):
+            self.status = "Fehler"
+            self.last_error = "Simulation antwortet nicht"
+            self.errors += 1
+            self._stop_worker()
+
+    def _stop_worker(self):
+        process = self.process
+        if process and process.is_alive():
+            process.terminate()
+            process.join(timeout=1)
+        self._dispose_worker()
+
+    def _dispose_worker(self):
+        if self.process and not self.process.is_alive():
+            self.process.join(timeout=0)
+        if self.messages:
+            self.messages.close()
+        self.process = self.messages = self.resume_event = self.cancel_event = None
+        self.last_message_at = None
+
+    def _reset_run_state(self):
+        self.report = None
+        self.status = "Bereit"
+        self.current_scenario = "–"
+        self.current_round = self.completed = self.errors = 0
+        self.total = self.rounds
+        self.last_error = None
 
     def _save(self, kind):
         if not self.report:
-            self.status = "Noch kein Bericht vorhanden"
+            self.status = "Fehler"
+            self.last_error = "Noch kein Bericht vorhanden"
             return
         path = user_data_path(f"simulation-report.{kind}")
         content = (format_text_report(self.report) if kind == "txt" else
@@ -84,6 +204,10 @@ class SimulationMenu:
     def save_json(self): self._save("json")
 
     def handle_event(self, event):
+        self.poll()
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+            self.back()
+            return
         if event.type == pygame.MOUSEMOTION:
             for button in self.buttons:
                 button.check_hover(event.pos)
@@ -93,17 +217,9 @@ class SimulationMenu:
                     self.focus = i
                     button.check_hover(event.pos)
                     button.handle_event(event)
-            # Clickable selectors, placed above the action buttons.
-            if 225 <= event.pos[1] <= 250:
-                if event.pos[0] < WINDOW_WIDTH // 2:
-                    self.scenario_index = (self.scenario_index + 1) % len(self.SCENARIOS)
-                elif event.pos[0] < WINDOW_WIDTH // 2 + 150:
-                    self.rounds = 1 if self.rounds >= 99 else self.rounds + 1
-                else:
-                    self.speed_index = (self.speed_index + 1) % len(self.SPEEDS)
         elif event.type == pygame.KEYDOWN:
-            if event.key in (pygame.K_TAB, pygame.K_RIGHT): self.focus = (self.focus + 1) % len(self.buttons)
-            elif event.key == pygame.K_LEFT: self.focus = (self.focus - 1) % len(self.buttons)
+            if event.key in (pygame.K_TAB, pygame.K_DOWN): self.focus = (self.focus + 1) % len(self.buttons)
+            elif event.key == pygame.K_UP: self.focus = (self.focus - 1) % len(self.buttons)
             elif event.key in (pygame.K_RETURN, pygame.K_SPACE): self.buttons[self.focus].action()
             elif event.key == pygame.K_s: self.scenario_index = (self.scenario_index + 1) % len(self.SCENARIOS)
             elif event.key in (pygame.K_PLUS, pygame.K_KP_PLUS): self.rounds = min(99, self.rounds + 1)
@@ -111,27 +227,30 @@ class SimulationMenu:
             elif event.key == pygame.K_g: self.speed_index = (self.speed_index + 1) % len(self.SPEEDS)
 
     def draw(self, screen):
+        self.poll()
+        scale = WINDOW_HEIGHT / 620
         screen.fill((18, 18, 22))
-        title = pygame.font.SysFont("Arial", 38, bold=True).render("Entwickler-Simulation", True, ORANGE)
-        screen.blit(title, title.get_rect(center=(WINDOW_WIDTH // 2, 70)))
-        font = pygame.font.SysFont("Arial", 22)
-        info = (f"Szenario [S]: {self.SCENARIOS[self.scenario_index].upper()}     "
-                f"Runden [+/-]: {self.rounds}     Geschwindigkeit [G]: {self.SPEEDS[self.speed_index]}×")
-        screen.blit(font.render(info, True, WHITE), (WINDOW_WIDTH // 2 - 350, 150))
-        runs = len(self.report["runs"]) if self.report else (self.control.completed if self.control else 0)
-        total = self.rounds
-        errors = (sum(len(v) for v in self.report["failure_groups"].values()) if self.report else
-                  (self.control.errors if self.control else 0))
-        progress = min(1.0, runs / max(1, total))
-        pygame.draw.rect(screen, DARK_GREY, (WINDOW_WIDTH // 2 - 300, 195, 600, 20))
-        pygame.draw.rect(screen, ORANGE, (WINDOW_WIDTH // 2 - 300, 195, int(600 * progress), 20))
-        screen.blit(font.render(f"Fortschritt: {runs}/{total}   Fehler: {errors}", True, WHITE),
-                    (WINDOW_WIDTH // 2 - 300, 220))
+        title_font = pygame.font.SysFont("Arial", int(32 * scale), bold=True)
+        font = pygame.font.SysFont("Arial", int(18 * scale))
+        title = title_font.render("Entwickler-Simulation", True, ORANGE)
+        screen.blit(title, title.get_rect(center=(WINDOW_WIDTH // 2, int(42 * scale))))
+        info = (f"Szenario [S]: {self.SCENARIOS[self.scenario_index].upper()}   "
+                f"Runden [+/-]: {self.rounds}   Tempo [G]: {self.SPEEDS[self.speed_index]}×")
+        screen.blit(font.render(info, True, WHITE), (int(90 * scale), int(82 * scale)))
+        progress = min(1.0, self.completed / max(1, self.total))
+        bar = pygame.Rect(int(150 * scale), int(116 * scale), int(600 * scale), int(18 * scale))
+        pygame.draw.rect(screen, DARK_GREY, bar)
+        pygame.draw.rect(screen, ORANGE, (bar.x, bar.y, int(bar.width * progress), bar.height))
+        detail = (f"Fortschritt: {self.completed}/{self.total}   Szenario: {self.current_scenario}   "
+                  f"Runde: {self.current_round}   Fehler: {self.errors}")
+        screen.blit(font.render(detail, True, WHITE), (int(150 * scale), int(140 * scale)))
         for i, button in enumerate(self.buttons):
             button.is_hovered = button.is_hovered or i == self.focus
             button.draw(screen)
-            if i != self.focus: button.is_hovered = False
-        last = self.control.last_error if self.control else None
-        lines = [self.status, "Letzter Fehler: " + (last or "–")]
-        for i, line in enumerate(lines):
-            screen.blit(font.render(line[:100], True, WHITE), (WINDOW_WIDTH // 2 - 300, 405 + i * 32))
+            if i != self.focus:
+                button.is_hovered = False
+        screen.blit(font.render(f"Status: {self.status}", True, WHITE),
+                    (int(150 * scale), int(500 * scale)))
+        error = "Letzter Fehler: " + (self.last_error or "–")
+        screen.blit(font.render(error[:100], True, WHITE),
+                    (int(150 * scale), int(530 * scale)))

@@ -19,10 +19,10 @@ from unittest.mock import patch
 
 class SimulationControl:
     """Thread-safe cooperative pause/cancel and live progress state."""
-    def __init__(self):
-        self._resume = threading.Event()
+    def __init__(self, resume_event=None, cancel_event=None):
+        self._resume = resume_event or threading.Event()
         self._resume.set()
-        self._cancel = threading.Event()
+        self._cancel = cancel_event or threading.Event()
         self.completed = 0
         self.errors = 0
         self.last_error = None
@@ -135,7 +135,7 @@ def _failure_location(exc: BaseException) -> str:
 
 def run_simulation(rounds: int = 3, steps: int = 120, step_seconds: float = 1.0,
                    base_seed: int | None = None, scenarios=None,
-                   control: SimulationControl | None = None) -> dict:
+                   control: SimulationControl | None = None, progress=None) -> dict:
     """Führt alle Szenarien mit echter Spiellogik und einer virtuellen Uhr aus."""
     os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
     os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
@@ -144,8 +144,10 @@ def run_simulation(rounds: int = 3, steps: int = 120, step_seconds: float = 1.0,
         import pygame
         from modules.game import Game
 
+        # The simulator owns no window.  In particular, never call display/event
+        # APIs here: this function can run in a child process while the real
+        # pygame window remains responsive in its main process.
         pygame.init()
-        pygame.display.set_mode((1, 1))
     available = _scenario_actions()
     scenarios = available if scenarios is None else {name: available[name] for name in scenarios}
     control = control or SimulationControl()
@@ -162,11 +164,16 @@ def run_simulation(rounds: int = 3, steps: int = 120, step_seconds: float = 1.0,
             game = None
             started_at = clock.time()
             try:
+                if progress:
+                    progress({"type": "progress", "scenario": name,
+                              "round": round_number + 1, "completed": control.completed,
+                              "total": rounds * len(scenarios), "errors": control.errors,
+                              "last_error": control.last_error})
                 # Alle Gameplay-Module verwenden dasselbe `time`-Modul. Der Patch ist
                 # auf einen Lauf begrenzt und wird anschließend sicher zurückgenommen.
                 with patch("time.time", clock.time), contextlib.redirect_stdout(io.StringIO()), \
                         contextlib.redirect_stderr(io.StringIO()):
-                    game = Game()
+                    game = Game(headless=True)
                     setup(game)
                     for _ in range(steps):
                         if not control.checkpoint():
@@ -174,6 +181,9 @@ def run_simulation(rounds: int = 3, steps: int = 120, step_seconds: float = 1.0,
                         clock.advance(step_seconds)
                         if _state_name(game) in ("GAME", "BOSS_FIGHT"):
                             game.update()
+                        if progress and _ % 10 == 0:
+                            progress({"type": "heartbeat", "scenario": name,
+                                      "round": round_number + 1})
                 results.append(RunResult(seed, name, clock.time() - started_at,
                                          _state_name(game), game.level, game.score))
             except Exception as exc:  # Der Simulator muss weitere Seeds noch prüfen.
@@ -191,6 +201,11 @@ def run_simulation(rounds: int = 3, steps: int = 120, step_seconds: float = 1.0,
                 control.errors += 1
                 control.last_error = f"{name}, Seed {seed}: {type(exc).__name__}: {exc}"
             control.completed += 1
+            if progress:
+                progress({"type": "progress", "scenario": name,
+                          "round": round_number + 1, "completed": control.completed,
+                          "total": rounds * len(scenarios), "errors": control.errors,
+                          "last_error": control.last_error})
         if control.cancelled:
             break
 
