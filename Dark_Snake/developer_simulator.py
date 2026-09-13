@@ -137,17 +137,16 @@ def run_simulation(rounds: int = 3, steps: int = 120, step_seconds: float = 1.0,
                    base_seed: int | None = None, scenarios=None,
                    control: SimulationControl | None = None, progress=None) -> dict:
     """Führt alle Szenarien mit echter Spiellogik und einer virtuellen Uhr aus."""
-    os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
-    os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
+    os.environ["SDL_VIDEODRIVER"] = "dummy"
+    os.environ["SDL_AUDIODRIVER"] = "dummy"
     os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
     with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
         import pygame
-        from modules.game import Game
-
-        # The simulator owns no window.  In particular, never call display/event
-        # APIs here: this function can run in a child process while the real
-        # pygame window remains responsive in its main process.
         pygame.init()
+        pygame.font.init()
+        # Dummy creates no visible OS window, but enables convert_alpha().
+        pygame.display.set_mode((1, 1), pygame.HIDDEN)
+        from modules.game import Game
     available = _scenario_actions()
     scenarios = available if scenarios is None else {name: available[name] for name in scenarios}
     control = control or SimulationControl()
