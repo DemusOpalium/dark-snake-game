@@ -11,9 +11,29 @@ import os
 import random
 import time
 import traceback
+import threading
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from unittest.mock import patch
+
+
+class SimulationControl:
+    """Thread-safe cooperative pause/cancel and live progress state."""
+    def __init__(self):
+        self._resume = threading.Event()
+        self._resume.set()
+        self._cancel = threading.Event()
+        self.completed = 0
+        self.errors = 0
+        self.last_error = None
+
+    @property
+    def paused(self): return not self._resume.is_set()
+    @property
+    def cancelled(self): return self._cancel.is_set()
+    def toggle_pause(self): self._resume.clear() if self._resume.is_set() else self._resume.set()
+    def cancel(self): self._cancel.set(); self._resume.set()
+    def checkpoint(self): self._resume.wait(); return not self.cancelled
 
 
 @dataclass
@@ -79,7 +99,7 @@ def _scenario_actions():
         game.start_game(1)
         game.score = 123
         game.reset_game()
-        game.set_state(GameState.GAME)
+        game.start_game(1)
 
     def game_over(game):
         game.start_game(1)
@@ -114,7 +134,8 @@ def _failure_location(exc: BaseException) -> str:
 
 
 def run_simulation(rounds: int = 3, steps: int = 120, step_seconds: float = 1.0,
-                   base_seed: int | None = None) -> dict:
+                   base_seed: int | None = None, scenarios=None,
+                   control: SimulationControl | None = None) -> dict:
     """Führt alle Szenarien mit echter Spiellogik und einer virtuellen Uhr aus."""
     os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
     os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
@@ -125,12 +146,16 @@ def run_simulation(rounds: int = 3, steps: int = 120, step_seconds: float = 1.0,
 
         pygame.init()
         pygame.display.set_mode((1, 1))
-    scenarios = _scenario_actions()
+    available = _scenario_actions()
+    scenarios = available if scenarios is None else {name: available[name] for name in scenarios}
+    control = control or SimulationControl()
     first_seed = random.SystemRandom().randrange(2**32) if base_seed is None else base_seed
     results = []
 
     for round_number in range(rounds):
         for scenario_number, (name, setup) in enumerate(scenarios.items()):
+            if not control.checkpoint():
+                break
             seed = (first_seed + round_number * len(scenarios) + scenario_number) % (2**32)
             random.seed(seed)
             clock = SimulatedClock()
@@ -144,6 +169,8 @@ def run_simulation(rounds: int = 3, steps: int = 120, step_seconds: float = 1.0,
                     game = Game()
                     setup(game)
                     for _ in range(steps):
+                        if not control.checkpoint():
+                            break
                         clock.advance(step_seconds)
                         if _state_name(game) in ("GAME", "BOSS_FIGHT"):
                             game.update()
@@ -161,6 +188,11 @@ def run_simulation(rounds: int = 3, steps: int = 120, step_seconds: float = 1.0,
                     code_line=_failure_location(exc),
                     stacktrace="".join(traceback.format_exception(exc)),
                 ))
+                control.errors += 1
+                control.last_error = f"{name}, Seed {seed}: {type(exc).__name__}: {exc}"
+            control.completed += 1
+        if control.cancelled:
+            break
 
     serialized = [asdict(result) for result in results]
     failures = [result for result in serialized if result["exception"]]

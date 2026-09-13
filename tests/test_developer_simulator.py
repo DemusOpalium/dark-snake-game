@@ -4,7 +4,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "Dark_Snake"))
 
-from developer_simulator import SimulatedClock, format_text_report
+from developer_simulator import SimulatedClock, SimulationControl, format_text_report
 
 
 def test_simulated_clock_advances_without_waiting():
@@ -37,3 +37,14 @@ def test_text_report_groups_and_describes_failures():
     assert "Seed=42 Szenario=portal Spielzeit=61.000" in text
     assert "GameState=GAME Level=2 Score=100" in text
     assert "Traceback: kaputt" in text
+
+
+def test_simulation_control_can_pause_resume_and_cancel():
+    control = SimulationControl()
+    assert not control.paused and control.checkpoint()
+    control.toggle_pause()
+    assert control.paused
+    control.toggle_pause()
+    assert control.checkpoint()
+    control.cancel()
+    assert control.cancelled and not control.checkpoint()
