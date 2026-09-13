@@ -1,6 +1,7 @@
 # modules/fire_explosion.py
 import pygame
-import os
+from pathlib import Path
+from modules.resources import asset_path
 
 # Globale Konstante für die Anzahl der Frames
 EXPLOSION_FRAMES = 9
@@ -14,8 +15,8 @@ class FireExplosionAnimation:
 
         # Bilder laden
         for i in range(1, EXPLOSION_FRAMES + 1):
-            filename = f"assets/graphics/FlameExplosion/FireExplosionDetail_Centered_{i}.png"
-            if os.path.exists(filename):
+            filename = asset_path("graphics", "FlameExplosion", f"FireExplosionDetail_Centered_{i}.png")
+            if Path(filename).exists():
                 try:
                     img = pygame.image.load(filename).convert_alpha()
                     size = img.get_width() * scale_factor
