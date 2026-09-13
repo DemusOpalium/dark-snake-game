@@ -31,7 +31,7 @@
 
 ---
 
-## 🔺 Update-History & aktuelle Highlights (Stand: 27.04.2025)
+## 🔺 Update-History & aktuelle Highlights (Alpha 2)
 
 * ✅ Neuer Bossschuss: **BossFlameProjectile** (visuell & explosiv)
 * ✅ AdminPanel-Update: **Bolbu-Spawns**, **AOE-Zonen**, **Sofort-Debug-Actions**
@@ -134,11 +134,13 @@
 ## 📁 Installation & Start
 
 ```bash
-pip install pygame
-python main.py
+python -m pip install -r requirements.txt
+python Dark_Snake/main.py
 ```
 
-Falls Probleme: Terminal öffnen und direkt mit `python3 main.py` starten
+Der Startbefehl funktioniert aus dem Hauptordner des Repositorys. Audio ist optional;
+ohne Audiogerät läuft das Spiel stumm weiter. Windows-Builds entstehen über den
+Workflow **Build Windows EXE**. Technische Details stehen in `PROJECT_STATE.md`.
 
 ---
 
