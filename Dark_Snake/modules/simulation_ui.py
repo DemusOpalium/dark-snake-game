@@ -2,17 +2,17 @@
 
 from __future__ import annotations
 
-import json
 import multiprocessing
 import queue
 import random
 import time
 import traceback
+from pathlib import Path
 
 import pygame
 
 from config import DARK_GREY, ORANGE, PURPLE, RED, WHITE, WINDOW_HEIGHT, WINDOW_WIDTH
-from developer_simulator import SimulationControl, format_text_report, run_simulation
+from developer_simulator import SCENARIOS, SimulationControl, run_simulation, save_report
 from modules.resources import user_data_path
 from modules.ui import Button
 
@@ -33,8 +33,7 @@ def simulation_worker(messages, resume_event, cancel_event, options):
 class SimulationMenu:
     """Non-blocking front end; pygame remains exclusively on the main thread."""
 
-    SCENARIOS = ("1p", "2p", "boss", "portal", "aoe", "projectiles", "bolbu",
-                 "restart", "game_over")
+    SCENARIOS = ("all",) + SCENARIOS
     SPEEDS = (0.25, 1.0, 5.0, 20.0)
     TIMEOUT_SECONDS = 10.0
 
@@ -52,6 +51,8 @@ class SimulationMenu:
         self.current_round = self.completed = self.errors = 0
         self.total = self.rounds
         self.last_error = None
+        self.bot_action = "–"
+        self.current_game_state = "–"
         self.last_message_at = None
         self.base_seed = None
         self.focus = 0
@@ -59,9 +60,8 @@ class SimulationMenu:
         scale = WINDOW_HEIGHT / 620
         w, h, gap = int(260 * scale), int(40 * scale), int(8 * scale)
         x, y = WINDOW_WIDTH // 2 - w // 2, int(190 * scale)
-        actions = (self.start, self.pause, self.cancel, self.save_text, self.save_json,
-                   self.back)
-        labels = ("Start", "Pause", "Abbrechen", "TXT speichern", "JSON speichern", "Zurück")
+        actions = (self.start, self.pause, self.cancel, self.save_report_files, self.back)
+        labels = ("Start", "Pause", "Abbrechen", "Bericht speichern", "Zurück")
         self.buttons = [Button(x, y + i * (h + gap), w, h, label,
                                color=RED if i == 2 else PURPLE, action=action)
                         for i, (label, action) in enumerate(zip(labels, actions))]
@@ -79,7 +79,9 @@ class SimulationMenu:
         self.status = "Läuft"
         self.current_scenario = self.SCENARIOS[self.scenario_index]
         self.current_round = self.completed = self.errors = 0
-        self.total = self.rounds
+        chosen = self.SCENARIOS[self.scenario_index]
+        selected = SCENARIOS if chosen == "all" else (chosen,)
+        self.total = self.rounds * len(selected)
         self.last_error = None
         self.messages = self._context.Queue()
         self.resume_event = self._context.Event()
@@ -88,7 +90,7 @@ class SimulationMenu:
         self.base_seed = random.SystemRandom().randrange(2**32)
         options = {"rounds": self.rounds, "steps": 120,
                    "step_seconds": self.SPEEDS[self.speed_index],
-                   "scenarios": (self.current_scenario,), "base_seed": self.base_seed}
+                   "scenarios": selected, "base_seed": self.base_seed}
         self.process = self._context.Process(
             target=simulation_worker,
             args=(self.messages, self.resume_event, self.cancel_event, options),
@@ -139,6 +141,13 @@ class SimulationMenu:
                     self.total = message["total"]
                     self.errors = message["errors"]
                     self.last_error = message.get("last_error")
+                    self.bot_action = message.get("bot_action", self.bot_action)
+                    self.current_game_state = message.get("game_state", self.current_game_state)
+                elif kind == "heartbeat":
+                    self.current_scenario = message["scenario"]
+                    self.current_round = message["round"]
+                    self.bot_action = message.get("bot_action", "–")
+                    self.current_game_state = message.get("game_state", "–")
                 elif kind == "fatal":
                     self._record_worker_failure("Worker-Fehler", message["error"],
                                                 message["traceback"])
@@ -212,21 +221,20 @@ class SimulationMenu:
         self.current_round = self.completed = self.errors = 0
         self.total = self.rounds
         self.last_error = None
+        self.bot_action = self.current_game_state = "–"
 
-    def _save(self, kind):
+    def save_report_files(self):
         if not self.report:
             self.status = "Fehler"
             self.last_error = "Noch kein Bericht vorhanden"
             return
-        path = user_data_path(f"simulation-report.{kind}")
-        content = (format_text_report(self.report) if kind == "txt" else
-                   json.dumps(self.report, ensure_ascii=False, indent=2))
-        with open(path, "w", encoding="utf-8") as output:
-            output.write(content)
-        self.status = f"Gespeichert: {path}"
+        scenario = self.SCENARIOS[self.scenario_index]
+        directory = user_data_path("")
+        paths = save_report(self.report, Path(directory), scenario)
+        self.status = f"Gespeichert: {paths[0].name}, {paths[1].name}"
 
-    def save_text(self): self._save("txt")
-    def save_json(self): self._save("json")
+    def save_text(self): self.save_report_files()
+    def save_json(self): self.save_report_files()
 
     def handle_event(self, event):
         self.poll()
@@ -269,6 +277,8 @@ class SimulationMenu:
         detail = (f"Fortschritt: {self.completed}/{self.total}   Szenario: {self.current_scenario}   "
                   f"Runde: {self.current_round}   Fehler: {self.errors}")
         screen.blit(font.render(detail, True, WHITE), (int(150 * scale), int(140 * scale)))
+        live = f"Bot: {self.bot_action}   GameState: {self.current_game_state}"
+        screen.blit(font.render(live, True, WHITE), (int(150 * scale), int(164 * scale)))
         for i, button in enumerate(self.buttons):
             button.is_hovered = button.is_hovered or i == self.focus
             button.draw(screen)
