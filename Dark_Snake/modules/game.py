@@ -710,7 +710,10 @@ class Game:
         self.add_achievement(self.boss.announcement)
         self.game_state = GameState.BOSS_FIGHT
         self.boss_fight_active = True
+      codex/implementiere-admin-menu-fur-dark-snake-4hn3pn
         record_event(f"Bosskampf gestartet: Level {self.level}")
+       
+        main
         return True
 
     def add_achievement(self, message):

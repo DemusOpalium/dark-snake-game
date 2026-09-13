@@ -15,10 +15,13 @@
   deutschen Namen, Mouseover-Erklärungen, Status- und Fehlermeldungen.
 - Admin-Menü und Level-Editor behandeln Eingaben exklusiv und können mit `ESC`
   geschlossen werden; Spiellogik und Bewegung pausieren, solange ein Werkzeug offen ist.
+       codex/implementiere-admin-menu-fur-dark-snake-4hn3pn
 - Portal-Effekte können auch ohne gespeicherte Editor-Karte sicher auslaufen und
   stellen dann den normalen Spielfeldhintergrund wieder her.
 - Rotierendes Laufzeitprotokoll, Ringpuffer wichtiger Ereignisse und automatische
   Crash-Reports erfassen Fehler samt sicherem Spielstatus im Benutzerdatenordner.
+      
+       main
 
 ## Offene Risiken
 
