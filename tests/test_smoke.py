@@ -16,10 +16,22 @@ from modules.enums import Direction, GameState
 from modules.game import Game
 from modules.input_manager import InputManager
 from modules.resources import asset_path
+from modules.graphics import ENEMY_TIM_IMG, SNAKE_HEAD_IMG, TITLE_IMG
+
+
+def _has_visible_pixel(surface):
+    return pygame.mask.from_surface(surface, threshold=0).count() > 0
 
 
 def test_assets_resolve_from_repository_root():
     assert Path(asset_path("graphics", "titel1.png")).is_file()
+
+
+def test_critical_graphics_are_loaded_and_visible():
+    assert Path(asset_path("graphics", "SnakeHeadAlpha1.png")).is_file()
+    assert Path(asset_path("graphics", "gegner-TimG40.png")).is_file()
+    assert all(_has_visible_pixel(image) for image in
+               (TITLE_IMG, SNAKE_HEAD_IMG, ENEMY_TIM_IMG))
 
 
 def test_menu_draw_and_keyboard_start():

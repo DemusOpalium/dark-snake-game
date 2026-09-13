@@ -1,19 +1,49 @@
 
 # [KS_TAG: GRAPHICS_INIT]
+import logging
 import os
 import pygame
 from config import WINDOW_WIDTH, WINDOW_HEIGHT, GRID_SIZE
-from modules.resources import asset_path
+from modules.crash_reporting import record_event
+from modules.resources import asset_roots, find_asset, find_asset_directory
+
+LOGGER = logging.getLogger(__name__)
+_MISSING_ASSETS = []
+
+
+def _fallback(name, size=(32, 32)):
+    """Create an unmistakable, opaque checkerboard for a missing asset."""
+    surface = pygame.Surface(size, pygame.SRCALPHA)
+    surface.fill((255, 0, 255, 255))
+    pygame.draw.rect(surface, (20, 20, 20, 255), (0, 0, size[0] // 2, size[1] // 2))
+    pygame.draw.rect(surface, (20, 20, 20, 255),
+                     (size[0] // 2, size[1] // 2, size[0], size[1]))
+    pygame.draw.line(surface, (255, 255, 255, 255), (0, 0), (size[0] - 1, size[1] - 1), 2)
+    return surface
 
 # Einheitliche Ladefunktion für Grafiken aus Kategorieordnern
 def load_image(name, category=""):
-    path = asset_path("graphics", category, name)
+    path = find_asset("graphics", category, name)
     try:
-        image = pygame.image.load(path).convert_alpha()
+        image = pygame.image.load(str(path))
+        if not pygame.display.get_surface():
+            raise pygame.error("convert_alpha benötigt ein initialisiertes Display")
+        image = image.convert_alpha()
         return image
     except Exception as e:
-        print(f"[Fehler] Grafik nicht gefunden: {path} ({e})")
-        return pygame.Surface((32, 32), pygame.SRCALPHA)
+        message = f"Grafik konnte nicht geladen werden: {path} ({e})"
+        LOGGER.error(message)
+        record_event(message)
+        _MISSING_ASSETS.append(str(path))
+        return _fallback(name)
+
+
+def asset_diagnostics():
+    """Record and return enough state to diagnose source/frozen installations."""
+    result = {"roots": [str(path) for path in asset_roots()],
+              "missing": list(dict.fromkeys(_MISSING_ASSETS))}
+    record_event(f"Asset-Diagnose: {result}")
+    return result
 
 # Thumbnail-Helper für UI/Inventar
 def scale_to_thumbnail(image, factor=0.75):
@@ -94,7 +124,7 @@ PLAY_BUTTON_IMG = load_image("PlayButton1.png")
 # Tile graphics
 
 TILE_IMAGES = {}
-_tile_dir = asset_path("graphics", "tiles")
+_tile_dir = str(find_asset_directory("graphics", "tiles"))
 if os.path.isdir(_tile_dir):
     for fname in os.listdir(_tile_dir):
         if fname.lower().endswith(".png"):
@@ -117,4 +147,7 @@ GRAPHICS = {
 
 # Zugriffsfunktion für zentrale Grafiken
 def get_image(name):
-    return GRAPHICS.get(name, pygame.Surface((32, 32), pygame.SRCALPHA))
+    return GRAPHICS.get(name, _fallback(name))
+
+
+asset_diagnostics()

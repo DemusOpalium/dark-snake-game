@@ -41,6 +41,7 @@ from modules.admin_panel import AdminPanel
 from modules.fire_explosion import FireExplosionAnimation
 from modules.crash_reporting import record_event
 from modules.simulation_ui import SimulationMenu
+from modules.effect_manager import EffectManager
 
 # Boss-Projektil-Grafiken (zufällige Auswahl)
 BOSS_PROJECTILES = []
@@ -378,6 +379,8 @@ class Game:
             except Exception as e:
                 print(f"Fehler beim Laden des Icons: {e}")
         self.clock = pygame.time.Clock()
+        self.effect_manager = EffectManager()
+        self._effect_update_time = time.monotonic()
         self.settings = {
             'initial_speed': START_SPEED,
             'fullscreen': False,
@@ -600,6 +603,8 @@ class Game:
             self.last_update_time = time.time()
 
     def reset_game(self):
+        if hasattr(self, "effect_manager"):
+            self.effect_manager.clear()
         self.leaderboard_mode = False
         self.name_input = ""
         self.game_state = self.intro_state()
@@ -673,6 +678,7 @@ class Game:
         self.boss_flame_projectiles = []
         self.enemy_projectiles = []
         self.explosions = []
+        self.effect_manager.clear()
         self.portal = None
         self.portal_effect_active = False
         self.portal_effect_type = None
@@ -743,6 +749,10 @@ class Game:
         self.game_state = GameState.BOSS_FIGHT
         self.background = self.level_background_surface
         self.boss_fight_active = True
+        boss_center = ((self.boss.x + self.boss.size / 2) * GRID_SIZE,
+                       (self.boss.y + self.boss.size / 2) * GRID_SIZE)
+        self.effect_manager.spawn("boss_aura", boss_center,
+                                  {"loop": True, "lifetime": 60.0})
         record_event(f"Bosskampf gestartet: Level {self.level}")
         return True
 
@@ -754,6 +764,8 @@ class Game:
         self.portal_effect_end = time.time() + 60
         self.portal_spawn_cooldown = time.time() + 300
         self.portal_effect_type = event
+        center = (WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2)
+        self.effect_manager.spawn("portal", center, {"lifetime": 1.2})
         # Portal visuals are transient and must never paint into the retained map.
         self.background = self.level_background_surface.copy()
         self.background.fill((random.randint(0,50), random.randint(0,50), random.randint(0,50)))
@@ -917,6 +929,9 @@ class Game:
         if self.admin_panel.active or self.level_editor.active:
             return
         current_time = time.time()
+        effect_now = time.monotonic()
+        self.effect_manager.update(effect_now - self._effect_update_time)
+        self._effect_update_time = effect_now
         # === [KS_FIX: PORTAL VISUAL RESTORE] ===
         if self.portal_effect_active and current_time >= self.portal_effect_end:
             print("[DEBUG] Portal-Effekt endet")
@@ -1567,6 +1582,11 @@ class Game:
                 return
         if SOUNDS.get("gameover"):
             SOUNDS["gameover"].play()
+        snake = self.snake if self.player_count == 1 else self.snake1
+        if snake:
+            self.effect_manager.spawn(
+                "death", ((snake[0][0] + 0.5) * GRID_SIZE,
+                          (snake[0][1] + 0.5) * GRID_SIZE), {"lifetime": 1.0})
         self.lives -= 1
         if self.lives <= 0:
             self.game_state = GameState.GAME_OVER
@@ -1836,6 +1856,7 @@ class Game:
     def draw_game(self):
         # 1. Raster (Hintergrund) zeichnen – unterste Ebene
         self.screen.blit(self.background, (0, 0))
+        self.effect_manager.draw(self.screen, "background")
         # 2. AoE-Effekte zeichnen – liegen zwischen Raster und dynamischen Objekten
         for zone in self.aoe_zones:
             zone.draw(self.screen)
@@ -1855,6 +1876,7 @@ class Game:
             proj.draw(self.screen)
         for explosion in self.explosions:
             explosion.draw(self.screen)
+        self.effect_manager.draw(self.screen, "world")
         # Spieler (Snake) zeichnen:
         if self.player_count == 2:
             # Spieler 1 zeichnen:
@@ -2211,6 +2233,7 @@ class Game:
         """Erzeugt eine Explosion an der gegebenen Pixel-Position mit 9 Frames."""
         explosion = FireExplosionAnimation(center_pos, scale_factor=3)
         self.explosions.append(explosion)
+        self.effect_manager.spawn("explosion", center_pos)
 
 class FlameProjectile:
     """

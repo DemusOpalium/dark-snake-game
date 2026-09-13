@@ -20,6 +20,35 @@ def asset_path(*parts: str) -> str:
     return str(ASSETS.joinpath(*parts))
 
 
+def asset_roots() -> tuple[Path, ...]:
+    """Return existing asset roots in lookup order (frozen and source builds)."""
+    candidates = [ASSETS]
+    frozen_root = getattr(sys, "_MEIPASS", None)
+    if frozen_root:
+        candidates.insert(0, Path(frozen_root) / "assets")
+    source_assets = Path(__file__).resolve().parents[1] / "assets"
+    candidates.append(source_assets)
+    return tuple(dict.fromkeys(path.resolve() for path in candidates))
+
+
+def find_asset(*parts: str) -> Path:
+    """Resolve an asset across PyInstaller and repository layouts."""
+    for root in asset_roots():
+        candidate = root.joinpath(*parts)
+        if candidate.is_file():
+            return candidate
+    return asset_roots()[0].joinpath(*parts)
+
+
+def find_asset_directory(*parts: str) -> Path:
+    """Resolve a bundled directory without relying on the working directory."""
+    for root in asset_roots():
+        candidate = root.joinpath(*parts)
+        if candidate.is_dir():
+            return candidate
+    return asset_roots()[0].joinpath(*parts)
+
+
 def bundled_path(*parts: str) -> str:
     return str(ROOT.joinpath(*parts))
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import multiprocessing
 import queue
+import random
 import time
 import traceback
 
@@ -17,7 +18,7 @@ from modules.ui import Button
 
 
 def simulation_worker(messages, resume_event, cancel_event, options):
-    """Process entry point.  It deliberately contains no UI or pygame calls."""
+    """Process entry point; run_simulation owns its hidden dummy display."""
     control = SimulationControl(resume_event, cancel_event)
     try:
         messages.put({"type": "started"})
@@ -52,6 +53,7 @@ class SimulationMenu:
         self.total = self.rounds
         self.last_error = None
         self.last_message_at = None
+        self.base_seed = None
         self.focus = 0
 
         scale = WINDOW_HEIGHT / 620
@@ -83,9 +85,10 @@ class SimulationMenu:
         self.resume_event = self._context.Event()
         self.resume_event.set()
         self.cancel_event = self._context.Event()
+        self.base_seed = random.SystemRandom().randrange(2**32)
         options = {"rounds": self.rounds, "steps": 120,
                    "step_seconds": self.SPEEDS[self.speed_index],
-                   "scenarios": (self.current_scenario,)}
+                   "scenarios": (self.current_scenario,), "base_seed": self.base_seed}
         self.process = self._context.Process(
             target=simulation_worker,
             args=(self.messages, self.resume_event, self.cancel_event, options),
@@ -137,18 +140,8 @@ class SimulationMenu:
                     self.errors = message["errors"]
                     self.last_error = message.get("last_error")
                 elif kind == "fatal":
-                    self.status = "Fehler"
-                    self.errors += 1
-                    self.last_error = message["error"]
-                    failure = {"seed": 0, "scenario": self.current_scenario,
-                               "game_time": 0.0, "game_state": "not_initialized",
-                               "level": 0, "score": 0, "exception": "WorkerError",
-                               "code_line": "simulation_worker", "stacktrace": message["traceback"]}
-                    self.report = {"configuration": {"base_seed": None}, "runs": [failure],
-                                   "failure_groups": {"WorkerError@simulation_worker": [failure]}}
-                    traceback_path = user_data_path("simulation-traceback.txt")
-                    with open(traceback_path, "w", encoding="utf-8") as output:
-                        output.write(message["traceback"])
+                    self._record_worker_failure("Worker-Fehler", message["error"],
+                                                message["traceback"])
                     self._stop_worker()
                     return
                 elif kind == "finished":
@@ -160,10 +153,32 @@ class SimulationMenu:
         paused = self.resume_event is not None and not self.resume_event.is_set()
         if (self.running and not paused and self.last_message_at is not None and
                 self._monotonic() - self.last_message_at > self.TIMEOUT_SECONDS):
-            self.status = "Fehler"
-            self.last_error = "Simulation antwortet nicht"
-            self.errors += 1
+            self._record_worker_failure("Timeout", "Simulation antwortet nicht",
+                                        "Timeout: Worker lieferte keinen Heartbeat.\n")
             self._stop_worker()
+        elif self.process and not self.process.is_alive() and self.report is None:
+            exitcode = getattr(self.process, "exitcode", "unbekannt")
+            self._record_worker_failure(
+                "Worker-Fehler", f"Worker unerwartet beendet (Exitcode {exitcode})",
+                f"Worker beendet; Exitcode={exitcode}\n")
+            self._dispose_worker()
+
+    def _record_worker_failure(self, status, cause, stacktrace):
+        """Keep fatal/timeout details exportable instead of discarding a run."""
+        self.status = status
+        self.errors += 1
+        self.last_error = cause
+        seed = self.base_seed if self.base_seed is not None else 0
+        failure = {"seed": seed, "scenario": self.current_scenario,
+                   "round": self.current_round, "status": status, "cause": cause,
+                   "game_time": 0.0, "game_state": "not_initialized",
+                   "level": 0, "score": 0, "exception": status,
+                   "code_line": "simulation_worker", "stacktrace": stacktrace}
+        key = f"{status}@simulation_worker"
+        self.report = {"configuration": {"base_seed": seed}, "runs": [failure],
+                       "failure_groups": {key: [failure]}}
+        with open(user_data_path("simulation-traceback.txt"), "a", encoding="utf-8") as output:
+            output.write(stacktrace)
 
     def _stop_worker(self):
         process = self.process

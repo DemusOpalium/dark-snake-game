@@ -83,7 +83,7 @@ def test_worker_error_is_reported_and_stopped():
     menu.messages.put({"type": "fatal", "error": "ValueError: kaputt",
                        "traceback": "Traceback\n"})
     menu.poll()
-    assert menu.status == "Fehler" and menu.last_error == "ValueError: kaputt"
+    assert menu.status == "Worker-Fehler" and menu.last_error == "ValueError: kaputt"
     assert context.last_process.terminated and not menu.running
 
 
