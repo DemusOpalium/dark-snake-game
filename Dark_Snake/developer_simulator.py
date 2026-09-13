@@ -21,7 +21,7 @@ from unittest.mock import patch
 TICK_SECONDS = 1.0 / 60.0
 SIMULATION_PROFILES = {"smoke": 2, "normal": 60, "stress": 300}
 DEFAULT_PERCEPTION_RADIUS = 12
-SCENARIOS = ("1p", "2p", "boss", "portal", "aoe", "projectiles", "bolbu",
+SCENARIOS = ("1p", "2p", "boss", "boss_final_fireball", "portal", "aoe", "projectiles", "bolbu",
              "restart", "game_over")
 
 
@@ -92,6 +92,8 @@ class RunResult:
     bot_decisions: list[dict] = field(default_factory=list)
     detected_hazards: list[str] = field(default_factory=list)
     event_counts: dict = field(default_factory=dict)
+    projectile_events: dict = field(default_factory=dict)
+    boss_defeated_by_fireball: bool = False
     effects_triggered: list[str] = field(default_factory=list)
     boss_status_before: dict = field(default_factory=dict)
     portal_status_before: dict = field(default_factory=dict)
@@ -273,6 +275,9 @@ def _scenario_actions():
     def start(players=1): return lambda game: game.start_game(players)
     def portal(game): game.start_game(1); game.activate_portal("color_change")
     def boss(game): game.start_game(1); game.start_boss_fight()
+    def boss_final_fireball(game):
+        # No HP/position shortcuts: the bot must navigate, aim and use p1_fire.
+        game.start_game(1); game.start_boss_fight()
     def aoe(game): game.start_game(1); game.spawn_independent_aoe_zone()
     def projectiles(game):
         from config import GRID_WIDTH
@@ -289,7 +294,8 @@ def _scenario_actions():
         game.start_game(1); enemy = BolbuEnemy(); enemy.spawn_time = 0; game.enemies.append(enemy)
     def restart(game): game.start_game(1); game.score = 123; game.reset_game(); game.start_game(1)
     def game_over(game): game.start_game(1); game.lives = 1; game.player_health = 1
-    return {"1p": start(), "2p": start(2), "boss": boss, "portal": portal,
+    return {"1p": start(), "2p": start(2), "boss": boss,
+            "boss_final_fireball": boss_final_fireball, "portal": portal,
             "aoe": aoe, "projectiles": projectiles, "bolbu": bolbu,
             "restart": restart, "game_over": game_over}
 
@@ -313,6 +319,18 @@ def _snapshot(game, bot, seed, scenario, round_number, reason, ticks, elapsed,
                   [game.snake_direction])
     boss = getattr(game, "boss", None)
     trace = "".join(traceback.format_exception(exception)) if exception else None
+    combat_events = getattr(game, "combat_events", [])
+    projectile_kinds = ("player_fireball", "player_projectile", "multishot",
+                        "bolbu_projectile", "boss_projectile")
+    projectile_events = {
+        kind: {
+            "fired": sum(event.get("type") == "projectile_fired" and
+                         event.get("projectile") == kind for event in combat_events),
+            "hits": sum(event.get("type") == "projectile_hit" and
+                        event.get("projectile") == kind for event in combat_events),
+        }
+        for kind in projectile_kinds
+    }
     result = RunResult(
         seed, scenario, round_number, reason, ticks, elapsed, states,
         getattr(game, "level", 0), getattr(game, "score", 0), getattr(game, "lives", 0),
@@ -337,7 +355,14 @@ def _snapshot(game, bot, seed, scenario, round_number, reason, ticks, elapsed,
         _failure_location(exception) if exception else None, trace,
         profile, bot.decisions,
         sorted({hazard for decision in bot.decisions for hazard in decision["perception"]}),
-        dict(event_counts or {}), list(effects or []), boss_before or {}, portal_before or {})
+        event_counts=dict(event_counts or {}),
+        projectile_events=projectile_events,
+        boss_defeated_by_fireball=any(
+            event.get("type") == "boss_defeated" and
+            event.get("source") == "player_fireball"
+            for event in getattr(game, "combat_events", [])),
+        effects_triggered=list(effects or []), boss_status_before=boss_before or {},
+        portal_status_before=portal_before or {})
     return result
 
 
@@ -389,6 +414,7 @@ def run_simulation(rounds: int = 3, steps: int = 120, step_seconds: float = 1.0,
                 "enemy_spawns", "enemy_deaths", "item_pickups", "boss_damage", "boss_phase_changes",
                 "portal_starts", "portal_ends", "aoe_damage", "level_changes", "lives_lost", "game_over")})
             effects = []
+            combat_event_index = 0
             boss_before = {}; portal_before = {}
             try:
                 with patch("time.time", clock.time), patch("time.monotonic", clock.monotonic), \
@@ -430,8 +456,18 @@ def run_simulation(rounds: int = 3, steps: int = 120, step_seconds: float = 1.0,
                         if len(game.enemies) < previous["enemies"]: counts["enemy_deaths"] += previous["enemies"] - len(game.enemies)
                         if len(game.items) < previous["items"]: counts["item_pickups"] += previous["items"] - len(game.items)
                         boss_health = getattr(game.boss, "health", None)
-                        if boss_health is not None and previous["boss_health"] is not None and boss_health < previous["boss_health"]:
-                            counts["boss_damage"] += previous["boss_health"] - boss_health
+                        combat_events = getattr(game, "combat_events", [])
+                        new_combat_events = combat_events[combat_event_index:]
+                        combat_event_index = len(combat_events)
+                        counts["projectile_hits"] += sum(
+                            event.get("type") == "projectile_hit" for event in new_combat_events)
+                        counts["boss_damage"] += sum(
+                            event.get("damage", 0) for event in new_combat_events
+                            if event.get("type") == "boss_damage")
+                        for event in new_combat_events:
+                            if event.get("type") in ("projectile_fired", "projectile_hit",
+                                                     "boss_damage", "boss_defeated"):
+                                events.append(f"{event['type']}: {event}")
                         if game.level != previous["level"]: counts["level_changes"] += 1
                         if previous["portal"] and not game.portal_effect_active: counts["portal_ends"] += 1
                         manager = getattr(game, "effect_manager", None)
