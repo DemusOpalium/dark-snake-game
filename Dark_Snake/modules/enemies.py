@@ -58,5 +58,13 @@ class NormalEnemy:
         else:
             pygame.draw.rect(screen, RED, (self.x * GRID_SIZE, self.y * GRID_SIZE, GRID_SIZE, GRID_SIZE))
 
-    def get_rect(self):
+    def get_render_rect(self):
         return pygame.Rect(self.x * GRID_SIZE, self.y * GRID_SIZE, self.width, self.height)
+
+    def get_hitbox(self):
+        """Rectangular collision area matching the scaled enemy sprite."""
+        return self.get_render_rect()
+
+    def get_rect(self):
+        """Compatibility alias for older callers."""
+        return self.get_hitbox()

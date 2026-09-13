@@ -39,3 +39,10 @@ Diese Datei beschreibt die wichtigsten Module des Dark Snake Game Projekts, ihre
 - 🎮 [Steuerung (CONTROLS.md)](CONTROLS.md)
 - 🤖 [Prompt-Guide für GPT (PROMPT_GUIDE.md)](PROMPT_GUIDE.md)
 - 🛣️ [Projekt-Roadmap (ROADMAP.md)](ROADMAP.md)
+# Spätere Architekturentscheidung: Mikro-Raster
+
+Eine mögliche Unterteilung jeder logischen Kachel in vier oder sechs
+Mikro-Schritte bleibt für eine spätere Version vorgesehen. Die aktuelle
+Implementierung verändert das logische Raster ausdrücklich nicht: Sie
+interpoliert ausschließlich die Darstellung zwischen zwei bereits bestätigten
+Rasterpositionen. Level, Kollisionen und Simulation bleiben damit rasterbasiert.

@@ -4,13 +4,20 @@
 
 import pygame
 from modules.graphics import load_image
+from modules.projectile_config import (
+    BOSS_FLAME_DAMAGE, BOSS_FLAME_LIFETIME_TICKS, BOSS_FLAME_SPEED_PX_PER_TICK,
+    BOSS_PROJECTILE_DAMAGE, BOSS_PROJECTILE_LIFETIME_TICKS,
+    BOSS_PROJECTILE_SPEED_PX_PER_TICK,
+)
 from math import atan2, degrees
 
 class BossProjectile:
     """
     Allgemeines Boss-Projektil mit Richtung, Bild, Geschwindigkeit und optionaler Explosion.
     """
-    def __init__(self, x, y, direction, speed=2.0, damage=5, image_name="projectiles/bossprojectile1.png", lifetime=600):
+    def __init__(self, x, y, direction, speed=BOSS_PROJECTILE_SPEED_PX_PER_TICK,
+                 damage=BOSS_PROJECTILE_DAMAGE, image_name="projectiles/bossprojectile1.png",
+                 lifetime=BOSS_PROJECTILE_LIFETIME_TICKS):
         self.direction = direction
         self.speed = speed
         self.damage = damage
@@ -44,7 +51,9 @@ class BossFlameProjectile:
     """
     Projektil speziell für den Boss – explodiert bei Treffer auf Spieler mit visuellem Effekt.
     """
-    def __init__(self, x, y, direction, speed=2.4, damage=8, lifetime=1200, image_name="projectiles/bossprojectile1.png"):
+    def __init__(self, x, y, direction, speed=BOSS_FLAME_SPEED_PX_PER_TICK,
+                 damage=BOSS_FLAME_DAMAGE, lifetime=BOSS_FLAME_LIFETIME_TICKS,
+                 image_name="projectiles/bossprojectile1.png"):
         self.direction = direction
         self.speed = speed
         self.damage = damage
