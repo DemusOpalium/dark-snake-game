@@ -36,6 +36,7 @@ jobs:
           SDL_VIDEODRIVER: dummy
           SDL_AUDIODRIVER: dummy
         run: |
+          python tests/check_conflict_markers.py
           python -m compileall -q Dark_Snake tests
           python -m pytest -q
 

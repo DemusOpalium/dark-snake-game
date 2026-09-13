@@ -31,3 +31,8 @@ def user_data_path(filename: str) -> str:
     except OSError:
         # Read-only or restricted home directories still permit portable use.
         return bundled_path(filename)
+
+
+def logs_path() -> Path:
+    """Return the user-writable directory used for logs and crash reports."""
+    return DATA_DIR / "logs"
