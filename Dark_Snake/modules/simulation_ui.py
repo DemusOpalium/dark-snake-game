@@ -146,7 +146,17 @@ class SimulationMenu:
                     return
                 elif kind == "finished":
                     self.report = message["report"]
-                    self.status = "Abgebrochen" if message["cancelled"] else "Fertig"
+                    complete = self.report.get("completion", {}).get("complete", False)
+                    if message["cancelled"]:
+                        self.status = "Abgebrochen"
+                    elif complete:
+                        self.status = "Fertig"
+                    else:
+                        self.status = "Fehler"
+                        self.last_error = (
+                            "Nicht alle ausgewählten Szenarien wurden vollständig "
+                            "ausgeführt"
+                        )
                     self._dispose_worker()
                     return
 

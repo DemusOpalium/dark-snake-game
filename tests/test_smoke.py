@@ -12,6 +12,7 @@ import pygame
 pygame.init()
 pygame.display.set_mode((1, 1))
 
+from config import WINDOW_HEIGHT, WINDOW_WIDTH
 from modules.enums import Direction, GameState
 from modules.game import Game
 from modules.input_manager import InputManager
@@ -42,6 +43,22 @@ def test_menu_draw_and_keyboard_start():
     game.handle_events()
     assert game.game_state is GameState.GAME
     assert game.player_count == 1 and game.snake and not game.snake1
+
+
+def test_headless_game_uses_offscreen_surface_without_changing_display(monkeypatch):
+    display_surface = pygame.display.get_surface()
+    monkeypatch.setattr(
+        pygame.display, "set_mode",
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            AssertionError("headless must not create a display")
+        ),
+    )
+
+    game = Game(headless=True)
+
+    assert isinstance(game.screen, pygame.Surface)
+    assert game.screen.get_size() == (WINDOW_WIDTH, WINDOW_HEIGHT)
+    assert pygame.display.get_surface() is display_surface
 
 
 def test_two_player_reset_and_keyboard_input():

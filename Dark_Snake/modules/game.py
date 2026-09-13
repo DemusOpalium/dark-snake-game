@@ -368,8 +368,15 @@ class Game:
     def __init__(self, headless=False):
         global WINDOW_WIDTH, WINDOW_HEIGHT, GRID_WIDTH, GRID_HEIGHT
         self.headless = headless
-        self.screen = None
-        if not headless:
+        if headless:
+            # Gameplay code deliberately continues to execute while simulating and
+            # some of it renders status information during update().  A plain
+            # Surface provides the same drawing target without creating an OS
+            # window (unlike pygame.display.set_mode()).
+            self.screen = pygame.Surface(
+                (WINDOW_WIDTH, WINDOW_HEIGHT), pygame.SRCALPHA
+            )
+        else:
             self.screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
             pygame.display.set_caption("Dark-Snake")
             try:
@@ -1166,7 +1173,7 @@ class Game:
                         head_rect.colliderect(pygame.Rect(seg[0] * GRID_SIZE,
                                                           seg[1] * GRID_SIZE,
                                                           GRID_SIZE, GRID_SIZE))
-                        for seg in self.snake[1:]
+                        for seg in snake[1:]
                     ):
                         self.handle_self_collision()
                     else:

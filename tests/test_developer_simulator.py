@@ -4,7 +4,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "Dark_Snake"))
 
-from developer_simulator import SimulatedClock, SimulationControl, format_text_report
+from developer_simulator import (SimulatedClock, SimulationControl,
+                                 format_text_report, run_simulation)
 
 
 def test_simulated_clock_advances_without_waiting():
@@ -48,3 +49,17 @@ def test_simulation_control_can_pause_resume_and_cancel():
     assert control.checkpoint()
     control.cancel()
     assert control.cancelled and not control.checkpoint()
+
+
+def test_all_headless_scenarios_complete_with_offscreen_rendering():
+    report = run_simulation(rounds=1, steps=3, step_seconds=1.0, base_seed=20260913)
+
+    assert report["failure_groups"] == {}
+    assert report["completion"] == {
+        "planned_runs": 9, "completed_runs": 9, "complete": True,
+    }
+    assert {run["scenario"] for run in report["runs"]} == {
+        "1p", "2p", "boss", "portal", "aoe", "projectiles", "bolbu",
+        "restart", "game_over",
+    }
+    assert all(run["steps_completed"] == 3 for run in report["runs"])
