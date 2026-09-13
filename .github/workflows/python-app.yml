@@ -41,7 +41,7 @@ jobs:
 
       - name: Build EXE with PyInstaller
         run: |
-          pyinstaller --onefile --windowed --add-data "Dark_Snake/assets;assets" --add-data "Dark_Snake/modules;modules" Dark_Snake/main.py
+          pyinstaller --onefile --windowed --hidden-import developer_simulator --add-data "Dark_Snake/assets;assets" --add-data "Dark_Snake/modules;modules" Dark_Snake/main.py
 
       - name: Verify EXE file exists
         shell: bash

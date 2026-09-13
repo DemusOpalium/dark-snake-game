@@ -10,6 +10,7 @@ class GameState(Enum):
     LEADERBOARD = 6
     CONTROLS = 7
     CUSTOMIZATION = 8
+    SIMULATION = 9
 
 class Direction(Enum):
     UP = (0, -1)

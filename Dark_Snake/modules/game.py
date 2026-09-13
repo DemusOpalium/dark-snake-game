@@ -40,6 +40,7 @@ from modules.options_menu import OptionsMenu, ExtendedOptionsMenu
 from modules.admin_panel import AdminPanel
 from modules.fire_explosion import FireExplosionAnimation
 from modules.crash_reporting import record_event
+from modules.simulation_ui import SimulationMenu
 
 # Boss-Projektil-Grafiken (zufällige Auswahl)
 BOSS_PROJECTILES = []
@@ -397,6 +398,7 @@ class Game:
                               self.settings['bg_music_volume'])
         self.player_count = 1
         self.input = InputManager()
+        self.intro_focus = 0
         self.create_ui_elements()
         self.reset_game()
         self.current_frame_index = 0
@@ -466,6 +468,10 @@ class Game:
         self.debug_show_hitboxes = False  # [KS_TAG: DEBUG_HITBOX]
         self.respawn_invincible_until = 0
         self.level_editor = LevelEditor(self)
+        self.simulation_menu = SimulationMenu(self)
+        # Construction calls reset_game before all display resources exist.  Ensure
+        # the initial menu has no pre-created round after initialization as well.
+        self.clear_game_state()
 
     def create_ui_elements(self):
         center_x = WINDOW_WIDTH // 2
@@ -488,7 +494,9 @@ class Game:
             Button(center_x - 100, WINDOW_HEIGHT - 260, button_width, button_height, "Besten-Liste",
                    action=lambda: self.set_state(GameState.LEADERBOARD), image=scale_image(PLAY_BUTTON_IMG)),
             Button(center_x - 100, WINDOW_HEIGHT - 200, button_width, button_height, "Beenden",
-                   color=RED, action=lambda: sys.exit(), image=scale_image(PLAY_BUTTON_IMG))
+                   color=RED, action=lambda: sys.exit(), image=scale_image(PLAY_BUTTON_IMG)),
+            Button(center_x - 100, WINDOW_HEIGHT - 140, button_width, button_height, "Entwickler",
+                   action=lambda: self.set_state(GameState.SIMULATION), image=scale_image(PLAY_BUTTON_IMG))
         ]
 
     def create_additional_ui(self):
@@ -505,7 +513,7 @@ class Game:
         ]
         self.game_over_buttons = [
             Button(WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT // 2 + 100, button_width, button_height, "NEUSTART",
-                   action=lambda: self.reset_game()),
+                   action=lambda: self.start_game(self.player_count)),
             Button(WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT // 2 + 180, button_width, button_height, "HAUPTMENÜ",
                    color=PURPLE, action=lambda: self.confirm_back_to_main())
         ]
@@ -546,6 +554,12 @@ class Game:
     def start_game(self, players):
         self.player_count = players
         self.reset_game()
+        if players == 2:
+            self.snake1 = [(GRID_WIDTH // 2, GRID_HEIGHT // 2)]
+            self.snake2 = [(GRID_WIDTH // 2, GRID_HEIGHT // 2 + 2)]
+        else:
+            self.snake = [(GRID_WIDTH // 2, GRID_HEIGHT // 2)]
+        self.spawn_food()
         level_path = asset_path("levels", "custom_level.json")
         if os.path.exists(level_path):
             try:
@@ -573,6 +587,8 @@ class Game:
         self.set_state(self.intro_state())
 
     def set_state(self, state):
+        if state == GameState.INTRO and getattr(self, "game_state", None) != GameState.INTRO:
+            self.clear_game_state()
         self.game_state = state
         if state == GameState.GAME:
             self.last_update_time = time.time()
@@ -580,7 +596,7 @@ class Game:
     def reset_game(self):
         self.leaderboard_mode = False
         self.name_input = ""
-        self.set_state(self.intro_state())
+        self.game_state = self.intro_state()
         # Never retain inactive player objects or transient combat state.
         self.snake = []
         self.snake1 = []
@@ -588,8 +604,6 @@ class Game:
         # Respawn-Unbesiegbarkeit setzen: 3 Sekunden nach Reset
         self.respawn_invincible_until = time.time() + 3
         if self.player_count == 2:
-            self.snake1 = [(GRID_WIDTH // 2, GRID_HEIGHT // 2)]
-            self.snake2 = [(GRID_WIDTH // 2, GRID_HEIGHT // 2 + 2)]
             self.snake_direction1 = Direction.RIGHT
             self.snake_direction2 = Direction.RIGHT
             self.next_direction1 = Direction.RIGHT
@@ -599,13 +613,11 @@ class Game:
             self.player_health_p1 = 100
             self.player_health_p2 = 100
         else:
-            self.snake = [(GRID_WIDTH // 2, GRID_HEIGHT // 2)]
             self.snake_direction = Direction.RIGHT
             self.next_direction = Direction.RIGHT
             self.last_auto_shoot = time.time()
             self.player_health = 100
         self.items = []
-        self.spawn_food()
         self.score = 0
         self.level = 1
         self.experience = 0
@@ -641,6 +653,30 @@ class Game:
         self.last_auto_shoot = time.time()
         self.extra_auto_shots = 0
         self.aoe_zones = []
+
+    def clear_game_state(self):
+        """Drop every object belonging to a round before showing a menu."""
+        self.snake = []
+        self.snake1 = []
+        self.snake2 = []
+        self.items = []
+        self.enemies = []
+        self.aoe_zones = []
+        self.projectiles = []
+        self.flame_projectiles = []
+        self.boss_flame_projectiles = []
+        self.enemy_projectiles = []
+        self.explosions = []
+        self.portal = None
+        self.portal_effect_active = False
+        self.portal_effect_type = None
+        self.boss = None
+        self.boss_fight_active = False
+        self.lives = 0
+        self.player_health = self.player_health_p1 = self.player_health_p2 = 0
+        if hasattr(self, "default_background_surface"):
+            self.level_background_surface = self.default_background_surface.copy()
+            self.background = self.level_background_surface
 
     def spawn_food(self):
         while True:
@@ -699,6 +735,7 @@ class Game:
         self.items.append(Item(ItemType.PROJECTILE_SHOOT))
         self.add_achievement(self.boss.announcement)
         self.game_state = GameState.BOSS_FIGHT
+        self.background = self.level_background_surface
         self.boss_fight_active = True
         record_event(f"Bosskampf gestartet: Level {self.level}")
         return True
@@ -711,6 +748,8 @@ class Game:
         self.portal_effect_end = time.time() + 60
         self.portal_spawn_cooldown = time.time() + 300
         self.portal_effect_type = event
+        # Portal visuals are transient and must never paint into the retained map.
+        self.background = self.level_background_surface.copy()
         self.background.fill((random.randint(0,50), random.randint(0,50), random.randint(0,50)))
         for i in range(0, WINDOW_WIDTH, GRID_SIZE * 2):
             for j in range(0, WINDOW_HEIGHT, GRID_SIZE * 2):
@@ -1581,11 +1620,19 @@ class Game:
                 self.options_menu.handle_event(event)
             elif self.game_state == GameState.CONTROLS:
                 self.controls_menu.handle_event(event)
+            elif self.game_state == GameState.SIMULATION:
+                self.simulation_menu.handle_event(event)
             elif self.game_state == GameState.CUSTOMIZATION:
                 self.custom_menu.handle_event(event)
             elif self.game_state == GameState.INTRO:
                 if "menu_accept" in actions:
-                    self.start_game(1)
+                    self.intro_buttons[self.intro_focus].action()
+                    continue
+                if event.type == pygame.KEYDOWN and event.key in (pygame.K_DOWN, pygame.K_TAB):
+                    self.intro_focus = (self.intro_focus + 1) % len(self.intro_buttons)
+                    continue
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_UP:
+                    self.intro_focus = (self.intro_focus - 1) % len(self.intro_buttons)
                     continue
                 for btn in self.intro_buttons:
                     btn.check_hover(pygame.mouse.get_pos())
@@ -1725,14 +1772,17 @@ class Game:
             self.options_menu.draw(self.screen)
         elif self.game_state == GameState.LEADERBOARD:
             self.draw_leaderboard()
+        elif self.game_state == GameState.SIMULATION:
+            self.simulation_menu.draw(self.screen)
         if self.game_state in (GameState.GAME, GameState.BOSS_FIGHT):
             if self.boss_spawn_timer > time.time():
                 cooldown = int(self.boss_spawn_timer - time.time())
                 cd_txt = pygame.font.SysFont('Arial', 16, bold=True).render(f"Boss spawn in: {cooldown}s", True, ORANGE)
                 self.screen.blit(cd_txt, (10, WINDOW_HEIGHT - 30))
-        self.draw_hud()
-        self.achievement_manager.draw_achievements(self.screen)
-        self.achievement_manager.draw_portal_event(self.screen)
+        if self.game_state in (GameState.GAME, GameState.BOSS_FIGHT, GameState.PAUSE, GameState.GAME_OVER):
+            self.draw_hud()
+            self.achievement_manager.draw_achievements(self.screen)
+            self.achievement_manager.draw_portal_event(self.screen)
         self.admin_panel.draw(self.screen)
         pygame.display.update()
 
@@ -1772,7 +1822,9 @@ class Game:
             self.screen.blit(scaled_title, (WINDOW_WIDTH // 2 - scaled_title.get_width() // 2, 20))
         title_txt = pygame.font.SysFont('Comic Sans MS', 60, bold=True).render("Dark-Snake", True, (50, 50, 50))
         self.screen.blit(title_txt, (WINDOW_WIDTH // 2 - title_txt.get_width() // 2, 100))
-        for btn in self.intro_buttons:
+        for i, btn in enumerate(self.intro_buttons):
+            if i == self.intro_focus:
+                btn.is_hovered = True
             btn.draw(self.screen)
 
     def draw_game(self):

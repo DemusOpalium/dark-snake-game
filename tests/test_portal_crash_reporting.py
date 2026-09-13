@@ -49,6 +49,17 @@ def test_expired_portal_without_editor_map_restores_default_background(monkeypat
     assert game.background.get_at((0, 0)) != portal_pixel
 
 
+def test_portal_does_not_modify_retained_level_background():
+    game = Game()
+    game.start_game(1)
+    normal_pixel = game.level_background_surface.get_at((0, 0))
+
+    game.activate_portal("color_change")
+
+    assert game.background is not game.level_background_surface
+    assert game.level_background_surface.get_at((0, 0)) == normal_pixel
+
+
 def test_expired_portal_restores_editor_map(monkeypatch):
     game = Game()
     game.start_game(1)

@@ -47,6 +47,20 @@ def test_two_player_reset_and_keyboard_input():
     assert game.next_direction2 is Direction.UP
 
 
+def test_round_is_fully_cleared_when_returning_to_main_menu():
+    game = Game()
+    game.start_game(1)
+    game.enemies.append(object())
+    game.lives = 2
+
+    game.set_state(GameState.INTRO)
+
+    assert not game.snake and not game.snake1 and not game.snake2
+    assert not game.items and not game.enemies and game.boss is None
+    assert game.lives == 0 and game.player_health == 0
+    assert game.background is game.level_background_surface
+
+
 def test_gamepad_button_hat_axis_and_persistence(tmp_path):
     path = tmp_path / "controls.json"
     manager = InputManager(path, initialize_joysticks=False)
