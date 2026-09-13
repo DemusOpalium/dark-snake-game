@@ -6,20 +6,11 @@ from modules.ui import Button
 class ControlsMenu:
     def __init__(self, game):
         self.game = game
-        self.controls = {
-            "Spieler1 - Oben":   "Pfeiltaste ↑ / W",
-            "Spieler1 - Unten":  "Pfeiltaste ↓ / S",
-            "Spieler1 - Links":  "Pfeiltaste ← / A",
-            "Spieler1 - Rechts": "Pfeiltaste → / D",
-            "Spieler1 - Schießen": "+",
-
-            "Spieler2 - Oben":   "Pfeiltaste ↑",
-            "Spieler2 - Unten":  "Pfeiltaste ↓",
-            "Spieler2 - Links":  "Pfeiltaste ←",
-            "Spieler2 - Rechts": "Pfeiltaste →",
-            "Spieler2 - Schießen": "SPACE"
-        }
+        self.actions = list(self.game.input.bindings)
+        self.selected = 0
+        self.waiting_for_binding = False
         self.back_button = Button(WINDOW_WIDTH//2 - 100, WINDOW_HEIGHT - 80, 200, 60, "ZURÜCK", color=PURPLE, action=self.back)
+        self.reset_button = Button(WINDOW_WIDTH//2 + 120, WINDOW_HEIGHT - 80, 260, 60, "STANDARD", color=PURPLE, action=self.game.input.reset_defaults)
 
     def back(self):
         self.game.set_state(GameState.INTRO)
@@ -29,11 +20,14 @@ class ControlsMenu:
         title = FONT_LARGE.render("STEUERUNG", True, PURPLE)
         screen.blit(title, (WINDOW_WIDTH//2 - title.get_width()//2, 50))
         y = 150
-        for key, val in self.controls.items():
-            txt = FONT_SMALL.render(f"{key}: {val}", True, WHITE)
+        for index, action in enumerate(self.actions):
+            marker = ">" if index == self.selected else " "
+            suffix = " – neue Taste drücken" if self.waiting_for_binding and index == self.selected else ""
+            txt = FONT_SMALL.render(f"{marker} {action}: {self.game.input.label(action)}{suffix}", True, WHITE)
             screen.blit(txt, (50, y))
             y += 30
         self.back_button.draw(screen)
+        self.reset_button.draw(screen)
         pygame.display.update()
 
     def handle_event(self, event):
@@ -41,3 +35,17 @@ class ControlsMenu:
         mouse_pos = pygame.mouse.get_pos()
         self.back_button.check_hover(mouse_pos)
         self.back_button.handle_event(event)
+        self.reset_button.check_hover(mouse_pos)
+        self.reset_button.handle_event(event)
+        if self.waiting_for_binding and self.game.input.bind_event(self.actions[self.selected], event):
+            self.waiting_for_binding = False
+            return
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_UP:
+                self.selected = (self.selected - 1) % len(self.actions)
+            elif event.key == pygame.K_DOWN:
+                self.selected = (self.selected + 1) % len(self.actions)
+            elif event.key in (pygame.K_RETURN, pygame.K_SPACE):
+                self.waiting_for_binding = True
+            elif event.key == pygame.K_r:
+                self.game.input.reset_defaults()

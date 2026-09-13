@@ -1,10 +1,17 @@
 import pygame
-from modules.game import Game
+import os
+from modules.resources import ROOT
 
 def main():
+    # Legacy modules still use relative paths; anchor them independently of cwd.
+    os.chdir(ROOT)
+    from modules.game import Game
     pygame.init()
     pygame.font.init()
-    pygame.mixer.init()
+    try:
+        pygame.mixer.init()
+    except pygame.error as exc:
+        print(f"[WARN] Audio deaktiviert: {exc}")
     # Kleines Fenster, um convert_alpha() zu ermöglichen
     pygame.display.set_mode((1, 1))
     game = Game()

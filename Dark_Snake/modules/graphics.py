@@ -3,10 +3,11 @@
 import os
 import pygame
 from config import WINDOW_WIDTH, WINDOW_HEIGHT, GRID_SIZE
+from modules.resources import asset_path
 
 # Einheitliche Ladefunktion für Grafiken aus Kategorieordnern
 def load_image(name, category=""):
-    path = os.path.join("assets", "graphics", category, name)
+    path = asset_path("graphics", category, name)
     try:
         image = pygame.image.load(path).convert_alpha()
         return image
@@ -93,7 +94,7 @@ PLAY_BUTTON_IMG = load_image("PlayButton1.png")
 # Tile graphics
 
 TILE_IMAGES = {}
-_tile_dir = os.path.join("assets", "graphics", "tiles")
+_tile_dir = asset_path("graphics", "tiles")
 if os.path.isdir(_tile_dir):
     for fname in os.listdir(_tile_dir):
         if fname.lower().endswith(".png"):
