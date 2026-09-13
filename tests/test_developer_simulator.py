@@ -1,0 +1,39 @@
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "Dark_Snake"))
+
+from developer_simulator import SimulatedClock, format_text_report
+
+
+def test_simulated_clock_advances_without_waiting():
+    clock = SimulatedClock(10.0)
+    clock.advance(125.5)
+    assert clock.time() == 135.5
+
+
+def test_text_report_groups_and_describes_failures():
+    failure = {
+        "seed": 42,
+        "scenario": "portal",
+        "game_time": 61.0,
+        "game_state": "GAME",
+        "level": 2,
+        "score": 100,
+        "exception": "AttributeError",
+        "code_line": "game.py:883",
+        "stacktrace": "Traceback: kaputt\n",
+    }
+    report = {
+        "configuration": {"base_seed": 42},
+        "runs": [failure],
+        "failure_groups": {"AttributeError@game.py:883": [failure]},
+    }
+
+    text = format_text_report(report)
+
+    assert "AttributeError@game.py:883 (1 Vorkommen)" in text
+    assert "Seed=42 Szenario=portal Spielzeit=61.000" in text
+    assert "GameState=GAME Level=2 Score=100" in text
+    assert "Traceback: kaputt" in text

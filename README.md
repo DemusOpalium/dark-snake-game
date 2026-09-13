@@ -142,6 +142,18 @@ Der Startbefehl funktioniert aus dem Hauptordner des Repositorys. Audio ist opti
 ohne Audiogerät läuft das Spiel stumm weiter. Windows-Builds entstehen über den
 Workflow **Build Windows EXE**. Technische Details stehen in `PROJECT_STATE.md`.
 
+### Headless-Entwicklersimulation
+
+Mehrere beschleunigte Runden aller festen Gameplay-Szenarien lassen sich ohne
+Fenster, Audioausgabe oder Echtzeit-Wartezeiten ausführen:
+
+```bash
+python Dark_Snake/developer_simulator.py --rounds 5 --seed 12345
+```
+
+Standardmäßig entstehen `simulation-report.json` und `simulation-report.txt`.
+Ein Exit-Code ungleich null zeigt mindestens einen gruppierten Simulationsfehler an.
+
 ---
 
 ## 📚 Modulstruktur & Doku
