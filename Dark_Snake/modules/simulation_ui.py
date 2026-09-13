@@ -12,7 +12,8 @@ from pathlib import Path
 import pygame
 
 from config import DARK_GREY, ORANGE, PURPLE, RED, WHITE, WINDOW_HEIGHT, WINDOW_WIDTH
-from developer_simulator import SCENARIOS, SimulationControl, run_simulation, save_report
+from developer_simulator import (SCENARIOS, SIMULATION_PROFILES, SimulationControl,
+                                 run_simulation, save_report)
 from modules.resources import user_data_path
 from modules.ui import Button
 
@@ -35,6 +36,7 @@ class SimulationMenu:
 
     SCENARIOS = ("all",) + SCENARIOS
     SPEEDS = (0.25, 1.0, 5.0, 20.0)
+    PROFILES = ("smoke", "normal", "stress")
     TIMEOUT_SECONDS = 10.0
 
     def __init__(self, game, process_context=None, monotonic=time.monotonic):
@@ -44,6 +46,7 @@ class SimulationMenu:
         self.scenario_index = 0
         self.rounds = 3
         self.speed_index = 2
+        self.profile_index = 1
         self.process = self.messages = self.resume_event = self.cancel_event = None
         self.report = None
         self.status = "Bereit"
@@ -90,7 +93,8 @@ class SimulationMenu:
         self.base_seed = random.SystemRandom().randrange(2**32)
         options = {"rounds": self.rounds, "steps": 120,
                    "step_seconds": self.SPEEDS[self.speed_index],
-                   "scenarios": selected, "base_seed": self.base_seed}
+                   "scenarios": selected, "base_seed": self.base_seed,
+                   "profile": self.PROFILES[self.profile_index]}
         self.process = self._context.Process(
             target=simulation_worker,
             args=(self.messages, self.resume_event, self.cancel_event, options),
@@ -258,6 +262,7 @@ class SimulationMenu:
             elif event.key in (pygame.K_PLUS, pygame.K_KP_PLUS): self.rounds = min(99, self.rounds + 1)
             elif event.key in (pygame.K_MINUS, pygame.K_KP_MINUS): self.rounds = max(1, self.rounds - 1)
             elif event.key == pygame.K_g: self.speed_index = (self.speed_index + 1) % len(self.SPEEDS)
+            elif event.key == pygame.K_p: self.profile_index = (self.profile_index + 1) % len(self.PROFILES)
 
     def draw(self, screen):
         self.poll()
@@ -267,8 +272,12 @@ class SimulationMenu:
         font = pygame.font.SysFont("Arial", int(18 * scale))
         title = title_font.render("Entwickler-Simulation", True, ORANGE)
         screen.blit(title, title.get_rect(center=(WINDOW_WIDTH // 2, int(42 * scale))))
-        info = (f"Szenario [S]: {self.SCENARIOS[self.scenario_index].upper()}   "
-                f"Runden [+/-]: {self.rounds}   Tempo [G]: {self.SPEEDS[self.speed_index]}×")
+        scenario_label = ("ALLE SZENARIEN" if self.SCENARIOS[self.scenario_index] == "all"
+                          else self.SCENARIOS[self.scenario_index].upper())
+        profile_label = self.PROFILES[self.profile_index].capitalize()
+        seconds = SIMULATION_PROFILES[self.PROFILES[self.profile_index]]
+        info = (f"Profil [P]: {profile_label} ({seconds}s)   Szenario [S]: {scenario_label}   "
+                f"Runden [+/-]: {self.rounds}   Fast-Forward [G]: {self.SPEEDS[self.speed_index]}×")
         screen.blit(font.render(info, True, WHITE), (int(90 * scale), int(82 * scale)))
         progress = min(1.0, self.completed / max(1, self.total))
         bar = pygame.Rect(int(150 * scale), int(116 * scale), int(600 * scale), int(18 * scale))
