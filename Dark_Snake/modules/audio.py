@@ -1,8 +1,11 @@
 import os
 import pygame
+from modules.resources import asset_path
 
 def load_sound(filename):
-    path = os.path.join("assets", "sounds", filename)
+    path = asset_path("sounds", filename)
+    if not pygame.mixer.get_init():
+        return None
     try:
         return pygame.mixer.Sound(path)
     except Exception as e:
@@ -22,7 +25,9 @@ SOUNDS = {
 # Funktionen für Hintergrundmusik
 def play_background_music(filename, volume=0.5, loop=-1):
     """Lädt und spielt die angegebene Musikdatei aus dem Musikordner."""
-    music_path = os.path.join("assets", "sounds", "music", filename)
+    music_path = filename if os.path.isabs(filename) else asset_path("sounds", "music", filename)
+    if not pygame.mixer.get_init():
+        return
     try:
         pygame.mixer.music.load(music_path)
         pygame.mixer.music.set_volume(volume)
@@ -32,15 +37,17 @@ def play_background_music(filename, volume=0.5, loop=-1):
 
 def stop_background_music():
     """Stoppt die aktuell laufende Hintergrundmusik."""
-    pygame.mixer.music.stop()
+    if pygame.mixer.get_init():
+        pygame.mixer.music.stop()
 
 def set_music_volume(volume):
     """Stellt die Lautstärke der Hintergrundmusik ein."""
-    pygame.mixer.music.set_volume(volume)
+    if pygame.mixer.get_init():
+        pygame.mixer.music.set_volume(volume)
 
 def get_music_library():
     """Liest alle Musikdateien aus dem Musikordner und gibt diese als Liste zurück."""
-    music_dir = os.path.join("assets", "sounds", "music")
+    music_dir = asset_path("sounds", "music")
     try:
         music_files = [f for f in os.listdir(music_dir) if f.lower().endswith(('.mp3', '.ogg', '.wav'))]
         return music_files
