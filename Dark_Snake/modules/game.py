@@ -39,6 +39,7 @@ from modules.bolbu_enemy import BolbuEnemy
 from modules.options_menu import OptionsMenu, ExtendedOptionsMenu
 from modules.admin_panel import AdminPanel
 from modules.fire_explosion import FireExplosionAnimation
+from modules.crash_reporting import record_event
 
 # Boss-Projektil-Grafiken (zufällige Auswahl)
 BOSS_PROJECTILES = []
@@ -701,6 +702,7 @@ class Game:
         self.add_achievement(self.boss.announcement)
         self.game_state = GameState.BOSS_FIGHT
         self.boss_fight_active = True
+        record_event(f"Bosskampf gestartet: Level {self.level}")
         return True
 
     def add_achievement(self, message):
@@ -726,10 +728,12 @@ class Game:
                 self.snake[0] = (random.randint(0, GRID_WIDTH - 1), random.randint(0, GRID_HEIGHT - 1))
             self.add_achievement("Teleport!")
         elif event == "boss":
-            self.start_boss_fight()
-            for _ in range(3):
-                self.spawn_new_item()
-            self.add_achievement("Boss-Portal!")
+            if self.start_boss_fight():
+                for _ in range(3):
+                    self.spawn_new_item()
+                self.add_achievement("Boss-Portal!")
+            else:
+                self.add_achievement("Bosskampf läuft bereits!")
         elif event == "loot":
             self.effects['score_boost'] = time.time() + 60
             self.add_achievement("Loot Boost!")
