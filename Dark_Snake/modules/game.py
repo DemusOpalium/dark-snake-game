@@ -364,16 +364,19 @@ def draw_health_bar_two(game):
 
             # === Hauptklasse Game (Finale Version mit Respawn-Unbesiegbarkeit und verbesserter Kollisionsprüfung) ===
 class Game:
-    def __init__(self):
+    def __init__(self, headless=False):
         global WINDOW_WIDTH, WINDOW_HEIGHT, GRID_WIDTH, GRID_HEIGHT
-        self.screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
-        pygame.display.set_caption("Dark-Snake")
-        try:
-            icon = pygame.image.load(asset_path("graphics", "titel2.png")).convert_alpha()
-            icon = pygame.transform.scale(icon, (32, 32))
-            pygame.display.set_icon(icon)
-        except Exception as e:
-            print(f"Fehler beim Laden des Icons: {e}")
+        self.headless = headless
+        self.screen = None
+        if not headless:
+            self.screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
+            pygame.display.set_caption("Dark-Snake")
+            try:
+                icon = pygame.image.load(asset_path("graphics", "titel2.png")).convert_alpha()
+                icon = pygame.transform.scale(icon, (32, 32))
+                pygame.display.set_icon(icon)
+            except Exception as e:
+                print(f"Fehler beim Laden des Icons: {e}")
         self.clock = pygame.time.Clock()
         self.settings = {
             'initial_speed': START_SPEED,
@@ -394,8 +397,9 @@ class Game:
             'boss_health_multiplier': 1.0
         }
         self.get_music_library = get_music_library
-        play_background_music("DarkSnakeMusicIndi2.mp3",
-                              self.settings['bg_music_volume'])
+        if not headless:
+            play_background_music("DarkSnakeMusicIndi2.mp3",
+                                  self.settings['bg_music_volume'])
         self.player_count = 1
         self.input = InputManager()
         self.intro_focus = 0
@@ -406,11 +410,13 @@ class Game:
         self.last_auto_shoot = time.time()
         self.last_auto_shoot1 = time.time()
         self.last_auto_shoot2 = time.time()
-        self.default_background_surface = self._build_default_background()
+        self.default_background_surface = (pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT))
+                                           if headless else self._build_default_background())
         self.level_background_surface = self.default_background_surface.copy()
         self.background = self.level_background_surface
         self.menu_bg = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT))
-        self.menu_bg.fill(DARK_GREY)
+        if not headless:
+            self.menu_bg.fill(DARK_GREY)
         self.intro_bg = self.menu_bg.copy()
         self.last_click_time = 0
         self.double_click_interval = 0.5
@@ -561,7 +567,7 @@ class Game:
             self.snake = [(GRID_WIDTH // 2, GRID_HEIGHT // 2)]
         self.spawn_food()
         level_path = asset_path("levels", "custom_level.json")
-        if os.path.exists(level_path):
+        if not self.headless and os.path.exists(level_path):
             try:
                 with open(level_path) as f:
                     self.level_map = json.load(f)
