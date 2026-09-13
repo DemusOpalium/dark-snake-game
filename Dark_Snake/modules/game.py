@@ -404,11 +404,9 @@ class Game:
         self.last_auto_shoot = time.time()
         self.last_auto_shoot1 = time.time()
         self.last_auto_shoot2 = time.time()
-        self.background = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT))
-        self.background.fill((102, 51, 0))
-        for i in range(0, WINDOW_WIDTH, GRID_SIZE * 2):
-            for j in range(0, WINDOW_HEIGHT, GRID_SIZE * 2):
-                pygame.draw.rect(self.background, (153, 102, 51), (i, j, GRID_SIZE, GRID_SIZE))
+        self.default_background_surface = self._build_default_background()
+        self.level_background_surface = self.default_background_surface.copy()
+        self.background = self.level_background_surface
         self.menu_bg = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT))
         self.menu_bg.fill(DARK_GREY)
         self.intro_bg = self.menu_bg.copy()
@@ -875,7 +873,7 @@ class Game:
             return
         current_time = time.time()
         # === [KS_FIX: PORTAL VISUAL RESTORE] ===
-        if self.portal_effect_active and time.time() >= self.portal_effect_end:
+        if self.portal_effect_active and current_time >= self.portal_effect_end:
             print("[DEBUG] Portal-Effekt endet")
             self.portal_effect_active = False
             self.portal_effect_type = None
@@ -2071,6 +2069,15 @@ class Game:
             self.clock.tick(FPS)
 
     # [KS_TAG: LEVEL_EDITOR_BACKGROUND]
+    def _build_default_background(self):
+        """Erzeugt den normalen Hintergrund unabhängig von einer Editor-Karte."""
+        surf = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT))
+        surf.fill((102, 51, 0))
+        for x in range(0, WINDOW_WIDTH, GRID_SIZE * 2):
+            for y in range(0, WINDOW_HEIGHT, GRID_SIZE * 2):
+                pygame.draw.rect(surf, (153, 102, 51), (x, y, GRID_SIZE, GRID_SIZE))
+        return surf
+
     def build_background_from_map(self):
         """
         Wandelt die Level-Karte in eine Hintergrund-Oberfläche um.
@@ -2078,8 +2085,9 @@ class Game:
         """
         from modules.graphics import get_tile  # Zentrale Tile-Zugriffs-Funktion
         if not hasattr(self, "level_map") or not self.level_map:
-            print("[DEBUG] Keine Level-Karte gesetzt – Hintergrund bleibt leer.")
-            return
+            self.level_background_surface = self.default_background_surface.copy()
+            print("[DEBUG] Keine Level-Karte gesetzt – Standardhintergrund aufgebaut.")
+            return self.level_background_surface
 
         surf = pygame.Surface((GRID_WIDTH * GRID_SIZE, GRID_HEIGHT * GRID_SIZE), pygame.SRCALPHA)
         for y, row in enumerate(self.level_map):
@@ -2090,6 +2098,7 @@ class Game:
                         surf.blit(img, (x * GRID_SIZE, y * GRID_SIZE))
         self.level_background_surface = surf
         print("[DEBUG] Hintergrund aus Level-Karte aufgebaut.")
+        return self.level_background_surface
     # [KS_TAG: BOSS_FLAME_PROJECTILE]
     def boss_shoots_flame(self):
         from modules.boss_projectiles import BossFlameProjectile
