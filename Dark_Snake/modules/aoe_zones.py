@@ -5,20 +5,20 @@ Zweck: Temporäre AoE-Flächen (Area of Effect) mit visuellen Effekten, Debug-Hi
 Erweitert für Boss-AoE mit Quelle ("source") und Debug-Darstellung.
 """
 
-import os
 import random
 import pygame
 import time
 import math
+from pathlib import Path
 from pygame.math import Vector2
 from config import GRID_SIZE, WINDOW_WIDTH, WINDOW_HEIGHT
+from modules.resources import asset_path
 
 # --------------------------------------------------
 # Hilfsfunktionen zum Laden von Effektbildern
 # --------------------------------------------------
 
 def get_effect_by_type(effect_type):
-    effect_folder = os.path.join("assets", "graphics", "AOEEffekte")
     type_map = {
         "damage": "FireAOE1.png",
         "heal": "HolyAOE1.png",
@@ -28,8 +28,8 @@ def get_effect_by_type(effect_type):
     filename = type_map.get(effect_type)
     if not filename:
         return None
-    path = os.path.join(effect_folder, filename)
-    if os.path.exists(path):
+    path = asset_path("graphics", "AOEEffekte", filename)
+    if Path(path).exists():
         try:
             img = pygame.image.load(path).convert_alpha()
             img = pygame.transform.scale(img, (int(GRID_SIZE * 3), int(GRID_SIZE * 3)))
@@ -172,7 +172,6 @@ class GrowingBossAOEZone(AoEZone):
 
 
 def get_aoe_effect():
-    effect_folder = os.path.join("assets", "graphics", "AOEEffekte")
     effect_files = [
         "AcidAOE1.png", "AcidAOE2.png", "AcidAOE3.png", "AcidAOE4.png",
         "AcidBlop1.png", "AcidBlop2.png", "AcidBlop3.png", "AcidBlop4.png",
@@ -196,8 +195,8 @@ def get_aoe_effect():
     ]
     available_effects = []
     for fname in effect_files:
-        path = os.path.join(effect_folder, fname)
-        if os.path.exists(path):
+        path = asset_path("graphics", "AOEEffekte", fname)
+        if Path(path).exists():
             try:
                 img = pygame.image.load(path).convert_alpha()
                 img = pygame.transform.scale(img, (int(GRID_SIZE * 3), int(GRID_SIZE * 3)))
@@ -208,5 +207,5 @@ def get_aoe_effect():
         effect = random.choice(available_effects)
         print("DEBUG: Effektbild geladen:", effect)
         return effect
-    print("DEBUG: Kein Effektbild gefunden im Ordner", effect_folder)
+    print("DEBUG: Kein AoE-Effektbild gefunden")
     return None

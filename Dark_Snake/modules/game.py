@@ -616,6 +616,7 @@ class Game:
         self.effects = {k: 0 for k in ('speed_boost', 'speed_reduction', 'score_boost',
                                        'invincibility', 'length_shortener', 'length_double', 'projectile_shoot')}
         self.boss = None
+        self.boss_fight_active = False
         self.boss_spawn_timer = time.time() + 60
         self.game_over_time = 0
         self.pause_time = 0
@@ -692,11 +693,15 @@ class Game:
         self.add_achievement(f"Level {self.level} erreicht!")
 
     def start_boss_fight(self):
+        if self.boss is not None:
+            return False
         boss_class = random.choice([Boss, Boss2])
         self.boss = boss_class(self.level, health_multiplier=self.settings['boss_health_multiplier'])
         self.items.append(Item(ItemType.PROJECTILE_SHOOT))
         self.add_achievement(self.boss.announcement)
         self.game_state = GameState.BOSS_FIGHT
+        self.boss_fight_active = True
+        return True
 
     def add_achievement(self, message):
         self.achievement_messages.append((message, time.time() + 10))
@@ -862,6 +867,8 @@ class Game:
 
     # === Haupt‑Update‑Schleife ===============================================
     def update(self):
+        if self.admin_panel.active or self.level_editor.active:
+            return
         current_time = time.time()
         # === [KS_FIX: PORTAL VISUAL RESTORE] ===
         if self.portal_effect_active and time.time() >= self.portal_effect_end:
@@ -1541,14 +1548,30 @@ class Game:
 
         for event in pygame.event.get():
             actions = self.input.actions_for(event)
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_F2:
-                self.level_editor.toggle()
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_TAB:
-                self.admin_panel.toggle()
-            self.admin_panel.handle_event(event)
-            self.level_editor.handle_event(event)
             if event.type == pygame.QUIT:
                 sys.exit()
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_TAB:
+                self.level_editor.active = False
+                self.admin_panel.toggle()
+                continue
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_F2:
+                self.admin_panel.close()
+                self.level_editor.toggle()
+                continue
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                if self.admin_panel.active:
+                    self.admin_panel.close()
+                    continue
+                if self.level_editor.active:
+                    self.level_editor.toggle()
+                    continue
+            # An open developer tool owns all input; gameplay never sees it.
+            if self.admin_panel.active:
+                self.admin_panel.handle_event(event)
+                continue
+            if self.level_editor.active:
+                self.level_editor.handle_event(event)
+                continue
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 if self.game_state not in (GameState.GAME, GameState.BOSS_FIGHT):
                     self.set_state(self.intro_state())
@@ -2037,7 +2060,8 @@ class Game:
     def run(self):
         while True:
             self.handle_events()
-            if self.game_state in (GameState.GAME, GameState.BOSS_FIGHT):
+            if (self.game_state in (GameState.GAME, GameState.BOSS_FIGHT)
+                    and not self.admin_panel.active and not self.level_editor.active):
                 self.update()
             self.draw()
             self.clock.tick(FPS)
