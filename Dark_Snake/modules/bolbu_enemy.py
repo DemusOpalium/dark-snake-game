@@ -19,17 +19,25 @@ import pygame, random, time, math, datetime
 
 from pygame.math import Vector2
 
-from config import GRID_SIZE, GRID_WIDTH, GRID_HEIGHT, PROJECTILE_SPEED_FACTOR
+from config import GRID_SIZE, GRID_WIDTH, GRID_HEIGHT
+from modules.projectile_config import (
+    BOLBU_PROJECTILE_DAMAGE, BOLBU_PROJECTILE_LIFETIME_TICKS,
+    BOLBU_PROJECTILE_SPEED_PX_PER_TICK, BOLBU_SHOOT_COOLDOWN_SECONDS,
+)
 from modules.enemies import NormalEnemy
 from modules.graphics import load_image
 from modules.audio import SOUNDS
 
 class BolbuProjectile:
     """Eigenes Projektil für BolbuEnemy."""
-    def __init__(self, x_grid, y_grid, direction, speed_mul=1.2, damage=2, lifetime=240):
+    def __init__(self, x_grid, y_grid, direction,
+                 speed=BOLBU_PROJECTILE_SPEED_PX_PER_TICK,
+                 damage=BOLBU_PROJECTILE_DAMAGE,
+                 lifetime=BOLBU_PROJECTILE_LIFETIME_TICKS):
         self.pos = Vector2(x_grid, y_grid)
         self.direction = Vector2(direction).normalize()
-        self.speed = PROJECTILE_SPEED_FACTOR * speed_mul
+        # Pixel pro Tick: klein genug zum Ausweichen, unabhängig von GRID_SIZE.
+        self.speed = speed
         self.damage = damage
         self.lifetime = lifetime
         self.image = load_image("bolbu_projectile.png", "projectiles")
@@ -41,11 +49,17 @@ class BolbuProjectile:
             self.rect = pygame.Rect(0, 0, size, size)
 
     def update(self):
-        self.pos.x += self.direction.x * self.speed
-        self.pos.y += self.direction.y * self.speed
+        self.pos.x += self.direction.x * self.speed / GRID_SIZE
+        self.pos.y += self.direction.y * self.speed / GRID_SIZE
         self.lifetime -= 1
         self.rect.topleft = (self.pos.x * GRID_SIZE, self.pos.y * GRID_SIZE)
         return 0 < self.lifetime and 0 <= self.pos.x < GRID_WIDTH and 0 <= self.pos.y < GRID_HEIGHT
+
+    def get_render_rect(self):
+        return self.rect.copy()
+
+    def get_hitbox(self):
+        return self.get_render_rect()
 
     def draw(self, surface):
         if self.image:
@@ -55,7 +69,7 @@ class BolbuProjectile:
 
 class BolbuEnemy(NormalEnemy):
     """Erweiterter normaler Gegner mit Würfel‑Logik und Projektilen."""
-    SHOOT_COOLDOWN = 2.5
+    SHOOT_COOLDOWN = BOLBU_SHOOT_COOLDOWN_SECONDS
     DICE_COOLDOWN = 5
 
     def __init__(self):

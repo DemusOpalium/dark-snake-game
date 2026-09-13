@@ -56,11 +56,11 @@ def test_all_headless_scenarios_complete_with_offscreen_rendering():
 
     assert report["failure_groups"] == {}
     assert report["completion"] == {
-        "planned_runs": 9, "completed_runs": 9, "executed_runs": 9,
+        "planned_runs": 10, "completed_runs": 10, "executed_runs": 10,
         "complete": True,
     }
     assert {run["scenario"] for run in report["runs"]} == {
-        "1p", "2p", "boss", "portal", "aoe", "projectiles", "bolbu",
+        "1p", "2p", "boss", "boss_final_fireball", "portal", "aoe", "projectiles", "bolbu",
         "restart", "game_over",
     }
     # Terminal scenarios may finish before the tick budget is exhausted.  Every
