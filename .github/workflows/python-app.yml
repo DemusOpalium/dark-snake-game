@@ -26,7 +26,15 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pyinstaller pygame
+          pip install pyinstaller -r requirements.txt
+
+      - name: Compile and test
+        env:
+          SDL_VIDEODRIVER: dummy
+          SDL_AUDIODRIVER: dummy
+        run: |
+          python -m compileall -q Dark_Snake tests
+          python -m pytest -q
 
       - name: Build EXE with PyInstaller
         run: |
@@ -52,4 +60,3 @@ jobs:
           compression-level: 6
           overwrite: false
           include-hidden-files: false
-

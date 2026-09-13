@@ -31,6 +31,8 @@ from modules.audio import SOUNDS, get_music_library, play_background_music, set_
 from modules.ui import Button, Slider, CheckBox, Dropdown
 from modules.aoe_zones import AoEZone, DamageZone, HealZone, DebuffZone, FollowZone, GrowingBossAOEZone  # [KS_TAG: BOSS_AOE]
 from modules.controls import ControlsMenu
+from modules.input_manager import InputManager
+from modules.resources import asset_path
 from modules.customization import CustomizationMenu
 from modules.enemies import NormalEnemy
 from modules.bolbu_enemy import BolbuEnemy
@@ -41,7 +43,7 @@ from modules.fire_explosion import FireExplosionAnimation
 # Boss-Projektil-Grafiken (zufällige Auswahl)
 BOSS_PROJECTILES = []
 for fname in ["Projektil2.png", "Projektil3.png", "Projektil4.png", "Projektil5.png"]:
-    path = os.path.join("assets", "graphics", fname)
+    path = asset_path("graphics", fname)
     try:
         img = pygame.image.load(path).convert_alpha()
         BOSS_PROJECTILES.append(img)
@@ -52,7 +54,7 @@ def get_random_projectile_color():
     return (random.randint(0,255), random.randint(0,255), random.randint(0,255))
 
 def get_aoe_effect():
-    effect_folder = os.path.join("assets", "graphics", "AOEEffekte")
+    effect_folder = asset_path("graphics", "AOEEffekte")
     effect_files = [
         "AcidAOE1.png", "AcidAOE2.png", "AcidAOE3.png", "AcidAOE4.png",
         "AcidBlop1.png", "AcidBlop2.png", "AcidBlop3.png", "AcidBlop4.png",
@@ -110,7 +112,7 @@ class Boss:
             self.frames = []
             self.current_frame = 0
             self.last_frame_time = time.time()
-            folder = os.path.join("assets", "graphics", "Boss001")
+            folder = asset_path("graphics", "Boss001")
             for i in range(49):
                 frame_filename = os.path.join(folder, f"frame{i:04d}.png")
                 try:
@@ -125,7 +127,7 @@ class Boss:
             self.frames = []
             self.current_frame = 0
             self.last_frame_time = time.time()
-            folder = os.path.join("assets", "graphics", "Boss002")
+            folder = asset_path("graphics", "Boss002")
             for i in range(15):
                 frame_filename = os.path.join(folder, f"frame{i:04d}.png")
                 try:
@@ -140,7 +142,7 @@ class Boss:
             self.frames = []
             self.current_frame = 0
             self.last_frame_time = time.time()
-            folder = os.path.join("assets", "graphics", "Boss003")
+            folder = asset_path("graphics", "Boss003")
             for i in range(15):
                 frame_filename = os.path.join(folder, f"frame{i:04d}.png")
                 try:
@@ -152,7 +154,7 @@ class Boss:
             if self.frames:
                 self.image = self.frames[0]
         else:
-            path = os.path.join("assets", "graphics", fname)
+            path = asset_path("graphics", fname)
             try:
                 img = pygame.image.load(path).convert_alpha()
                 self.image = pygame.transform.scale(img, (self.size * GRID_SIZE, self.size * GRID_SIZE))
@@ -254,7 +256,7 @@ class Boss2(Boss):
         self.image = None
         if boss_files:
             fname = random.choice(boss_files)
-            path = os.path.join("assets", "graphics", fname)
+            path = asset_path("graphics", fname)
             try:
                 img = pygame.image.load(path).convert_alpha()
                 self.image = pygame.transform.scale(img, (self.size * GRID_SIZE, self.size * GRID_SIZE))
@@ -365,7 +367,7 @@ class Game:
         self.screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
         pygame.display.set_caption("Dark-Snake")
         try:
-            icon = pygame.image.load(os.path.join("assets", "graphics", "titel2.png")).convert_alpha()
+            icon = pygame.image.load(asset_path("graphics", "titel2.png")).convert_alpha()
             icon = pygame.transform.scale(icon, (32, 32))
             pygame.display.set_icon(icon)
         except Exception as e:
@@ -390,9 +392,10 @@ class Game:
             'boss_health_multiplier': 1.0
         }
         self.get_music_library = get_music_library
-        play_background_music("/home/demus/Schreibtisch/complete-snake-game/assets/sounds/music/DarkSnakeMusicIndi2.mp3",
+        play_background_music("DarkSnakeMusicIndi2.mp3",
                               self.settings['bg_music_volume'])
         self.player_count = 1
+        self.input = InputManager()
         self.create_ui_elements()
         self.reset_game()
         self.current_frame_index = 0
@@ -544,7 +547,7 @@ class Game:
     def start_game(self, players):
         self.player_count = players
         self.reset_game()
-        level_path = "assets/levels/custom_level.json"
+        level_path = asset_path("levels", "custom_level.json")
         if os.path.exists(level_path):
             try:
                 with open(level_path) as f:
@@ -579,6 +582,10 @@ class Game:
         self.leaderboard_mode = False
         self.name_input = ""
         self.set_state(self.intro_state())
+        # Never retain inactive player objects or transient combat state.
+        self.snake = []
+        self.snake1 = []
+        self.snake2 = []
         # Respawn-Unbesiegbarkeit setzen: 3 Sekunden nach Reset
         self.respawn_invincible_until = time.time() + 3
         if self.player_count == 2:
@@ -1533,6 +1540,7 @@ class Game:
         keys = pygame.key.get_pressed()
 
         for event in pygame.event.get():
+            actions = self.input.actions_for(event)
             if event.type == pygame.KEYDOWN and event.key == pygame.K_F2:
                 self.level_editor.toggle()
             if event.type == pygame.KEYDOWN and event.key == pygame.K_TAB:
@@ -1551,6 +1559,9 @@ class Game:
             elif self.game_state == GameState.CUSTOMIZATION:
                 self.custom_menu.handle_event(event)
             elif self.game_state == GameState.INTRO:
+                if "menu_accept" in actions:
+                    self.start_game(1)
+                    continue
                 for btn in self.intro_buttons:
                     btn.check_hover(pygame.mouse.get_pos())
                     btn.handle_event(event)
@@ -1576,40 +1587,28 @@ class Game:
                         btn.check_hover(pygame.mouse.get_pos())
                         btn.handle_event(event)
             elif self.game_state in (GameState.GAME, GameState.BOSS_FIGHT):
+                direction_map = {"up": Direction.UP, "down": Direction.DOWN,
+                                 "left": Direction.LEFT, "right": Direction.RIGHT}
+                for player in (1, 2):
+                    if player == 2 and self.player_count != 2:
+                        continue
+                    current = self.snake_direction if self.player_count == 1 else getattr(self, f"snake_direction{player}")
+                    opposite = {Direction.UP: Direction.DOWN, Direction.DOWN: Direction.UP,
+                                Direction.LEFT: Direction.RIGHT, Direction.RIGHT: Direction.LEFT}
+                    for name, direction in direction_map.items():
+                        if f"p{player}_{name}" in actions and direction != opposite[current]:
+                            setattr(self, "next_direction" if self.player_count == 1 else f"next_direction{player}", direction)
+                for player in (1, 2):
+                    if f"p{player}_fire" in actions and (player == 1 or self.player_count == 2):
+                        snake = self.snake if self.player_count == 1 else getattr(self, f"snake{player}")
+                        direction = self.snake_direction if self.player_count == 1 else getattr(self, f"snake_direction{player}")
+                        cooldown = "fireball_cooldown_p1" if player == 1 else "fireball_cooldown_p2"
+                        if snake and getattr(self, cooldown) <= 0:
+                            self.flame_projectiles.append(FlameProjectile(snake[0][0] * GRID_SIZE, snake[0][1] * GRID_SIZE, direction.value))
+                            setattr(self, cooldown, FPS * 2)
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_p:
                         self.set_state(GameState.PAUSE)
-                    elif event.key in (pygame.K_SPACE, pygame.K_PLUS, pygame.K_KP_PLUS):
-                        # Spieler 1: SPACE, Spieler 2: PLUS oder CONTROLLER
-                        if self.player_count == 1:
-                            if self.fireball_cooldown_p1 <= 0:
-                                head = self.snake[0]
-                                direction = self.snake_direction
-                                head_px = head[0] * GRID_SIZE
-                                head_py = head[1] * GRID_SIZE
-                                flame = FlameProjectile(head_px, head_py, direction.value)
-                                self.flame_projectiles.append(flame)
-                                self.fireball_cooldown_p1 = FPS * 2  # 2 Sekunden
-                        else:
-                            if event.key == pygame.K_SPACE:  # Spieler 1 schießt mit SPACE
-                                if self.fireball_cooldown_p1 <= 0:
-                                    head = self.snake1[0]
-                                    direction = self.snake_direction1
-                                    head_px = head[0] * GRID_SIZE
-                                    head_py = head[1] * GRID_SIZE
-                                    flame = FlameProjectile(head_px, head_py, direction.value)
-                                    self.flame_projectiles.append(flame)
-                                    self.fireball_cooldown_p1 = FPS * 2
-                            elif event.key in (pygame.K_PLUS, pygame.K_KP_PLUS):  # Spieler 2 schießt mit PLUS/Controller
-                                if self.fireball_cooldown_p2 <= 0:
-                                    head = self.snake2[0]
-                                    direction = self.snake_direction2
-                                    head_px = head[0] * GRID_SIZE
-                                    head_py = head[1] * GRID_SIZE
-                                    flame = FlameProjectile(head_px, head_py, direction.value)
-                                    self.flame_projectiles.append(flame)
-                                    self.fireball_cooldown_p2 = FPS * 2
-
                     else:
                         from math import sqrt, pi
                         zone_radius = int(sqrt(0.25 * WINDOW_WIDTH * WINDOW_HEIGHT / pi))
@@ -1668,7 +1667,7 @@ class Game:
                         elif event.unicode == "ü":
                             from modules.aoe_zones import BackgroundEffectZone
                             try:
-                                bg_image = pygame.image.load("assets/graphics/AOEEffekte/Backround0021.png").convert_alpha()
+                                bg_image = pygame.image.load(asset_path("graphics", "AOEEffekte", "Backround0021.png")).convert_alpha()
                             except Exception as e:
                                 print(f"DEBUG: Fehler beim Laden des Hintergrundbildes: {e}")
                                 bg_image = None
@@ -1676,32 +1675,7 @@ class Game:
                                 zone = BackgroundEffectZone(bg_image, 7)
                                 self.aoe_zones.insert(0, zone)
                                 print("DEBUG: BackgroundEffectZone (Hintergrund-Effekt) erzeugt!")
-                        if self.player_count == 1:
-                            if event.key in (pygame.K_UP, pygame.K_w) and self.snake_direction != Direction.DOWN:
-                                self.next_direction = Direction.UP
-                            elif event.key in (pygame.K_DOWN, pygame.K_s) and self.snake_direction != Direction.UP:
-                                self.next_direction = Direction.DOWN
-                            elif event.key in (pygame.K_LEFT, pygame.K_a) and self.snake_direction != Direction.RIGHT:
-                                self.next_direction = Direction.LEFT
-                            elif event.key in (pygame.K_RIGHT, pygame.K_d) and self.snake_direction != Direction.LEFT:
-                                self.next_direction = Direction.RIGHT
-                        elif self.player_count == 2:
-                            if event.key == pygame.K_w and self.snake_direction1 != Direction.DOWN:
-                                self.next_direction1 = Direction.UP
-                            elif event.key == pygame.K_s and self.snake_direction1 != Direction.UP:
-                                self.next_direction1 = Direction.DOWN
-                            elif event.key == pygame.K_a and self.snake_direction1 != Direction.RIGHT:
-                                self.next_direction1 = Direction.LEFT
-                            elif event.key == pygame.K_d and self.snake_direction1 != Direction.LEFT:
-                                self.next_direction1 = Direction.RIGHT
-                            if event.key == pygame.K_UP and self.snake_direction2 != Direction.DOWN:
-                                self.next_direction2 = Direction.UP
-                            elif event.key == pygame.K_DOWN and self.snake_direction2 != Direction.UP:
-                                self.next_direction2 = Direction.DOWN
-                            elif event.key == pygame.K_LEFT and self.snake_direction2 != Direction.RIGHT:
-                                self.next_direction2 = Direction.LEFT
-                            elif event.key == pygame.K_RIGHT and self.snake_direction2 != Direction.LEFT:
-                                self.next_direction2 = Direction.RIGHT
+
 
     def draw(self):
         if self.level_editor.active:

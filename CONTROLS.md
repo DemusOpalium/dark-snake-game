@@ -2,12 +2,21 @@
 
 ## Spieler 1
 - Bewegung: **W A S D**
-- Feuerball: **+ (Plus)**
+- Feuerball: **Leertaste / Enter**
 - Spezialeffekt: **Ü**
 
 ## Spieler 2
 - Bewegung: **Pfeiltasten**
-- Feuerball: **Leertaste**
+- Feuerball: **Enter / Plus (auch Ziffernblock)**
+
+## Menü und Gamepad
+- **Enter** startet im Hauptmenü ein Einzelspiel.
+- Gamepad 1 steuert Spieler 1, Gamepad 2 Spieler 2.
+- D-Pad (Hat), linke Achsen und Gamepad-Buttons werden unterstützt.
+- Im Menü **Steuerung** mit Hoch/Runter eine Aktion wählen und mit Enter eine
+  neue Tastatur- oder Gamepad-Taste erfassen. **R** beziehungsweise der Knopf
+  **STANDARD** stellt die Standardbelegung wieder her. Die Belegung wird im
+  Benutzerverzeichnis unter `.dark-snake/controls.json` gespeichert.
 
 ## Debug/Dev
 - Pause-Menü: **P**
