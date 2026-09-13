@@ -39,6 +39,7 @@ from modules.bolbu_enemy import BolbuEnemy
 from modules.options_menu import OptionsMenu, ExtendedOptionsMenu
 from modules.admin_panel import AdminPanel
 from modules.fire_explosion import FireExplosionAnimation
+from modules.crash_reporting import record_event
 
 # Boss-Projektil-Grafiken (zufällige Auswahl)
 BOSS_PROJECTILES = []
@@ -408,6 +409,9 @@ class Game:
         for i in range(0, WINDOW_WIDTH, GRID_SIZE * 2):
             for j in range(0, WINDOW_HEIGHT, GRID_SIZE * 2):
                 pygame.draw.rect(self.background, (153, 102, 51), (i, j, GRID_SIZE, GRID_SIZE))
+        # Always provide a safe surface for restoring the view after a portal.
+        # Keep a copy because portal effects recolor ``self.background`` in place.
+        self.level_background_surface = self.background.copy()
         self.menu_bg = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT))
         self.menu_bg.fill(DARK_GREY)
         self.intro_bg = self.menu_bg.copy()
@@ -545,6 +549,7 @@ class Game:
         print(f"Hintergrundmusik geändert: {selected_option}")
 
     def start_game(self, players):
+        record_event(f"Partie gestartet: {players} Spieler")
         self.player_count = players
         self.reset_game()
         level_path = asset_path("levels", "custom_level.json")
@@ -574,7 +579,11 @@ class Game:
         self.set_state(self.intro_state())
 
     def set_state(self, state):
+        previous = getattr(self, "game_state", None)
         self.game_state = state
+        if previous != state:
+            old_name = getattr(previous, "name", str(previous))
+            record_event(f"GameState: {old_name} -> {state.name}")
         if state == GameState.GAME:
             self.last_update_time = time.time()
 
@@ -616,6 +625,7 @@ class Game:
         self.effects = {k: 0 for k in ('speed_boost', 'speed_reduction', 'score_boost',
                                        'invincibility', 'length_shortener', 'length_double', 'projectile_shoot')}
         self.boss = None
+        self.boss_fight_active = False
         self.boss_spawn_timer = time.time() + 60
         self.game_over_time = 0
         self.pause_time = 0
@@ -692,16 +702,22 @@ class Game:
         self.add_achievement(f"Level {self.level} erreicht!")
 
     def start_boss_fight(self):
+        if self.boss is not None:
+            return False
         boss_class = random.choice([Boss, Boss2])
         self.boss = boss_class(self.level, health_multiplier=self.settings['boss_health_multiplier'])
         self.items.append(Item(ItemType.PROJECTILE_SHOOT))
         self.add_achievement(self.boss.announcement)
         self.game_state = GameState.BOSS_FIGHT
+        self.boss_fight_active = True
+        record_event(f"Bosskampf gestartet: Level {self.level}")
+        return True
 
     def add_achievement(self, message):
         self.achievement_messages.append((message, time.time() + 10))
 
     def activate_portal(self, event):
+        record_event(f"Portal-Effekt aktiviert: {event}")
         self.portal_effect_active = True
         self.portal_effect_end = time.time() + 60
         self.portal_spawn_cooldown = time.time() + 300
@@ -862,15 +878,24 @@ class Game:
 
     # === Haupt‑Update‑Schleife ===============================================
     def update(self):
+        if self.admin_panel.active or self.level_editor.active:
+            return
         current_time = time.time()
         # === [KS_FIX: PORTAL VISUAL RESTORE] ===
         if self.portal_effect_active and time.time() >= self.portal_effect_end:
+            record_event("Portal-Effekt beendet")
             print("[DEBUG] Portal-Effekt endet")
             self.portal_effect_active = False
             self.portal_effect_type = None
-            self.build_background_from_map()
-            self.background = self.level_background_surface
-            print("[DEBUG] Editor-Karte neu geladen und gesetzt.")
+            if self.build_background_from_map():
+                self.background = self.level_background_surface
+                print("[DEBUG] Editor-Karte neu geladen und gesetzt.")
+            else:
+                # No editor map is a normal game state. Restore the safe default
+                # initialized with the regular board rather than dereferencing a
+                # surface that might never have been generated.
+                self.background = self.level_background_surface.copy()
+                print("[DEBUG] Keine Editor-Karte – Standardhintergrund wiederhergestellt.")
 
         # ───────────────────────── 1) Cooldowns & Auto‑Shoot ─────────────────────────
         if self.fireball_cooldown_p1 > 0:
@@ -1541,14 +1566,30 @@ class Game:
 
         for event in pygame.event.get():
             actions = self.input.actions_for(event)
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_F2:
-                self.level_editor.toggle()
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_TAB:
-                self.admin_panel.toggle()
-            self.admin_panel.handle_event(event)
-            self.level_editor.handle_event(event)
             if event.type == pygame.QUIT:
                 sys.exit()
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_TAB:
+                self.level_editor.active = False
+                self.admin_panel.toggle()
+                continue
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_F2:
+                self.admin_panel.close()
+                self.level_editor.toggle()
+                continue
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                if self.admin_panel.active:
+                    self.admin_panel.close()
+                    continue
+                if self.level_editor.active:
+                    self.level_editor.toggle()
+                    continue
+            # An open developer tool owns all input; gameplay never sees it.
+            if self.admin_panel.active:
+                self.admin_panel.handle_event(event)
+                continue
+            if self.level_editor.active:
+                self.level_editor.handle_event(event)
+                continue
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 if self.game_state not in (GameState.GAME, GameState.BOSS_FIGHT):
                     self.set_state(self.intro_state())
@@ -2037,7 +2078,8 @@ class Game:
     def run(self):
         while True:
             self.handle_events()
-            if self.game_state in (GameState.GAME, GameState.BOSS_FIGHT):
+            if (self.game_state in (GameState.GAME, GameState.BOSS_FIGHT)
+                    and not self.admin_panel.active and not self.level_editor.active):
                 self.update()
             self.draw()
             self.clock.tick(FPS)
@@ -2050,8 +2092,8 @@ class Game:
         """
         from modules.graphics import get_tile  # Zentrale Tile-Zugriffs-Funktion
         if not hasattr(self, "level_map") or not self.level_map:
-            print("[DEBUG] Keine Level-Karte gesetzt – Hintergrund bleibt leer.")
-            return
+            print("[DEBUG] Keine Level-Karte gesetzt – Standardhintergrund bleibt erhalten.")
+            return False
 
         surf = pygame.Surface((GRID_WIDTH * GRID_SIZE, GRID_HEIGHT * GRID_SIZE), pygame.SRCALPHA)
         for y, row in enumerate(self.level_map):
@@ -2062,6 +2104,7 @@ class Game:
                         surf.blit(img, (x * GRID_SIZE, y * GRID_SIZE))
         self.level_background_surface = surf
         print("[DEBUG] Hintergrund aus Level-Karte aufgebaut.")
+        return True
     # [KS_TAG: BOSS_FLAME_PROJECTILE]
     def boss_shoots_flame(self):
         from modules.boss_projectiles import BossFlameProjectile
