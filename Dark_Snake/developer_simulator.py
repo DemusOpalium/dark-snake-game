@@ -57,6 +57,8 @@ class RunResult:
     game_state: str
     level: int
     score: int
+    steps_completed: int
+    completed: bool
     exception: str | None = None
     code_line: str | None = None
     stacktrace: str | None = None
@@ -161,6 +163,7 @@ def run_simulation(rounds: int = 3, steps: int = 120, step_seconds: float = 1.0,
             random.seed(seed)
             clock = SimulatedClock()
             game = None
+            steps_completed = 0
             started_at = clock.time()
             try:
                 if progress:
@@ -180,11 +183,13 @@ def run_simulation(rounds: int = 3, steps: int = 120, step_seconds: float = 1.0,
                         clock.advance(step_seconds)
                         if _state_name(game) in ("GAME", "BOSS_FIGHT"):
                             game.update()
+                        steps_completed += 1
                         if progress and _ % 10 == 0:
                             progress({"type": "heartbeat", "scenario": name,
                                       "round": round_number + 1})
                 results.append(RunResult(seed, name, clock.time() - started_at,
-                                         _state_name(game), game.level, game.score))
+                                         _state_name(game), game.level, game.score,
+                                         steps_completed, steps_completed == steps))
             except Exception as exc:  # Der Simulator muss weitere Seeds noch prüfen.
                 results.append(RunResult(
                     seed=seed,
@@ -193,6 +198,8 @@ def run_simulation(rounds: int = 3, steps: int = 120, step_seconds: float = 1.0,
                     game_state=_state_name(game) if game else "not_initialized",
                     level=getattr(game, "level", 0),
                     score=getattr(game, "score", 0),
+                    steps_completed=steps_completed,
+                    completed=False,
                     exception=type(exc).__name__,
                     code_line=_failure_location(exc),
                     stacktrace="".join(traceback.format_exception(exc)),
@@ -210,6 +217,8 @@ def run_simulation(rounds: int = 3, steps: int = 120, step_seconds: float = 1.0,
 
     serialized = [asdict(result) for result in results]
     failures = [result for result in serialized if result["exception"]]
+    planned_runs = rounds * len(scenarios)
+    completed_runs = sum(result["completed"] for result in serialized)
     groups = {}
     for failure in failures:
         key = f'{failure["exception"]}@{failure["code_line"]}'
@@ -220,6 +229,9 @@ def run_simulation(rounds: int = 3, steps: int = 120, step_seconds: float = 1.0,
         "seeds": [result["seed"] for result in serialized],
         "runs": serialized,
         "failure_groups": groups,
+        "completion": {"planned_runs": planned_runs,
+                       "completed_runs": completed_runs,
+                       "complete": completed_runs == planned_runs},
     }
 
 
@@ -229,6 +241,9 @@ def format_text_report(report: dict) -> str:
         f"Läufe: {len(report['runs'])}",
         f"Fehler: {sum(len(group) for group in report['failure_groups'].values())}",
         f"Basis-Seed: {report['configuration']['base_seed']}",
+        ("Vollständig: "
+         f"{report.get('completion', {}).get('completed_runs', len(report['runs']))}/"
+         f"{report.get('completion', {}).get('planned_runs', len(report['runs']))}"),
     ]
     for key, failures in report["failure_groups"].items():
         lines.append(f"\n{key} ({len(failures)} Vorkommen)")

@@ -100,3 +100,17 @@ def test_escape_cancels_and_returns_to_main_menu():
     menu.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_ESCAPE))
     assert context.last_process.terminated
     assert menu.game.state is GameState.INTRO and menu.status == "Bereit"
+
+
+def test_finished_status_requires_a_complete_report():
+    menu, _ = make_menu()
+    menu.start()
+    menu.messages.put({"type": "finished", "cancelled": False, "report": {
+        "completion": {"planned_runs": 1, "completed_runs": 0, "complete": False},
+        "runs": [], "failure_groups": {},
+    }})
+
+    menu.poll()
+
+    assert menu.status == "Fehler"
+    assert "nicht alle" in menu.last_error.lower()
