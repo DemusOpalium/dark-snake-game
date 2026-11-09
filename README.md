@@ -1,6 +1,21 @@
-# 🐍 Dark Snake – Complete Snake Game: Dark Art Edition
+<p align="center">
+  <img src="Dark_Snake/assets/graphics/titel1.png" alt="DARK Snake – Titelgrafik des Spiels" width="220">
+</p>
 
-![Dark Snake Header](assets/graphics/ui/DarkSnake_header_banner_fixed.png)
+# 🐍 DARK SNAKE
+
+### 🎮 Windows-Download
+
+Die erste offizielle Windows-Version ist in Vorbereitung. Sobald sie verfügbar ist, findest du die Windows-ZIP auf der [GitHub-Release-Seite](https://github.com/DemusOpalium/dark-snake-game/releases).
+
+- ✅ Kostenlos
+- ✅ Für Windows 11
+- ✅ Keine Python-Installation erforderlich
+
+**Installation nach der Veröffentlichung:** Windows-ZIP aus dem Release herunterladen, vollständig entpacken und die DARK-Snake-EXE starten.
+
+<!-- Nach Veröffentlichung von v1.0.0 und Prüfung des Windows-ZIP-Assets die Überschrift in „🎮 Jetzt kostenlos spielen!“ ändern, den Statusabsatz durch [**⬇️ DOWNLOAD – Neueste Windows-Version**](https://github.com/DemusOpalium/dark-snake-game/releases/latest) ersetzen und „nach der Veröffentlichung“ entfernen. -->
+
 *Eine düstere Snake-Reinkarnation mit Bossfights, Portalen, Effekten, Items und integriertem Leveleditor mit 500+ Tiles.*
 
 ---
@@ -170,7 +185,8 @@ Ein Exit-Code ungleich null zeigt mindestens einen gruppierten Simulationsfehler
 
 * Projektlizenz: **MIT License**
 * Repo: [github.com/DemusOpalium/dark-snake-game](https://github.com/DemusOpalium/dark-snake-game)
-* Quellcode: ZIP-Download oder Klonen via Git
+* Spielversionen: [GitHub-Releases](https://github.com/DemusOpalium/dark-snake-game/releases)
+* Quellcode für Entwickler: ZIP-Download oder Klonen via Git
 
 > Entwickelt mit ❤️, Python, GPT4.5 und unermüdlichem Willen.
 > Dieses Projekt ist mehr als ein Spiel: Es ist ein sichtbarer Beweis für kreative Kraft trotz Krankheit, Einschränkung und Widerstand.

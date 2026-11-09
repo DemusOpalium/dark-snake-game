@@ -27,12 +27,12 @@ from modules.graphics import (
     OPTIONS_BUTTON_IMG, PLAY_BUTTON_IMG,
 )
 from modules.level_editor import LevelEditor
-from modules.audio import SOUNDS, get_music_library, play_background_music, set_music_volume
+from modules.audio import SOUNDS, get_music_library, play_background_music, set_music_volume, set_sound_volume
 from modules.ui import Button, Slider, CheckBox, Dropdown
 from modules.aoe_zones import AoEZone, DamageZone, HealZone, DebuffZone, FollowZone, GrowingBossAOEZone  # [KS_TAG: BOSS_AOE]
 from modules.controls import ControlsMenu
 from modules.input_manager import InputManager
-from modules.resources import asset_path
+from modules.resources import asset_path, custom_level_path, user_data_path
 from modules.customization import CustomizationMenu
 from modules.enemies import NormalEnemy
 from modules.bolbu_enemy import BolbuEnemy
@@ -420,7 +420,7 @@ class Game:
             'initial_speed': START_SPEED,
             'fullscreen': False,
             'music_volume': 0.2,
-            'sfx_volume': 2.0,
+            'sfx_volume': 1.0,
             'bg_music_volume': 0.3,
             'difficulty': 1.0,
             'field_scale': 1.0,
@@ -431,11 +431,13 @@ class Game:
             'custom_body_p2': None,
             'projectile_speed_factor': PROJECTILE_SPEED_FACTOR,
             'auto_shoot_interval': AUTO_SHOOT_INTERVAL,  # Neuer konfigurierbarer Parameter für die Schussfrequenz
-            'enemy_spawn_rate': 0.01,
+            'enemy_spawn_rate': 0.002,
             'boss_health_multiplier': 1.0
         }
+        self.load_settings()
         self.get_music_library = get_music_library
         if not headless:
+            set_sound_volume(self.settings['sfx_volume'])
             play_background_music("DarkSnakeMusicIndi2.mp3",
                                   self.settings['bg_music_volume'])
         self.player_count = 1
@@ -566,8 +568,9 @@ class Game:
 
     def load_leaderboard(self):
         leaderboard = []
-        if os.path.exists(LEADERBOARD_FILE):
-            with open(LEADERBOARD_FILE, "r") as f:
+        path = user_data_path(LEADERBOARD_FILE)
+        if os.path.exists(path):
+            with open(path, encoding="utf-8") as f:
                 for line in f:
                     try:
                         name, score = line.strip().split(',')
@@ -584,12 +587,30 @@ class Game:
         self.set_state(GameState.CUSTOMIZATION)
         self.custom_menu = CustomizationMenu(self)
 
+    def load_settings(self):
+        if self.headless:
+            return
+        try:
+            with open(user_data_path("settings.json"), encoding="utf-8") as file:
+                saved = json.load(file)
+            if isinstance(saved, dict):
+                for key in self.settings:
+                    if key in saved:
+                        self.settings[key] = saved[key]
+        except FileNotFoundError:
+            pass
+        except (OSError, ValueError) as exc:
+            record_event(f"Einstellungen konnten nicht geladen werden: {exc}")
+
     def save_settings(self):
-        with open("settings.txt", "w") as f:
-            for key, value in self.settings.items():
-                f.write(f"{key}={value}\n")
-        print("Einstellungen wurden gespeichert!")
+        try:
+            with open(user_data_path("settings.json"), "w", encoding="utf-8") as file:
+                json.dump(self.settings, file, ensure_ascii=False, indent=2)
+        except OSError as exc:
+            self.add_achievement("Einstellungen konnten nicht gespeichert werden")
+            record_event(f"Einstellungen konnten nicht gespeichert werden: {exc}")
         set_music_volume(self.settings['bg_music_volume'])
+        set_sound_volume(self.settings['sfx_volume'])
 
     def change_bg_music(self, selected_option):
         self.settings['bg_music_volume'] = self.music_slider.current_val
@@ -607,11 +628,10 @@ class Game:
             self.snake = [(GRID_WIDTH // 2, GRID_HEIGHT // 2)]
         self._reset_snake_interpolation()
         self.spawn_food()
-        level_path = asset_path("levels", "custom_level.json")
-        if not self.headless and os.path.exists(level_path):
+        level_path = custom_level_path() if not self.headless else None
+        if level_path and os.path.exists(level_path):
             try:
-                with open(level_path) as f:
-                    self.level_map = json.load(f)
+                self.level_map = self.level_editor.read_map()
                 self.build_background_from_map()
                 self.background = self.level_background_surface
                 print("[INFO] Benutzerdefinierte Map als Hintergrund geladen.")
@@ -1074,7 +1094,7 @@ class Game:
         if self.effects['projectile_shoot'] > current_time:
             self.auto_shoot()
             # -- Gegner-Spawn ---------------------------------------------
-            if random.random() < 0.002:
+            if random.random() < self.settings['enemy_spawn_rate']:
                 enemy = NormalEnemy()
                 enemy.spawn_time = time.time()
                 self.enemies.append(enemy)
@@ -1772,7 +1792,7 @@ class Game:
                         if event.key == pygame.K_BACKSPACE:
                             self.name_input = self.name_input[:-1]
                         elif event.key == pygame.K_RETURN:
-                            with open(LEADERBOARD_FILE, "a") as f:
+                            with open(user_data_path(LEADERBOARD_FILE), "a", encoding="utf-8") as f:
                                 f.write(f"{self.name_input},{self.score}\n")
                             self.leaderboard = self.load_leaderboard()
                             self.leaderboard_mode = False

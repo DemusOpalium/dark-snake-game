@@ -45,6 +45,12 @@ def set_music_volume(volume):
     if pygame.mixer.get_init():
         pygame.mixer.music.set_volume(volume)
 
+
+def set_sound_volume(volume):
+    for sound in SOUNDS.values():
+        if sound is not None:
+            sound.set_volume(volume)
+
 def get_music_library():
     """Liest alle Musikdateien aus dem Musikordner und gibt diese als Liste zurück."""
     music_dir = asset_path("sounds", "music")
