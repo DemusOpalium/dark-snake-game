@@ -7,7 +7,8 @@
 #
 
 import pygame, sys, random, time, os, datetime, json
-from math import sqrt, atan2, cos, sin
+from functools import lru_cache
+from math import sqrt, atan2, cos, sin, pi
 from pygame.math import Vector2
 
 from modules.enums import GameState, Direction, ItemType
@@ -16,7 +17,7 @@ from config import (WINDOW_WIDTH, WINDOW_HEIGHT, GRID_SIZE, FPS, GRID_WIDTH, GRI
                     START_SPEED, MAX_SPEED, PROJECTILE_SPEED_FACTOR, AUTO_SHOOT_INTERVAL, BORDER_SIZE, UI_CONTAINER_HEIGHT)
 # <-- Hier den fehlenden Import hinzufügen:
 from modules.graphics import (
-    load_image,                          # the helper itself
+    load_image, load_projectile_image, scale_sprite,
     SNAKE_HEAD_IMG, SNAKE_HEAD1G20, SNAKE_HEAD2G20, SNAKE_HEAD3G20,
     SNAKE_HEAD_BETA,
     SNAKE_BODY_IMG, SNAKE_BODY_BETA, SNAKE_BODY_Body7, SNAKE_BODY_Body5,
@@ -42,11 +43,18 @@ from modules.fire_explosion import FireExplosionAnimation
 from modules.crash_reporting import record_event
 from modules.simulation_ui import SimulationMenu
 from modules.effect_manager import EffectManager
+from modules.frame_metrics import FrameMetrics
 from modules.projectile_config import (
     PLAYER_FIREBALL_COOLDOWN_SECONDS, PLAYER_FIREBALL_DAMAGE,
     PLAYER_FIREBALL_LIFETIME_TICKS, PLAYER_FIREBALL_SPEED_PX_PER_TICK,
     PLAYER_PROJECTILE_DAMAGE,
 )
+
+DIRECTION_ACTIONS = {direction.name.lower(): direction for direction in Direction}
+OPPOSITE_DIRECTION = {
+    Direction.UP: Direction.DOWN, Direction.DOWN: Direction.UP,
+    Direction.LEFT: Direction.RIGHT, Direction.RIGHT: Direction.LEFT,
+}
 
 # Boss-Projektil-Grafiken (zufällige Auswahl)
 BOSS_PROJECTILES = []
@@ -61,7 +69,8 @@ for fname in ["Projektil2.png", "Projektil3.png", "Projektil4.png", "Projektil5.
 def get_random_projectile_color():
     return (random.randint(0,255), random.randint(0,255), random.randint(0,255))
 
-def get_aoe_effect():
+@lru_cache(maxsize=1)
+def _available_aoe_effect_paths():
     effect_folder = asset_path("graphics", "AOEEffekte")
     effect_files = [
         "AcidAOE1.png", "AcidAOE2.png", "AcidAOE3.png", "AcidAOE4.png",
@@ -84,18 +93,24 @@ def get_aoe_effect():
         "WaterAOE1.png", "WaterAOE2.png",
         "WindAOE1.png", "WindAOE2.png"
     ]
-    available_effects = []
-    for fname in effect_files:
-        path = os.path.join(effect_folder, fname)
-        if os.path.exists(path):
-            img = pygame.image.load(path).convert_alpha()
-            img = pygame.transform.scale(img, (int(GRID_SIZE * 3), int(GRID_SIZE * 3)))
-            available_effects.append(img)
-    if available_effects:
-        effect = random.choice(available_effects)
-        print("DEBUG: Effektbild geladen:", effect)
-        return effect
-    print("DEBUG: Kein Effektbild gefunden im Ordner", effect_folder)
+    return tuple(path for fname in effect_files
+                 if os.path.isfile(path := os.path.join(effect_folder, fname)))
+
+
+@lru_cache(maxsize=64)
+def _load_aoe_effect(path, grid_size):
+    image = pygame.image.load(path).convert_alpha()
+    return pygame.transform.scale(image, (grid_size * 3, grid_size * 3))
+
+
+def get_aoe_effect():
+    candidates = list(_available_aoe_effect_paths())
+    while candidates:
+        path = random.choice(candidates)
+        try:
+            return _load_aoe_effect(path, GRID_SIZE)
+        except (OSError, pygame.error):
+            candidates.remove(path)
     return None
 
 # === Boss-Klassen ===
@@ -227,7 +242,10 @@ class Boss:
             if elapsed < self.aoe_effect["duration"]:
                 scale = 1 + elapsed * ((self.aoe_effect["max_size"] / (self.size * GRID_SIZE) - 1)
                                        / self.aoe_effect["duration"])
-                aoe_img = pygame.transform.scale(self.aoe_effect["image"],
+                image = self.aoe_effect["image"]
+                if image is None:
+                    return
+                aoe_img = pygame.transform.scale(image,
                                                    (int(self.size * GRID_SIZE * scale),
                                                     int(self.size * GRID_SIZE * scale)))
                 pos_x = self.x * GRID_SIZE + (self.size * GRID_SIZE - aoe_img.get_width()) // 2
@@ -414,6 +432,7 @@ class Game:
             except Exception as e:
                 print(f"Fehler beim Laden des Icons: {e}")
         self.clock = pygame.time.Clock()
+        self.metrics = FrameMetrics()
         self.effect_manager = EffectManager()
         self._effect_update_time = time.monotonic()
         self.settings = {
@@ -441,7 +460,7 @@ class Game:
             play_background_music("DarkSnakeMusicIndi2.mp3",
                                   self.settings['bg_music_volume'])
         self.player_count = 1
-        self.input = InputManager()
+        self.input = InputManager(initialize_joysticks=not headless, load_saved=not headless)
         self.intro_focus = 0
         self.create_ui_elements()
         self.reset_game()
@@ -552,8 +571,8 @@ class Game:
         button_width = 160
         button_height = 40
         self.pause_buttons = [
-            Button(center_x - 100, WINDOW_HEIGHT // 2, button_width, button_height, "PAUSE",
-                   action=lambda: self.set_state(GameState.PAUSE)),
+            Button(center_x - 100, WINDOW_HEIGHT // 2, button_width, button_height, "WEITER",
+                   action=self._resume_game),
             Button(center_x - 100, WINDOW_HEIGHT // 2 + 80, button_width, button_height, "HAUPTMENÜ",
                    color=PURPLE, action=lambda: self.confirm_back_to_main()),
             Button(center_x - 100, WINDOW_HEIGHT // 2 + 160, button_width, button_height, "BEENDEN",
@@ -654,13 +673,21 @@ class Game:
         self.set_state(self.intro_state())
 
     def set_state(self, state):
-        if state == GameState.INTRO and getattr(self, "game_state", None) != GameState.INTRO:
+        previous = getattr(self, "game_state", None)
+        if state == GameState.INTRO and previous != GameState.INTRO:
             self.clear_game_state()
+        if state == GameState.PAUSE and previous in (GameState.GAME, GameState.BOSS_FIGHT):
+            self._paused_state = previous
+            self.metrics.cancel_pending()
         self.game_state = state
-        if state == GameState.GAME:
+        if state == GameState.GAME or (previous == GameState.PAUSE and state == GameState.BOSS_FIGHT):
             self.last_update_time = time.time()
 
+    def _resume_game(self):
+        self.set_state(getattr(self, "_paused_state", GameState.GAME))
+
     def reset_game(self):
+        self.metrics.cancel_pending()
         if hasattr(self, "effect_manager"):
             self.effect_manager.clear()
         self.leaderboard_mode = False
@@ -727,6 +754,7 @@ class Game:
         self.aoe_zones = []
 
     def clear_game_state(self):
+        self.metrics.cancel_pending()
         """Drop every object belonging to a round before showing a menu."""
         self.snake = []
         self.snake1 = []
@@ -755,6 +783,7 @@ class Game:
             self.background = self.level_background_surface
 
     def _reset_snake_interpolation(self):
+        self.metrics.cancel_pending()
         """Synchronize visual history without changing logical grid state."""
         self.previous_snake = list(self.snake)
         self.previous_snake1 = list(self.snake1)
@@ -781,8 +810,12 @@ class Game:
         positions = []
         for index, target in enumerate(current):
             start = previous[min(index, len(previous) - 1)]
-            positions.append((start[0] + (target[0] - start[0]) * alpha,
-                              start[1] + (target[1] - start[1]) * alpha))
+            dx, dy = target[0] - start[0], target[1] - start[1]
+            if abs(dx) + abs(dy) > 1:
+                # A wrapped segment or a teleport never traverses the board.
+                positions.append(target)
+            else:
+                positions.append((start[0] + dx * alpha, start[1] + dy * alpha))
         return positions
 
     def get_snake_render_positions(self, player=1, now=None):
@@ -800,6 +833,23 @@ class Game:
         """Visual rectangles; gameplay collision remains on current grid cells."""
         return [pygame.Rect(round(x), round(y), GRID_SIZE, GRID_SIZE)
                 for x, y in self.get_snake_render_positions(player, now)]
+
+    def _move_snake(self, snake, new_head, invincible):
+        """Commit a grid step, or lose a life when the destination stays occupied."""
+        item_index = next((index for index, item in enumerate(self.items)
+                           if (item.x, item.y) == new_head), None)
+        occupied = snake[1:-1] if item_index is None else snake[1:]
+        if not invincible and new_head in occupied:
+            self.handle_self_collision()
+            return False
+
+        snake.insert(0, new_head)
+        if item_index is None:
+            snake.pop()
+        else:
+            self.handle_item_pickup(self.items[item_index])
+            self.items.pop(item_index)
+        return True
 
     def spawn_food(self):
         while True:
@@ -922,6 +972,7 @@ class Game:
                 self.snake2[0] = (random.randint(0, GRID_WIDTH - 1), random.randint(0, GRID_HEIGHT - 1))
             else:
                 self.snake[0] = (random.randint(0, GRID_WIDTH - 1), random.randint(0, GRID_HEIGHT - 1))
+            self._reset_snake_interpolation()
             self.add_achievement("Teleport!")
         elif event == "boss":
             if self.start_boss_fight():
@@ -1207,15 +1258,17 @@ class Game:
                     self.player_health -= proj.damage
                     self.boss_flame_projectiles.remove(proj)
             elif self.player_count == 2:
+                hit = False
                 for snake, attr in [(self.snake1, 'player_health_p1'), (self.snake2, 'player_health_p2')]:
                     if snake:
                         head_rect = pygame.Rect(snake[0][0] * GRID_SIZE, snake[0][1] * GRID_SIZE, GRID_SIZE, GRID_SIZE)
                         if proj.collides_with(head_rect):
                             print(f"[DEBUG] BossFlameProjectile trifft {attr}!")
-                            self.spawn_fire_explosion(proj.rect.center)
-                            current = getattr(self, attr)
-                            setattr(self, attr, current - proj.damage)
-                            self.boss_flame_projectiles.remove(proj)
+                            setattr(self, attr, getattr(self, attr) - proj.damage)
+                            hit = True
+                if hit:
+                    self.spawn_fire_explosion(proj.rect.center)
+                    self.boss_flame_projectiles.remove(proj)
 
 
         # … (Spieler‑ und Boss‑Kollisionen, AoE‑Handling, Bewegung,
@@ -1254,10 +1307,7 @@ class Game:
             # Zusätzlich die herkömmliche Kollisionsprüfung mit Gegnern:
             # (Falls der Kopf mit einem Gegner kollidiert)
             for enemy in self.enemies:
-                enemy_rect = enemy.get_rect()
-                enemy_rect.x += (GRID_SIZE - enemy_rect.width) // 2
-                enemy_rect.y += (GRID_SIZE - enemy_rect.height) // 2
-                if not invincible and head_rect.colliderect(enemy_rect):
+                if not invincible and head_rect.colliderect(enemy.get_hitbox()):
                     self.player_health -= 10
                     if self.player_health <= 0:
                         self.handle_death()
@@ -1274,25 +1324,14 @@ class Game:
                         self.activate_portal(self.portal.event)
                         self.portal_effect_active = True
                         self.portal = None
-                    if not invincible and any(
-                        head_rect.colliderect(pygame.Rect(seg[0] * GRID_SIZE,
-                                                          seg[1] * GRID_SIZE,
-                                                          GRID_SIZE, GRID_SIZE))
-                        for seg in snake[1:]
-                    ):
-                        self.handle_self_collision()
-                    else:
-                        for enemy in self.enemies:
-                            enemy_rect = enemy.get_rect()
-                            enemy_rect.x += (GRID_SIZE - enemy_rect.width) // 2
-                            enemy_rect.y += (GRID_SIZE - enemy_rect.height) // 2
-                            if not invincible and head_rect.colliderect(enemy_rect):
-                                current_health = getattr(self, health_attr)
-                                current_health -= 10
-                                setattr(self, health_attr, current_health)
-                                if current_health <= 0:
-                                    self.handle_death()
-                                break
+                    for enemy in self.enemies:
+                        if not invincible and head_rect.colliderect(enemy.get_hitbox()):
+                            current_health = getattr(self, health_attr)
+                            current_health -= 10
+                            setattr(self, health_attr, current_health)
+                            if current_health <= 0:
+                                self.handle_death()
+                            break
         for proj in self.projectiles:
             if proj.get("from_boss", False):
                 if self.player_count == 1 and self.snake:
@@ -1344,10 +1383,6 @@ class Game:
                                 if current_health <= 0:
                                     self.handle_death()
         self.update_projectiles()
-        if self.player_count == 1:
-            self.draw_health_bar()
-        elif self.player_count == 2:
-            draw_health_bar_two(self)
         if self.player_count == 1 and self.snake:
             player_obj = type("Player", (), {})()
             player_obj.pos = Vector2(self.snake[0][0] * GRID_SIZE, self.snake[0][1] * GRID_SIZE)
@@ -1402,6 +1437,7 @@ class Game:
         if delta >= 1.0 / self.speed:
             self._capture_previous_snakes()
             self.last_update_time = current_time
+            self_collision_protected = invincible or current_time < self.effects["invincibility"]
             if self.player_count == 2:
                 if self.portal and self.snake1:
                     head_rect = pygame.Rect(self.snake1[0][0] * GRID_SIZE, self.snake1[0][1] * GRID_SIZE, GRID_SIZE, GRID_SIZE)
@@ -1414,35 +1450,17 @@ class Game:
                     self.snake_direction1 = self.next_direction1 if hasattr(self, 'next_direction1') else Direction.RIGHT
                     new_head1 = ((head1[0] + self.snake_direction1.value[0]) % GRID_WIDTH,
                                  (head1[1] + self.snake_direction1.value[1]) % GRID_HEIGHT)
-                    if new_head1 in self.snake1[1:]:
-                        if not invincible:
-                            self.handle_death()
-                            return
-                    self.snake1.insert(0, new_head1)
-                    for i, item in enumerate(self.items[:]):
-                        if new_head1[0] == item.x and new_head1[1] == item.y:
-                            self.handle_item_pickup(item)
-                            self.items.pop(i)
-                            break
-                    else:
-                        self.snake1.pop()
+                    if not self._move_snake(self.snake1, new_head1, self_collision_protected):
+                        return
+                    self.metrics.apply_direction(1, self.snake_direction1)
                 if self.snake2:
                     head2 = self.snake2[0]
                     self.snake_direction2 = self.next_direction2 if hasattr(self, 'next_direction2') else Direction.RIGHT
                     new_head2 = ((head2[0] + self.snake_direction2.value[0]) % GRID_WIDTH,
                                  (head2[1] + self.snake_direction2.value[1]) % GRID_HEIGHT)
-                    if new_head2 in self.snake2[1:]:
-                        if not invincible:
-                            self.handle_death()
-                            return
-                    self.snake2.insert(0, new_head2)
-                    for i, item in enumerate(self.items[:]):
-                        if new_head2[0] == item.x and new_head2[1] == item.y:
-                            self.handle_item_pickup(item)
-                            self.items.pop(i)
-                            break
-                    else:
-                        self.snake2.pop()
+                    if not self._move_snake(self.snake2, new_head2, self_collision_protected):
+                        return
+                    self.metrics.apply_direction(2, self.snake_direction2)
             else:
                 if self.portal and self.snake:
                     head_rect = pygame.Rect(self.snake[0][0] * GRID_SIZE, self.snake[0][1] * GRID_SIZE, GRID_SIZE, GRID_SIZE)
@@ -1455,18 +1473,9 @@ class Game:
                     self.snake_direction = self.next_direction if hasattr(self, 'next_direction') else Direction.RIGHT
                     new_head = ((head[0] + self.snake_direction.value[0]) % GRID_WIDTH,
                                (head[1] + self.snake_direction.value[1]) % GRID_HEIGHT)
-                    if new_head in self.snake[:-1]:
-                        if not invincible:
-                            self.handle_death()
-                            return
-                    self.snake.insert(0, new_head)
-                    for i, item in enumerate(self.items[:]):
-                        if new_head[0] == item.x and new_head[1] == item.y:
-                            self.handle_item_pickup(item)
-                            self.items.pop(i)
-                            break
-                    else:
-                        self.snake.pop()
+                    if not self._move_snake(self.snake, new_head, self_collision_protected):
+                        return
+                    self.metrics.apply_direction(1, self.snake_direction)
             if self.boss:
                 if current_time - self.boss.spawn_time >= 3:
                     target = self.snake[0] if self.player_count == 1 and self.snake else (self.snake1[0] if self.player_count == 2 and self.snake1 else None)
@@ -1686,6 +1695,7 @@ class Game:
             self.respawn_invincible_until = time.time() + 3
         else:
             # Falls keine Leben mehr vorhanden sind, gehe auf Game Over
+            self.metrics.cancel_pending()
             self.game_state = GameState.GAME_OVER
             self.game_over_time = time.time()
         if len(self.leaderboard) < 10 or self.score > self.leaderboard[-1][1]:
@@ -1707,6 +1717,7 @@ class Game:
                           (snake[0][1] + 0.5) * GRID_SIZE), {"lifetime": 1.0})
         self.lives -= 1
         if self.lives <= 0:
+            self.metrics.cancel_pending()
             self.game_state = GameState.GAME_OVER
             self.game_over_time = time.time()
             if len(self.leaderboard) < 10 or self.score > self.leaderboard[-1][1]:
@@ -1730,12 +1741,15 @@ class Game:
             self.respawn_invincible_until = time.time() + 3
 
     def handle_events(self):
-        keys = pygame.key.get_pressed()
-
-        for event in pygame.event.get():
-            actions = self.input.actions_for(event)
+        events = pygame.event.get()
+        read_ns = self.metrics.stamp()
+        for event in events:
             if event.type == pygame.QUIT:
                 sys.exit()
+            if self.game_state == GameState.CONTROLS:
+                self.controls_menu.handle_event(event)
+                continue
+            actions = self.input.actions_for(event, player_count=self.player_count)
             if event.type == pygame.KEYDOWN and event.key == pygame.K_TAB:
                 self.level_editor.active = False
                 self.admin_panel.toggle()
@@ -1763,8 +1777,6 @@ class Game:
                     self.set_state(self.intro_state())
             if self.game_state == GameState.SETTINGS:
                 self.options_menu.handle_event(event)
-            elif self.game_state == GameState.CONTROLS:
-                self.controls_menu.handle_event(event)
             elif self.game_state == GameState.SIMULATION:
                 self.simulation_menu.handle_event(event)
             elif self.game_state == GameState.CUSTOMIZATION:
@@ -1783,6 +1795,9 @@ class Game:
                     btn.check_hover(pygame.mouse.get_pos())
                     btn.handle_event(event)
             elif self.game_state == GameState.PAUSE:
+                if "pause" in actions:
+                    self._resume_game()
+                    continue
                 for btn in self.pause_buttons:
                     btn.check_hover(pygame.mouse.get_pos())
                     btn.handle_event(event)
@@ -1804,102 +1819,115 @@ class Game:
                         btn.check_hover(pygame.mouse.get_pos())
                         btn.handle_event(event)
             elif self.game_state in (GameState.GAME, GameState.BOSS_FIGHT):
-                direction_map = {"up": Direction.UP, "down": Direction.DOWN,
-                                 "left": Direction.LEFT, "right": Direction.RIGHT}
-                for player in (1, 2):
-                    if player == 2 and self.player_count != 2:
-                        continue
-                    current = self.snake_direction if self.player_count == 1 else getattr(self, f"snake_direction{player}")
-                    opposite = {Direction.UP: Direction.DOWN, Direction.DOWN: Direction.UP,
-                                Direction.LEFT: Direction.RIGHT, Direction.RIGHT: Direction.LEFT}
-                    for name, direction in direction_map.items():
-                        if f"p{player}_{name}" in actions and direction != opposite[current]:
-                            setattr(self, "next_direction" if self.player_count == 1 else f"next_direction{player}", direction)
-                for player in (1, 2):
-                    if f"p{player}_fire" in actions and (player == 1 or self.player_count == 2):
-                        snake = self.snake if self.player_count == 1 else getattr(self, f"snake{player}")
-                        direction = self.snake_direction if self.player_count == 1 else getattr(self, f"snake_direction{player}")
-                        cooldown = "fireball_cooldown_p1" if player == 1 else "fireball_cooldown_p2"
-                        if snake and getattr(self, cooldown) <= 0:
-                            self.flame_projectiles.append(FlameProjectile(snake[0][0] * GRID_SIZE, snake[0][1] * GRID_SIZE, direction.value))
-                            projectile = "player_fireball"
-                            self.log_combat_event("projectile_fired", projectile=projectile, player=player)
-                            setattr(self, cooldown, FPS * PLAYER_FIREBALL_COOLDOWN_SECONDS)
-                if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_p:
-                        self.set_state(GameState.PAUSE)
-                    else:
-                        from math import sqrt, pi
-                        zone_radius = int(sqrt(0.25 * WINDOW_WIDTH * WINDOW_HEIGHT / pi))
-                        if event.key == pygame.K_r:
-                            from modules.aoe_zones import DamageZone
-                            pos = (self.snake[0][0] * GRID_SIZE, self.snake[0][1] * GRID_SIZE)
-                            zone = DamageZone(pos, zone_radius, 5, (255, 0, 0, 128), effect_type="damage")
-                            self.aoe_zones.append(zone)
-                            print("DEBUG: DamageZone erzeugt an Position:", pos)
-                        elif event.key == pygame.K_t:
-                            from modules.aoe_zones import DebuffZone
-                            pos = (self.snake[0][0] * GRID_SIZE, self.snake[0][1] * GRID_SIZE)
-                            zone = DebuffZone(pos, zone_radius, 6, (0, 0, 255, 128), effect_type="slow")
-                            self.aoe_zones.append(zone)
-                            print("DEBUG: DebuffZone erzeugt an Position:", pos)
-                        elif event.key == pygame.K_z:
-                            from modules.aoe_zones import HealZone
-                            pos = (self.snake[0][0] * GRID_SIZE, self.snake[0][1] * GRID_SIZE)
-                            zone = HealZone(pos, zone_radius, 8, (0, 255, 0, 128), effect_type="heal")
-                            self.aoe_zones.append(zone)
-                            print("DEBUG: HealZone erzeugt an Position:", pos)
+                if actions:
+                    self._apply_gameplay_actions(actions, read_ns)
+                elif event.type == pygame.KEYDOWN:
+                    self._handle_debug_key(event.key)
 
-                        elif event.key == pygame.K_u:
-                            from modules.aoe_zones import FollowZone
-                            dummy = type("Dummy", (), {})()
-                            pos = (self.snake[0][0] * GRID_SIZE, self.snake[0][1] * GRID_SIZE) if self.player_count == 1 else (self.snake1[0][0] * GRID_SIZE, self.snake1[0][1] * GRID_SIZE)
-                            from pygame.math import Vector2
-                            dummy.pos = Vector2(pos)
-                            dummy.health = 100
-                            dummy.base_speed = 5
-                            dummy.speed = 5
-                            zone = FollowZone(dummy.pos, zone_radius, 10, (255, 0, 255, 128), effect_type="aura")
-                            self.aoe_zones.append(zone)
-                            print("DEBUG: FollowZone (Aura) erzeugt an Position:", pos)
-                        elif event.key == pygame.K_i:
-                            from modules.aoe_zones import AoEZone, get_aoe_effect
-                            pos = (self.snake[0][0] * GRID_SIZE, self.snake[0][1] * GRID_SIZE) if self.player_count == 1 else (self.snake1[0][0] * GRID_SIZE, self.snake1[0][1] * GRID_SIZE)
-                            effect_img = get_aoe_effect()
-                            if effect_img is None:
-                                print("DEBUG: SpecialZone nicht erzeugt, da KEIN Effektbild gefunden wurde!")
-                            else:
-                                zone = AoEZone(pos, zone_radius, 7, (255, 255, 255, 128), effect_type="special")
-                                zone.image = effect_img
-                                self.aoe_zones.append(zone)
-                                print("DEBUG: SpecialZone mit Effektbild erzeugt an Position:", pos)
-                        elif event.key == pygame.K_o:
-                            from modules.aoe_zones import AoEZone, get_aoe_effect
-                            pos = (self.snake[0][0] * GRID_SIZE, self.snake[0][1] * GRID_SIZE) if self.player_count == 1 else (self.snake1[0][0] * GRID_SIZE, self.snake1[0][1] * GRID_SIZE)
-                            zone = AoEZone(pos, zone_radius, 7, (200, 200, 200, 128), effect_type="extra")
-                            zone.image = get_aoe_effect()
-                            self.aoe_zones.append(zone)
-                            if zone.image is None:
-                                print("DEBUG: ExtraZone erzeugt, aber KEIN Effektbild gefunden!")
-                            else:
-                                print("DEBUG: ExtraZone mit Effektbild erzeugt an Position:", pos)
-                        elif event.unicode == "ü":
-                            from modules.aoe_zones import BackgroundEffectZone
-                            try:
-                                bg_image = pygame.image.load(asset_path("graphics", "AOEEffekte", "Backround0021.png")).convert_alpha()
-                            except Exception as e:
-                                print(f"DEBUG: Fehler beim Laden des Hintergrundbildes: {e}")
-                                bg_image = None
-                            if bg_image:
-                                zone = BackgroundEffectZone(bg_image, 7)
-                                self.aoe_zones.insert(0, zone)
-                                print("DEBUG: BackgroundEffectZone (Hintergrund-Effekt) erzeugt!")
+    def _apply_gameplay_actions(self, actions, read_ns=None):
+        if "pause" in actions:
+            self.set_state(GameState.PAUSE)
+            return
 
+        players = (("", self.snake),) if self.player_count == 1 else (
+            ("1", self.snake1), ("2", self.snake2))
+        for player, (suffix, snake) in enumerate(players, start=1):
+            direction = getattr(self, f"snake_direction{suffix}")
+            next_direction = f"next_direction{suffix}"
+            for name, requested in DIRECTION_ACTIONS.items():
+                if f"p{player}_{name}" not in actions:
+                    continue
+                if requested == OPPOSITE_DIRECTION[direction]:
+                    self.metrics.reject("direction", "Gegenrichtung")
+                    continue
+                queued = getattr(self, next_direction)
+                if requested == queued:
+                    self.metrics.reject("direction", "unverändert")
+                    continue
+                if requested == direction:
+                    self.metrics.discard_direction(player)
+                else:
+                    self.metrics.accept_direction(player, requested, read_ns)
+                setattr(self, next_direction, requested)
+
+            cooldown = f"fireball_cooldown_p{player}"
+            if f"p{player}_fire" not in actions:
+                continue
+            if not snake:
+                self.metrics.reject("fire", "keine Schlange")
+                continue
+            if getattr(self, cooldown) > 0:
+                self.metrics.reject("fire", "cooldown")
+                continue
+            accepted_ns = self.metrics.stamp()
+            x, y = snake[0]
+            projectile = FlameProjectile(x * GRID_SIZE, y * GRID_SIZE, direction.value)
+            self.flame_projectiles.append(projectile)
+            setattr(self, cooldown, FPS * PLAYER_FIREBALL_COOLDOWN_SECONDS)
+            self.metrics.apply_fire(projectile, read_ns, accepted_ns)
+            self.log_combat_event("projectile_fired", projectile="player_fireball", player=player)
+
+        if "special_effect" in actions:
+            self._spawn_special_effect()
+
+    def _spawn_special_effect(self):
+        from modules.aoe_zones import BackgroundEffectZone
+
+        path = asset_path("graphics", "AOEEffekte", "Backround0021.png")
+        try:
+            image = pygame.image.load(path).convert_alpha()
+        except (OSError, pygame.error) as exc:
+            record_event(f"Spezialeffekt konnte nicht geladen werden: {exc}")
+            return
+        self.aoe_zones.insert(0, BackgroundEffectZone(image, 7))
+
+    def _handle_debug_key(self, key):
+        if key not in (pygame.K_r, pygame.K_t, pygame.K_z, pygame.K_u, pygame.K_i, pygame.K_o):
+            return
+        snake = self.snake if self.player_count == 1 else self.snake1
+        if not snake:
+            return
+        x, y = snake[0]
+        pos = (x * GRID_SIZE, y * GRID_SIZE)
+        radius = int(sqrt(0.25 * WINDOW_WIDTH * WINDOW_HEIGHT / pi))
+
+        if key == pygame.K_r:
+            zone = DamageZone(pos, radius, 5, (255, 0, 0, 128), effect_type="damage")
+        elif key == pygame.K_t:
+            zone = DebuffZone(pos, radius, 6, (0, 0, 255, 128), effect_type="slow")
+        elif key == pygame.K_z:
+            zone = HealZone(pos, radius, 8, (0, 255, 0, 128), effect_type="heal")
+        elif key == pygame.K_u:
+            zone = FollowZone(Vector2(pos), radius, 10, (255, 0, 255, 128), effect_type="aura")
+        else:
+            from modules.aoe_zones import get_aoe_effect
+
+            image = get_aoe_effect()
+            if key == pygame.K_i:
+                if image is None:
+                    return
+                zone = AoEZone(pos, radius, 7, (255, 255, 255, 128), effect_type="special")
+            else:
+                zone = AoEZone(pos, radius, 7, (200, 200, 200, 128), effect_type="extra")
+            zone.image = image
+        self.aoe_zones.append(zone)
 
     def draw(self):
+        start = self.metrics.stamp()
+        self._render()
+        if (self.metrics.enabled and not self.admin_panel.active and not self.level_editor.active
+                and self.game_state in (GameState.GAME, GameState.BOSS_FIGHT)):
+            self.metrics.draw(self.screen)
+        before_present = self.metrics.stamp()
+        pygame.display.update()
+        presented = self.metrics.stamp()
+        self.metrics.record_phase("draw", start, before_present)
+        self.metrics.record_phase("present", before_present, presented)
+        self.metrics.finish_frame(presented)
+
+    def _render(self):
         if self.level_editor.active:
             self.level_editor.draw(self.screen)
-            pygame.display.update()
             return
         if self.game_state == GameState.INTRO:
             self.draw_intro()
@@ -1908,12 +1936,12 @@ class Game:
         elif self.game_state == GameState.CUSTOMIZATION:
             self.custom_menu.draw(self.screen)
         elif self.game_state in (GameState.GAME, GameState.BOSS_FIGHT):
-            self.draw_game()
+            self.draw_game(include_hud=False)
         elif self.game_state == GameState.PAUSE:
-            self.draw_game()
+            self.draw_game(include_hud=False)
             self.draw_pause()
         elif self.game_state == GameState.GAME_OVER:
-            self.draw_game()
+            self.draw_game(include_hud=False)
             self.draw_game_over()
         elif self.game_state == GameState.SETTINGS:
             self.options_menu.draw(self.screen)
@@ -1931,7 +1959,6 @@ class Game:
             self.achievement_manager.draw_achievements(self.screen)
             self.achievement_manager.draw_portal_event(self.screen)
         self.admin_panel.draw(self.screen)
-        pygame.display.update()
 
     def draw_hud(self):
         score_txt = pygame.font.SysFont('Arial', 30).render(f"Score: {self.score}", True, WHITE)
@@ -1974,7 +2001,7 @@ class Game:
                 btn.is_hovered = True
             btn.draw(self.screen)
 
-    def draw_game(self):
+    def draw_game(self, *, include_hud=True):
         # 1. Raster (Hintergrund) zeichnen – unterste Ebene
         self.screen.blit(self.background, (0, 0))
         self.effect_manager.draw(self.screen, "background")
@@ -1992,7 +2019,9 @@ class Game:
         for proj in self.boss_flame_projectiles:
             proj.draw(self.screen)
         for flame in self.flame_projectiles:
-            flame.draw(self.screen)
+            drawn = flame.draw(self.screen)
+            if self.metrics.enabled and drawn:
+                self.metrics.fire_drawn(flame)
         for proj in self.enemy_projectiles:
             proj.draw(self.screen)
         for explosion in self.explosions:
@@ -2005,34 +2034,38 @@ class Game:
                 if i == 0:
                     head_img = self.options_menu.get_skin_image(
                         "Heads", self.settings.get("custom_head_p1")) or SNAKE_HEAD_IMG
-                    head_img = pygame.transform.scale(head_img, (GRID_SIZE, GRID_SIZE))
+                    head_img = scale_sprite(head_img, (GRID_SIZE, GRID_SIZE))
                     try:
                         rotated = pygame.transform.rotate(head_img, -self.snake_direction1.value[0] * 90)
                     except Exception as e:
                         print("Fehler bei der Rotation des Spieler 1 Kopfbildes:", e)
                         rotated = head_img
                     self.screen.blit(rotated, (x, y))
+                    if self.metrics.enabled:
+                        self.metrics.head_drawn(1, (x, y), self.snake_direction1.value[0])
                 else:
                     body_img = self.options_menu.get_skin_image(
                         "Bodies", self.settings.get("custom_body_p1")) or SNAKE_BODY_IMG
-                    body_img = pygame.transform.scale(body_img, (GRID_SIZE, GRID_SIZE))
+                    body_img = scale_sprite(body_img, (GRID_SIZE, GRID_SIZE))
                     self.screen.blit(body_img, (x, y))
             # Spieler 2 zeichnen:
             for i, (x, y) in enumerate(self.get_snake_render_positions(2)):
                 if i == 0:
                     head_img = self.options_menu.get_skin_image(
                         "Heads", self.settings.get("custom_head_p2")) or SNAKE_HEAD_BETA
-                    head_img = pygame.transform.scale(head_img, (GRID_SIZE, GRID_SIZE))
+                    head_img = scale_sprite(head_img, (GRID_SIZE, GRID_SIZE))
                     try:
                         rotated = pygame.transform.rotate(head_img, -self.snake_direction2.value[0] * 90)
                     except Exception as e:
                         print("Fehler bei der Rotation des Spieler 2 Kopfbildes:", e)
                         rotated = head_img
                     self.screen.blit(rotated, (x, y))
+                    if self.metrics.enabled:
+                        self.metrics.head_drawn(2, (x, y), self.snake_direction2.value[0])
                 else:
                     body_img = self.options_menu.get_skin_image(
                         "Bodies", self.settings.get("custom_body_p2")) or SNAKE_BODY_IMG
-                    body_img = pygame.transform.scale(body_img, (GRID_SIZE, GRID_SIZE))
+                    body_img = scale_sprite(body_img, (GRID_SIZE, GRID_SIZE))
                     self.screen.blit(body_img, (x, y))
         else:
             # Einzelspieler: Zeichne die Snake
@@ -2040,17 +2073,19 @@ class Game:
                 if i == 0:
                     head_img = self.options_menu.get_skin_image(
                         "Heads", self.settings.get("custom_head_p1")) or SNAKE_HEAD_IMG
-                    head_img = pygame.transform.scale(head_img, (GRID_SIZE, GRID_SIZE))
+                    head_img = scale_sprite(head_img, (GRID_SIZE, GRID_SIZE))
                     try:
                         rotated = pygame.transform.rotate(head_img, -self.snake_direction.value[0] * 90)
                     except Exception as e:
                         print("Fehler bei der Rotation des Kopfbildes:", e)
                         rotated = head_img
                     self.screen.blit(rotated, (x, y))
+                    if self.metrics.enabled:
+                        self.metrics.head_drawn(1, (x, y), self.snake_direction.value[0])
                 else:
                     body_img = self.options_menu.get_skin_image(
                         "Bodies", self.settings.get("custom_body_p1")) or SNAKE_BODY_IMG
-                    body_img = pygame.transform.scale(body_img, (GRID_SIZE, GRID_SIZE))
+                    body_img = scale_sprite(body_img, (GRID_SIZE, GRID_SIZE))
                     self.screen.blit(body_img, (x, y))
 
         # Weitere Elemente (Boss, Projektile, HUD, etc.) werden wie gehabt gezeichnet...
@@ -2060,10 +2095,9 @@ class Game:
             proj_x = int(proj['pos'][0] * GRID_SIZE)
             proj_y = int(proj['pos'][1] * GRID_SIZE)
             if proj.get("from_boss", False):
-                proj_img = pygame.transform.scale(proj.get("image", PROJECTILE_IMG),
-                                                  (GRID_SIZE * 2, GRID_SIZE * 2))
+                proj_img = scale_sprite(proj.get("image", PROJECTILE_IMG), (GRID_SIZE * 2, GRID_SIZE * 2))
             else:
-                proj_img = pygame.transform.scale(PROJECTILE_IMG, (int(GRID_SIZE * 1.5), int(GRID_SIZE * 1.5)))
+                proj_img = scale_sprite(PROJECTILE_IMG, (int(GRID_SIZE * 1.5), int(GRID_SIZE * 1.5)))
             self.screen.blit(proj_img, (proj_x, proj_y))
 
         # --- DEBUG: hitbox overlay (one color per gameplay category) ---
@@ -2102,7 +2136,8 @@ class Game:
                 pr = self.portal.get_rect()
                 pygame.draw.rect(self.screen, item_color, pr, 1)
 
-        self.draw_hud()
+        if include_hud:
+            self.draw_hud()
         if self.dice_result is not None and time.time() <= self.dice_display_until:
             self.draw_dice_result()
     # Zeichnet das Ergebnis des Würfelwurfs in der Mitte des Bildschirms.
@@ -2207,13 +2242,21 @@ class Game:
                 if event.key == pygame.K_ESCAPE:
                     self.set_state(GameState.INTRO)
 
+    def run_frame(self):
+        start = self.metrics.stamp()
+        self.handle_events()
+        after_events = self.metrics.stamp()
+        if (self.game_state in (GameState.GAME, GameState.BOSS_FIGHT)
+                and not self.admin_panel.active and not self.level_editor.active):
+            self.update()
+        after_update = self.metrics.stamp()
+        self.metrics.record_phase("events", start, after_events)
+        self.metrics.record_phase("update", after_events, after_update)
+        self.draw()
+
     def run(self):
         while True:
-            self.handle_events()
-            if (self.game_state in (GameState.GAME, GameState.BOSS_FIGHT)
-                    and not self.admin_panel.active and not self.level_editor.active):
-                self.update()
-            self.draw()
+            self.run_frame()
             self.clock.tick(FPS)
 
     # [KS_TAG: LEVEL_EDITOR_BACKGROUND]
@@ -2311,14 +2354,13 @@ class FlameProjectile:
     def __init__(self, x, y, direction, image_name="projectiles/FlameProjectile1.png",
                  speed=PLAYER_FIREBALL_SPEED_PX_PER_TICK, damage=PLAYER_FIREBALL_DAMAGE,
                  lifetime=PLAYER_FIREBALL_LIFETIME_TICKS):
-        from modules.graphics import load_image
         from math import atan2, degrees
 
         self.direction = direction
         self.speed = speed
         self.damage = damage
         self.lifetime = lifetime
-        self.image_orig = load_image(image_name)
+        self.image_orig = load_projectile_image(image_name)
         angle = degrees(atan2(-self.direction[1], self.direction[0]))
         self.image = pygame.transform.rotate(self.image_orig, angle)
         self.rect = self.image.get_rect(center=(x, y))
@@ -2339,7 +2381,7 @@ class FlameProjectile:
         return self.rect.union(self.previous_rect)
 
     def draw(self, screen):
-        screen.blit(self.image, self.rect)
+        return screen.blit(self.image, self.rect)
 
 
 if __name__ == "__main__":

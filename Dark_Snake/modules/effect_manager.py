@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
+from functools import lru_cache
 
 import pygame
 
@@ -14,6 +15,18 @@ DEFAULTS = {"fps": 24, "loop": False, "opacity": 255, "scale": 1.0,
             "blend_mode": "normal", "layer": "world", "lifetime": 0.75}
 SUPPORTED_EFFECTS = {"hit", "explosion", "smoke", "fog", "rain", "portal",
                      "boss_aura", "screen_flicker", "death", "spawn"}
+
+
+@lru_cache(maxsize=64)
+def _prepare_frame(image, scale, opacity):
+    if scale != 1:
+        width, height = image.get_size()
+        image = pygame.transform.smoothscale(
+            image, (max(1, int(width * scale)), max(1, int(height * scale))))
+    else:
+        image = image.copy()
+    image.set_alpha(opacity)
+    return image
 
 
 @dataclass
@@ -82,11 +95,8 @@ class EffectManager:
                 self._draw_procedural(surface, effect)
                 continue
             scale = max(0.01, float(effect.settings["scale"]))
-            if scale != 1:
-                image = pygame.transform.smoothscale(
-                    image, (max(1, int(image.width * scale)), max(1, int(image.height * scale))))
-            image = image.copy()
-            image.set_alpha(max(0, min(255, int(effect.settings["opacity"]))))
+            opacity = max(0, min(255, int(effect.settings["opacity"])))
+            image = _prepare_frame(image, scale, opacity)
             rect = image.get_rect(center=(round(effect.position[0]), round(effect.position[1])))
             flag = pygame.BLEND_ADD if effect.settings.get("blend_mode") == "add" else 0
             surface.blit(image, rect, special_flags=flag)

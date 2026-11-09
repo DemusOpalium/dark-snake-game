@@ -12,7 +12,7 @@ import pygame
 pygame.init()
 pygame.display.set_mode((1, 1))
 
-from modules.effect_manager import EffectManager
+from modules.effect_manager import DEFAULTS, EffectManager
 
 
 def test_effects_draw_without_assets_and_expire():
@@ -33,3 +33,20 @@ def test_clear_removes_looping_effects():
     assert manager.active_effects()
     manager.clear()
     assert not manager.active_effects()
+
+
+def test_shared_animation_frame_keeps_each_effect_opacity():
+    manager = EffectManager()
+    frame = pygame.Surface((2, 2), pygame.SRCALPHA)
+    frame.fill((255, 0, 0, 255))
+    manager._cache["explosion"] = (dict(DEFAULTS), [frame])
+    surface = pygame.Surface((24, 12))
+    manager.spawn("explosion", (6, 6), {"opacity": 64, "scale": 2})
+    manager.spawn("explosion", (18, 6), {"opacity": 255, "scale": 2})
+
+    for _ in range(2):
+        surface.fill((0, 0, 0))
+        manager.draw(surface, "world")
+        assert 0 < surface.get_at((6, 6)).r < 128
+        assert surface.get_at((18, 6)).r == 255
+        assert frame.get_alpha() == 255

@@ -16,7 +16,7 @@ pygame.display.set_mode((1, 1))
 from config import GRID_SIZE
 from modules.bolbu_enemy import BolbuProjectile
 from modules.enums import GameState, ItemType
-from modules.game import Game, Item
+from modules.game import FlameProjectile, Game, Item
 from modules.enemies import NormalEnemy
 from modules.projectile_config import (
     BOLBU_PROJECTILE_SPEED_PX_PER_TICK, PLAYER_PROJECTILE_DAMAGE,
@@ -102,3 +102,13 @@ def test_enemy_hitbox_matches_scaled_rendering():
     enemy = NormalEnemy()
     assert enemy.get_hitbox() == enemy.get_render_rect()
     assert enemy.get_rect() == enemy.get_hitbox()
+
+
+def test_fireballs_share_source_artwork_but_move_independently():
+    first = FlameProjectile(100, 100, (1, 0))
+    second = FlameProjectile(100, 100, (1, 0))
+    assert first.image_orig is second.image_orig
+    start = second.get_render_rect()
+    first.update()
+    assert first.get_render_rect() != start
+    assert second.get_render_rect() == start

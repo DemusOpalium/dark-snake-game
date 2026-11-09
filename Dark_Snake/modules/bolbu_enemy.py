@@ -25,7 +25,7 @@ from modules.projectile_config import (
     BOLBU_PROJECTILE_SPEED_PX_PER_TICK, BOLBU_SHOOT_COOLDOWN_SECONDS,
 )
 from modules.enemies import NormalEnemy
-from modules.graphics import load_image
+from modules.graphics import load_image, load_projectile_image, scale_sprite
 from modules.audio import SOUNDS
 
 class BolbuProjectile:
@@ -42,10 +42,10 @@ class BolbuProjectile:
         self.speed = speed
         self.damage = damage
         self.lifetime = lifetime
-        self.image = load_image("bolbu_projectile.png", "projectiles")
+        self.image = load_projectile_image("bolbu_projectile.png", "projectiles")
         size = int(GRID_SIZE * 1.2)
         if self.image:
-            self.image = pygame.transform.scale(self.image, (size, size))
+            self.image = scale_sprite(self.image, (size, size))
             self.rect = self.image.get_rect()
         else:
             self.rect = pygame.Rect(0, 0, size, size)
@@ -84,6 +84,7 @@ class BolbuEnemy(NormalEnemy):
         if self.frames[0]:
             self.frames = [pygame.transform.scale(f, (GRID_SIZE, GRID_SIZE)) for f in self.frames]
             self.image = self.frames[0]
+            self.width, self.height = self.image.get_size()
         self.anim_timer = time.time()
         self.projectiles = []
         self.last_shot = time.time()
@@ -135,8 +136,7 @@ class BolbuEnemy(NormalEnemy):
         roll = random.randint(1,6)
         if roll == 6:
             # Geschwindigkeits‑Sprint
-            self.sprint_active = True
-            self.sprint_end_time = time.time() + 0.7
+            self._start_sprint(time.time(), 0.7, target_x, target_y)
         elif roll in (4,5):
             # Dreifachschuss in Fächerform
             for offset in (-0.25, 0, 0.25):
