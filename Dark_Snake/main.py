@@ -9,12 +9,7 @@ def main():
     record_event("Dark Snake gestartet")
     # Legacy modules still use relative paths; anchor them independently of cwd.
     os.chdir(ROOT)
-    pygame.init()
-    pygame.font.init()
-    try:
-        pygame.mixer.init()
-    except pygame.error as exc:
-        print(f"[WARN] Audio deaktiviert: {exc}")
+    pygame.display.init()
     # Kleines Fenster, um convert_alpha() zu ermöglichen
     pygame.display.set_mode((1, 1))
     # game imports graphics which uses convert_alpha at module import time.

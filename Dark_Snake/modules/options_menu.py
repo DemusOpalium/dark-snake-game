@@ -28,6 +28,7 @@ import os
 import pygame
 from config import WINDOW_WIDTH, WINDOW_HEIGHT, DARK_GREY, WHITE, PURPLE, ORANGE, FONT_MEDIUM, FONT_SMALL, GRID_SIZE
 
+from modules.audio import SOUNDS, play_background_music, set_music_volume, set_sound_volume
 from modules.resources import find_asset_directory
 
 # -----------------------------------------------------------------------------
@@ -59,7 +60,7 @@ class Container:
             element.draw(surface)
 
     def handle_event(self, event):
-        pos = pygame.mouse.get_pos()
+        pos = getattr(event, "pos", pygame.mouse.get_pos())
         # Aktualisiere den Hover-Status für alle untergeordneten Elemente, sofern vorhanden
         for element in self.elements:
             if hasattr(element, "check_hover"):
@@ -128,15 +129,22 @@ class OptionsMenu:
         self.gameplay_container.add_element(self.spawnrate_slider)
         self.gameplay_container.add_element(self.boss_health_slider)
         self.music_slider = Slider(self.audio_container.rect.x + 10, self.audio_container.rect.y + 30,
-                                   self.audio_container.rect.width - 20, 25, 0, 1, self.game.settings['bg_music_volume'], "Music")
+                                   self.audio_container.rect.width - 20, 25, 0, 1, self.game.settings['bg_music_volume'],
+                                   "Musik", on_change=set_music_volume, value_format=".0%")
         self.sfx_slider = Slider(self.audio_container.rect.x + 10, self.audio_container.rect.y + 70,
-                                 self.audio_container.rect.width - 20, 25, 0, 1, self.game.settings['sfx_volume'], "SFX")
-        music_options = self.game.get_music_library() or ["Default"]
-        self.music_dropdown = Dropdown(self.audio_container.rect.x + 10, self.audio_container.rect.y + 110,
-                                       self.audio_container.rect.width - 20, 35, music_options, music_options[0], FONT_SMALL, self.change_music)
+                                 self.audio_container.rect.width - 20, 25, 0, 1, self.game.settings['sfx_volume'],
+                                 "Soundeffekte", on_change=set_sound_volume, on_release=self.preview_sfx, value_format=".0%")
+        self.selected_music = self.game.settings['music_track']
+        self.music_dropdown = None
         self.audio_container.add_element(self.music_slider)
         self.audio_container.add_element(self.sfx_slider)
-        self.audio_container.add_element(self.music_dropdown)
+        if self.game.music_tracks:
+            self.music_dropdown = Dropdown(
+                self.audio_container.rect.x + 10, self.audio_container.rect.y + 110,
+                self.audio_container.rect.width - 20, 35, self.game.music_tracks,
+                self.selected_music, FONT_SMALL, self.change_music,
+            )
+            self.audio_container.add_element(self.music_dropdown)
 
         # ----- Spalte 2: Image Inventory (Scroll-Container)
         self.inventory_panel = Container(col1_width + 20, top_margin, col2_width, panel_height, "Image Inventory", padding)
@@ -206,10 +214,16 @@ class OptionsMenu:
         return options
 
     def change_music(self, selected_option):
-        self.game.settings['bg_music_volume'] = self.music_slider.current_val
-        from modules.audio import play_background_music
-        play_background_music(selected_option, self.game.settings['bg_music_volume'])
-        print(f"Hintergrundmusik geändert: {selected_option}")
+        if pygame.mixer.get_init() and not play_background_music(selected_option, self.music_slider.current_val):
+            self.music_dropdown.selected_index = self.music_dropdown.options.index(self.selected_music)
+            if not pygame.mixer.music.get_busy():
+                play_background_music(self.selected_music, self.music_slider.current_val)
+            return
+        self.selected_music = selected_option
+
+    def preview_sfx(self):
+        if pygame.mixer.get_init() and SOUNDS.get("eat"):
+            SOUNDS["eat"].play()
 
     def save(self):
         self.game.settings['initial_speed'] = self.speed_slider.current_val
@@ -217,9 +231,9 @@ class OptionsMenu:
         self.game.settings['projectile_speed_factor'] = self.projectile_slider.current_val
         self.game.settings['enemy_spawn_rate'] = self.spawnrate_slider.current_val
         self.game.settings['boss_health_multiplier'] = self.boss_health_slider.current_val
-        self.game.settings['music_volume'] = self.music_slider.current_val
         self.game.settings['bg_music_volume'] = self.music_slider.current_val
         self.game.settings['sfx_volume'] = self.sfx_slider.current_val
+        self.game.settings['music_track'] = self.selected_music
         self.game.settings['custom_head_p1'] = self.selected_head_p1
         self.game.settings['custom_body_p1'] = self.selected_body_p1
         self.game.settings['custom_head_p2'] = self.selected_head_p2
@@ -231,9 +245,11 @@ class OptionsMenu:
         self.game.set_state(self.game.intro_state())
 
     def handle_event(self, event):
-        pos = pygame.mouse.get_pos()
+        pos = getattr(event, "pos", pygame.mouse.get_pos())
         # Zuerst: Wenn der Mauszeiger im Control-Panel liegt, nur dieses behandeln.
         if self.control_panel.rect.collidepoint(pos):
+            if event.type in (pygame.MOUSEMOTION, pygame.MOUSEBUTTONUP):
+                self.settings_panel.handle_event(event)
             self.control_panel.handle_event(event)
             return
         self.settings_panel.handle_event(event)

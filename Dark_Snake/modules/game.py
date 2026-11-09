@@ -28,7 +28,11 @@ from modules.graphics import (
     OPTIONS_BUTTON_IMG, PLAY_BUTTON_IMG,
 )
 from modules.level_editor import LevelEditor
-from modules.audio import SOUNDS, get_music_library, play_background_music, set_music_volume, set_sound_volume
+from modules.audio import (
+    DEFAULT_MUSIC_TRACK, DEFAULT_MUSIC_VOLUME, DEFAULT_SFX_VOLUME, SOUNDS,
+    get_music_library, initialize_audio, normalize_volume, play_background_music,
+    set_music_volume, set_sound_volume,
+)
 from modules.ui import Button, Slider, CheckBox, Dropdown
 from modules.aoe_zones import AoEZone, DamageZone, HealZone, DebuffZone, FollowZone, GrowingBossAOEZone  # [KS_TAG: BOSS_AOE]
 from modules.controls import ControlsMenu
@@ -440,9 +444,9 @@ class Game:
         self.settings = {
             'initial_speed': START_SPEED,
             'fullscreen': False,
-            'music_volume': 0.2,
-            'sfx_volume': 1.0,
-            'bg_music_volume': 0.3,
+            'sfx_volume': DEFAULT_SFX_VOLUME,
+            'bg_music_volume': DEFAULT_MUSIC_VOLUME,
+            'music_track': DEFAULT_MUSIC_TRACK,
             'difficulty': 1.0,
             'field_scale': 1.0,
             'snake_design': 0,
@@ -456,11 +460,18 @@ class Game:
             'boss_health_multiplier': 1.0
         }
         self.load_settings()
-        self.get_music_library = get_music_library
-        if not headless:
+        self.music_tracks = get_music_library()
+        if self.settings['music_track'] not in self.music_tracks:
+            self.settings['music_track'] = (DEFAULT_MUSIC_TRACK if DEFAULT_MUSIC_TRACK in self.music_tracks
+                                            else next(iter(self.music_tracks), None))
+        if not headless and initialize_audio():
             set_sound_volume(self.settings['sfx_volume'])
-            play_background_music("DarkSnakeMusicIndi2.mp3",
-                                  self.settings['bg_music_volume'])
+            track = self.settings['music_track']
+            volume = self.settings['bg_music_volume']
+            if track and not play_background_music(track, volume):
+                if track != DEFAULT_MUSIC_TRACK and DEFAULT_MUSIC_TRACK in self.music_tracks:
+                    if play_background_music(DEFAULT_MUSIC_TRACK, volume):
+                        self.settings['music_track'] = DEFAULT_MUSIC_TRACK
         self.player_count = 1
         self.input = InputManager(initialize_joysticks=not headless, load_saved=not headless)
         self.intro_focus = 0
@@ -618,6 +629,9 @@ class Game:
                 for key in self.settings:
                     if key in saved:
                         self.settings[key] = saved[key]
+                music_volume = saved.get('bg_music_volume', saved.get('music_volume'))
+                self.settings['bg_music_volume'] = normalize_volume(music_volume, DEFAULT_MUSIC_VOLUME)
+                self.settings['sfx_volume'] = normalize_volume(self.settings['sfx_volume'], DEFAULT_SFX_VOLUME)
         except FileNotFoundError:
             pass
         except (OSError, ValueError) as exc:
@@ -632,12 +646,6 @@ class Game:
             record_event(f"Einstellungen konnten nicht gespeichert werden: {exc}")
         set_music_volume(self.settings['bg_music_volume'])
         set_sound_volume(self.settings['sfx_volume'])
-
-    def change_bg_music(self, selected_option):
-        self.settings['bg_music_volume'] = self.music_slider.current_val
-        from modules.audio import play_background_music
-        play_background_music(selected_option, self.settings['bg_music_volume'])
-        print(f"Hintergrundmusik geändert: {selected_option}")
 
     def start_game(self, players):
         self.player_count = players

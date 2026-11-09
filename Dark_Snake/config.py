@@ -1,5 +1,5 @@
 import pygame
-pygame.init()
+pygame.font.init()
 
 # View Scale (Skalierungsfaktor): Passe diesen Wert an (z. B. 1 für klein, 1.5 für mittel, 2 für groß)
 VIEW_SCALE = 1.5

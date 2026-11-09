@@ -35,12 +35,16 @@ class Button:
         return None
 
 class Slider:
-    def __init__(self, x, y, width, height, min_val, max_val, current_val, text):
+    def __init__(self, x, y, width, height, min_val, max_val, current_val, text,
+                 *, on_change=None, on_release=None, value_format=".1f"):
         self.rect = pygame.Rect(x, y, width, height)
         self.min_val = min_val
         self.max_val = max_val
         self.current_val = current_val
         self.text = text
+        self.on_change = on_change
+        self.on_release = on_release
+        self.value_format = value_format
         self.dragging = False
         self.handle_rect = pygame.Rect(self.get_handle_x(), y - 5, 20, height + 10)
 
@@ -58,20 +62,32 @@ class Slider:
         value_rect = pygame.Rect(self.rect.x, self.rect.y, self.handle_rect.x - self.rect.x, self.rect.height)
         pygame.draw.rect(screen, ORANGE, value_rect)
         pygame.draw.rect(screen, WHITE, self.handle_rect)
-        txt = FONT_SMALL.render(f"{self.text}: {self.current_val:.1f}", True, WHITE)
+        txt = FONT_SMALL.render(f"{self.text}: {self.current_val:{self.value_format}}", True, WHITE)
         screen.blit(txt, (self.rect.x, self.rect.y - 25))
+
+    def _set_from_pointer(self, x):
+        rel_x = max(0, min(x - self.rect.x, self.rect.width))
+        value = self.min_val + (rel_x / self.rect.width) * (self.max_val - self.min_val)
+        if value != self.current_val:
+            self.current_val = value
+            self.update_handle_position()
+            if self.on_change:
+                self.on_change(value)
+        return self.current_val
 
     def handle_event(self, event):
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             if self.handle_rect.collidepoint(event.pos):
                 self.dragging = True
-        elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+            elif self.rect.collidepoint(event.pos):
+                self.dragging = True
+                return self._set_from_pointer(event.pos[0])
+        elif event.type == pygame.MOUSEBUTTONUP and event.button == 1 and self.dragging:
             self.dragging = False
+            if self.on_release:
+                self.on_release()
         elif event.type == pygame.MOUSEMOTION and self.dragging:
-            rel_x = max(0, min(event.pos[0] - self.rect.x, self.rect.width))
-            self.current_val = self.min_val + (rel_x / self.rect.width) * (self.max_val - self.min_val)
-            self.update_handle_position()
-            return self.current_val
+            return self._set_from_pointer(event.pos[0])
         return None
 
     def check_hover(self, pos):
@@ -127,8 +143,8 @@ class Dropdown:
                 surface.blit(opt_text, (option_rect.x + 5, option_rect.y + 5))
 
     def handle_event(self, event):
-        if event.type == pygame.MOUSEBUTTONDOWN:
-            mouse_pos = pygame.mouse.get_pos()
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            mouse_pos = event.pos
             if self.rect.collidepoint(mouse_pos):
                 self.expanded = not self.expanded
             elif self.expanded:
