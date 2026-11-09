@@ -1904,12 +1904,12 @@ class Game:
         elif self.game_state == GameState.CUSTOMIZATION:
             self.custom_menu.draw(self.screen)
         elif self.game_state in (GameState.GAME, GameState.BOSS_FIGHT):
-            self.draw_game()
+            self.draw_game(include_hud=False)
         elif self.game_state == GameState.PAUSE:
-            self.draw_game()
+            self.draw_game(include_hud=False)
             self.draw_pause()
         elif self.game_state == GameState.GAME_OVER:
-            self.draw_game()
+            self.draw_game(include_hud=False)
             self.draw_game_over()
         elif self.game_state == GameState.SETTINGS:
             self.options_menu.draw(self.screen)
@@ -1970,7 +1970,7 @@ class Game:
                 btn.is_hovered = True
             btn.draw(self.screen)
 
-    def draw_game(self):
+    def draw_game(self, *, include_hud=True):
         # 1. Raster (Hintergrund) zeichnen – unterste Ebene
         self.screen.blit(self.background, (0, 0))
         self.effect_manager.draw(self.screen, "background")
@@ -2098,7 +2098,8 @@ class Game:
                 pr = self.portal.get_rect()
                 pygame.draw.rect(self.screen, item_color, pr, 1)
 
-        self.draw_hud()
+        if include_hud:
+            self.draw_hud()
         if self.dice_result is not None and time.time() <= self.dice_display_until:
             self.draw_dice_result()
     # Zeichnet das Ergebnis des Würfelwurfs in der Mitte des Bildschirms.
