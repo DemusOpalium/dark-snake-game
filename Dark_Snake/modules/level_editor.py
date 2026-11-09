@@ -1,6 +1,8 @@
 # modules/level_editor.py – Finales UI-Layout mit breiterem, tieferem Tile-Container
-import os, json, pygame
+import json, pygame
 from config import GRID_WIDTH, GRID_HEIGHT, GRID_SIZE, WINDOW_WIDTH, WINDOW_HEIGHT
+from modules.graphics import TILE_IMAGES
+from modules.resources import custom_level_path
 
 TOOLBAR_W = 200
 BTN_H = 28
@@ -24,7 +26,7 @@ class LevelEditor:
         self.game = game
         self.active = False
         self.drawing = False
-        self.tiles = self._load_tiles()
+        self.tiles = dict(sorted(TILE_IMAGES.items()))
         self.current_tile = list(self.tiles.keys())[0] if self.tiles else None
         self.map = [[None for _ in range(GRID_WIDTH)] for _ in range(GRID_HEIGHT)]
         self.undo_stack = []
@@ -35,21 +37,6 @@ class LevelEditor:
         self.info = ""
         self.buttons = self._make_buttons()
         self.tile_scroll_offset = 0
-
-    def _load_tiles(self):
-        from modules.graphics import load_image
-        path = "assets/graphics/tiles"
-        tiles = {}
-        if not os.path.isdir(path): return tiles
-        for fname in sorted(os.listdir(path)):
-            if not fname.lower().endswith(".png"): continue
-            key = os.path.splitext(fname)[0]
-            try:
-                img = load_image(fname, "tiles")
-                tiles[key] = pygame.transform.scale(img, (GRID_SIZE, GRID_SIZE))
-            except:
-                pass
-        return tiles
 
     def _make_buttons(self):
         labels = [
@@ -96,6 +83,8 @@ class LevelEditor:
             self.tile_scroll_offset = max(-max_scroll, min(0, self.tile_scroll_offset))
 
     def _paint(self, mx, my):
+        if mx < TOOLBAR_W or my < MAP_TOP:
+            return
         gx = int((mx - TOOLBAR_W) / (GRID_SIZE * ZOOM))
         gy = int((my - MAP_TOP) / (GRID_SIZE * ZOOM))
         if 0 <= gx < GRID_WIDTH and 0 <= gy < GRID_HEIGHT and self.current_tile:
@@ -150,7 +139,7 @@ class LevelEditor:
         surf = pygame.Surface((GRID_WIDTH * GRID_SIZE, GRID_HEIGHT * GRID_SIZE), pygame.SRCALPHA)
         for y, row in enumerate(self.map):
             for x, tile in enumerate(row):
-                if tile:
+                if tile in self.tiles:
                     surf.blit(self.tiles[tile], (x * GRID_SIZE, y * GRID_SIZE))
         scaled = pygame.transform.scale(surf, (int(GRID_WIDTH * GRID_SIZE * ZOOM), int(GRID_HEIGHT * GRID_SIZE * ZOOM)))
         screen.blit(scaled, (TOOLBAR_W, MAP_TOP))
@@ -160,6 +149,7 @@ class LevelEditor:
 
     def _store_undo(self):
         self.undo_stack.append(json.loads(json.dumps(self.map)))
+        self.redo_stack.clear()
 
     def undo(self):
         if self.undo_stack:
@@ -188,21 +178,39 @@ class LevelEditor:
         self.info = "Rand gesetzt"
 
     def save_map(self):
-        os.makedirs("assets/levels", exist_ok=True)
-        with open("assets/levels/custom_level.json", "w") as f:
-            json.dump(self.map, f)
+        try:
+            with open(custom_level_path(for_write=True), "w", encoding="utf-8") as f:
+                json.dump(self.map, f)
+        except OSError:
+            self.info = "Level konnte nicht gespeichert werden"
+            return False
         self.info = "Level gespeichert"
+        return True
 
     def load_map(self):
         try:
-            with open("assets/levels/custom_level.json") as f:
-                self.map = json.load(f)
+            level_map = self.read_map()
+            self._store_undo()
+            self.map = level_map
             self.info = "Level geladen"
-        except:
-            self.info = "Kein Level gefunden"
+        except (OSError, ValueError):
+            self.info = "Level konnte nicht geladen werden"
+
+    def read_map(self):
+        with open(custom_level_path(), encoding="utf-8") as f:
+            level_map = json.load(f)
+        if not isinstance(level_map, list) or len(level_map) != GRID_HEIGHT:
+            raise ValueError("Ungültige Level-Höhe")
+        for row in level_map:
+            if not isinstance(row, list) or len(row) != GRID_WIDTH:
+                raise ValueError("Ungültige Level-Breite")
+            if any(tile is not None and not isinstance(tile, str) for tile in row):
+                raise ValueError("Ungültige Level-Kachel")
+        return level_map
 
     def start_sim(self):
-        self.save_map()
+        if not self.save_map():
+            return
         self.simulation = True
         self.game.level_map = self.map
         self.game.build_background_from_map()

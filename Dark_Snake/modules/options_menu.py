@@ -128,7 +128,7 @@ class OptionsMenu:
         self.gameplay_container.add_element(self.spawnrate_slider)
         self.gameplay_container.add_element(self.boss_health_slider)
         self.music_slider = Slider(self.audio_container.rect.x + 10, self.audio_container.rect.y + 30,
-                                   self.audio_container.rect.width - 20, 25, 0, 1, self.game.settings['music_volume'], "Music")
+                                   self.audio_container.rect.width - 20, 25, 0, 1, self.game.settings['bg_music_volume'], "Music")
         self.sfx_slider = Slider(self.audio_container.rect.x + 10, self.audio_container.rect.y + 70,
                                  self.audio_container.rect.width - 20, 25, 0, 1, self.game.settings['sfx_volume'], "SFX")
         music_options = self.game.get_music_library() or ["Default"]
@@ -218,16 +218,14 @@ class OptionsMenu:
         self.game.settings['enemy_spawn_rate'] = self.spawnrate_slider.current_val
         self.game.settings['boss_health_multiplier'] = self.boss_health_slider.current_val
         self.game.settings['music_volume'] = self.music_slider.current_val
+        self.game.settings['bg_music_volume'] = self.music_slider.current_val
         self.game.settings['sfx_volume'] = self.sfx_slider.current_val
         self.game.settings['custom_head_p1'] = self.selected_head_p1
         self.game.settings['custom_body_p1'] = self.selected_body_p1
         self.game.settings['custom_head_p2'] = self.selected_head_p2
         self.game.settings['custom_body_p2'] = self.selected_body_p2
 
-        with open("settings.txt", "w") as f:
-            for key, value in self.game.settings.items():
-                f.write(f"{key}={value}\n")
-        print("Einstellungen wurden gespeichert! Snake Profil gespeichert.")
+        self.game.save_settings()
 
     def back(self):
         self.game.set_state(self.game.intro_state())

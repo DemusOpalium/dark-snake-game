@@ -60,3 +60,10 @@ def user_data_path(filename: str) -> str:
     except OSError:
         # Read-only or restricted home directories still permit portable use.
         return bundled_path(filename)
+
+
+def custom_level_path(*, for_write: bool = False) -> str:
+    saved = Path(user_data_path("custom_level.json"))
+    if for_write or saved.is_file():
+        return str(saved)
+    return asset_path("levels", "custom_level.json")
