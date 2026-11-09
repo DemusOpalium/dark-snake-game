@@ -40,11 +40,67 @@ Das [Messskript](scripts/benchmark_game.py) verwendet Seed `16000`, je 60 Aufwä
 | --- | ---: | ---: | ---: |
 | p95 Event → Richtungsannahme | 0,029 ms | 0,051 ms | 0,062 ms |
 | p95 Event → Feuergate | 0,050 ms | 0,095 ms | 0,058 ms |
+| p95 Eingabeverarbeitung | 0,051 ms | 0,082 ms | 0,093 ms |
+| p95 Update | 0,733 ms | 0,122 ms | 0,524 ms |
+| p95 Zeichnen | 4,304 ms | 5,302 ms | 7,434 ms |
+| p95 Bildausgabe | 0,006 ms | 0,008 ms | 0,009 ms |
 | p95 Arbeit pro Frame | 4,96 ms | 5,66 ms | 8,14 ms |
 | p95 Abstand zwischen Ausgaben | 17,75 ms | 17,92 ms | 18,89 ms |
 | Abstände über 33,3 ms | 0 | 0 | 1 |
 
 Die Richtungsprobe hat 30, 60 und 60 Stichproben, die Feuerprobe wegen des Cooldowns 3, 6 und 6. Die Lastprobe erreichte im längsten Frame 57,00 ms Rechenzeit und 65,54 ms Abstand zur vorigen Ausgabe. Rechenzeit und Abstand zwischen Ausgaben müssen getrennt beurteilt werden, weil der Abstand auch das Warten im Frame-Takt enthält.
+
+## Stand nach dem Umbau
+
+`Game.run_frame()` trennt die Phasen Eingabe, Update und Darstellung. Update zeichnet die Gesundheitsleisten, AoE-Zonen und Explosionen nicht mehr. Der reguläre Frame zeichnet das HUD einmal über Pause oder Game Over. Direkte Aufrufe von `draw_game()` behalten das HUD. Pixeltests sichern die sichtbare Stapelreihenfolge und die alte Aufrufmöglichkeit ab. `ControlsMenu` überlässt die Bildausgabe dem Spiel. Die zusätzliche Ausgabe im Anpassungsmenü und der Bestätigungsschritt zum Hauptmenü bleiben erhalten. Die Bestenliste liest weiterhin Events beim Zeichnen. Die fünf alten Moduldefinitionen unter dem direkten Start von `game.py` bleiben getrennt von den aktiven Klassenmethoden.
+
+Die Geräteverwaltung, Belegung und Speicherung liegen im `InputManager`, die Erfassung im Steuerungsmenü und die Spielaktionen in `Game`. Der Simulator verwendet weiterhin `bindings[action]["key"]` und simulierte Pygame-Tastenevents. Für `Game(headless=True)` lädt der `InputManager` die Standardbelegungen ohne angeschlossene Geräte oder gespeicherte Spielerprofile.
+
+### Vergleichsmessung
+
+Gemessen auf demselben Windows-11-System mit Pygame 2.6.1 und SDL-Dummy. Die Spalten geben die Messwerte bei ausgeschaltetem und eingeschaltetem Overlay in Millisekunden an, außer bei der Anzahl langer Bildabstände. Der getestete integrierte Stand ist `ff43b81`.
+
+| Messung | 1P aus / an | 2P aus / an | Last aus / an |
+| --- | ---: | ---: | ---: |
+| p95 Eingabeverarbeitung | 0,055 / 0,060 | 0,073 / 0,070 | 0,065 / 0,071 |
+| p95 Update | 0,845 / 0,940 | 0,100 / 0,095 | 0,363 / 0,378 |
+| p95 Zeichnen | 3,484 / 4,117 | 3,660 / 3,969 | 5,063 / 5,233 |
+| p95 Bildausgabe | 0,009 / 0,009 | 0,009 / 0,009 | 0,008 / 0,008 |
+| p95 Arbeit pro Frame | 4,27 / 4,65 | 3,80 / 4,11 | 5,50 / 5,67 |
+| Maximale Arbeit pro Frame | 5,22 / 7,14 | 5,53 / 6,53 | 12,73 / 13,98 |
+| p95 Abstand zwischen Ausgaben | 17,77 / 17,92 | 17,82 / 18,01 | 18,06 / 18,12 |
+| Abstände über 33,3 ms | 0 / 0 | 0 / 0 | 0 / 0 |
+
+Mit eingeschaltetem Overlay lagen alle gemessenen Frames innerhalb des Rechenbudgets von 16,67 ms. Die p95 der tatsächlichen Abstände zwischen SDL-Ausgaben lag darüber. Das Zeichnen des Overlays kostete im Median 0,119, 0,106 und 0,104 ms. Die p95 einschließlich der gedrosselten Aktualisierung betrug 1,060, 1,115 und 1,170 ms. Die Anzeige wertet je Reihe bis zu 600 Stichproben aus und aktualisiert sich viermal pro Sekunde.
+
+| Live-Messung bei aktivem Overlay | 1P | 2P | Last |
+| --- | ---: | ---: | ---: |
+| p95 Event → Richtungsannahme | 0,047 ms | 0,070 ms | 0,048 ms |
+| p95 Richtungsannahme → Rasterzug | 117,98 ms | 116,44 ms | 116,70 ms |
+| p95 Richtungs-Event → ausgegebener Frame | 121,65 ms | 119,47 ms | 120,64 ms |
+| p95 Event → Feuerannahme | 0,057 ms | 0,066 ms | 0,091 ms |
+| p95 Feuer-Event → ausgegebener Frame | 4,44 ms | 4,31 ms | 6,32 ms |
+| Richtungswechsel / sichtbare Feueraktionen | 30 / 3 | 60 / 6 | 60 / 6 |
+| Feuer durch Cooldown blockiert | 14 | 28 | 28 |
+
+Die Live-Messung wertet als Wirkung eine geänderte Darstellung des Kopfes nach dem Rasterzug beziehungsweise das Zeichnen des erzeugten Projektils mit anschließender Bildausgabe. Die Wartezeit der Richtung entsteht überwiegend bis zum Rasterzug. Die p95 für Feuer hat wegen der kleinen Stichprobe die Aussagekraft einer ersten Prüfung. Die Werte prüfen weder physische Eingabegeräte noch die sichtbare Ausgabe auf einem Monitor.
+
+Separate Messungen mit warmen Zwischenspeichern unter Windows und SDL-Dummy verwendeten Seed `1701`. Sie verglichen den Grafik-Commit isoliert mit dem Ausgangsstand.
+
+| Teilmessung | Stichproben | p95 vorher → nachher |
+| --- | ---: | ---: |
+| Boss-AoE-Bild auswählen | 50 | 50,87 → 1,17 ms |
+| Feuerball erzeugen | 200 | 2,70 → 0,0044 ms |
+| 2P mit Boss, 100 Projektilen und zehn prozeduralen Effekten zeichnen | 400 | 3,86 → 3,08 ms |
+
+~~~powershell
+git worktree add --detach ../dark-snake-baseline 5f7b206
+python scripts/benchmark_game.py --checkout ../dark-snake-baseline
+python scripts/benchmark_game.py
+python scripts/benchmark_game.py --overlay
+~~~
+
+Das Skript gibt die Stichprobenzahlen, Median, p95 und Maximum als JSON aus. Für den Vergleich sollten die Läufe nacheinander unter gleicher Systemlast stattfinden.
 
 ## Sichere Reihenfolge für weitere Auslagerungen
 
