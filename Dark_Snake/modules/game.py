@@ -1566,7 +1566,9 @@ class Game:
         elif item.type == ItemType.LOOT_BOX:
             if SOUNDS.get("powerup"):
                 SOUNDS["powerup"].play()
-            self.handle_item_pickup(Item(random.choice(list(ItemType)[:-1])))
+            rewards = [kind for kind in ItemType
+                       if kind not in (ItemType.LOOT_BOX, ItemType.SPAWN_BOLBU)]
+            self.handle_item_pickup(Item(random.choice(rewards)))
             self.score += 20
             self.experience += 20
         elif item.type == ItemType.LENGTH_SHORTENER:
@@ -1981,13 +1983,8 @@ class Game:
             # Spieler 1 zeichnen:
             for i, (x, y) in enumerate(self.get_snake_render_positions(1)):
                 if i == 0:
-                    head_file = self.settings.get('custom_head_p1')
-                    if head_file:
-                        head_img = load_image(head_file)
-                        if head_img is None:
-                            head_img = SNAKE_HEAD_IMG
-                    else:
-                        head_img = SNAKE_HEAD_IMG
+                    head_img = self.options_menu.get_skin_image(
+                        "Heads", self.settings.get("custom_head_p1")) or SNAKE_HEAD_IMG
                     head_img = pygame.transform.scale(head_img, (GRID_SIZE, GRID_SIZE))
                     try:
                         rotated = pygame.transform.rotate(head_img, -self.snake_direction1.value[0] * 90)
@@ -1996,25 +1993,15 @@ class Game:
                         rotated = head_img
                     self.screen.blit(rotated, (x, y))
                 else:
-                    body_file = self.settings.get('custom_body_p1')
-                    if body_file:
-                        body_img = load_image(body_file)
-                        if body_img is None:
-                            body_img = SNAKE_BODY_IMG
-                    else:
-                        body_img = SNAKE_BODY_IMG
+                    body_img = self.options_menu.get_skin_image(
+                        "Bodies", self.settings.get("custom_body_p1")) or SNAKE_BODY_IMG
                     body_img = pygame.transform.scale(body_img, (GRID_SIZE, GRID_SIZE))
                     self.screen.blit(body_img, (x, y))
             # Spieler 2 zeichnen:
             for i, (x, y) in enumerate(self.get_snake_render_positions(2)):
                 if i == 0:
-                    head_file = self.settings.get('custom_head_p2')
-                    if head_file:
-                        head_img = load_image(head_file)
-                        if head_img is None:
-                            head_img = SNAKE_HEAD_BETA
-                    else:
-                        head_img = SNAKE_HEAD_BETA
+                    head_img = self.options_menu.get_skin_image(
+                        "Heads", self.settings.get("custom_head_p2")) or SNAKE_HEAD_BETA
                     head_img = pygame.transform.scale(head_img, (GRID_SIZE, GRID_SIZE))
                     try:
                         rotated = pygame.transform.rotate(head_img, -self.snake_direction2.value[0] * 90)
@@ -2023,26 +2010,16 @@ class Game:
                         rotated = head_img
                     self.screen.blit(rotated, (x, y))
                 else:
-                    body_file = self.settings.get('custom_body_p2')
-                    if body_file:
-                        body_img = load_image(body_file)
-                        if body_img is None:
-                            body_img = SNAKE_BODY_IMG
-                    else:
-                        body_img = SNAKE_BODY_IMG
+                    body_img = self.options_menu.get_skin_image(
+                        "Bodies", self.settings.get("custom_body_p2")) or SNAKE_BODY_IMG
                     body_img = pygame.transform.scale(body_img, (GRID_SIZE, GRID_SIZE))
                     self.screen.blit(body_img, (x, y))
         else:
             # Einzelspieler: Zeichne die Snake
             for i, (x, y) in enumerate(self.get_snake_render_positions(1)):
                 if i == 0:
-                    head_file = self.settings.get('custom_head_p1')
-                    if head_file:
-                        head_img = load_image(head_file)
-                        if head_img is None:
-                            head_img = SNAKE_HEAD_IMG
-                    else:
-                        head_img = SNAKE_HEAD_IMG
+                    head_img = self.options_menu.get_skin_image(
+                        "Heads", self.settings.get("custom_head_p1")) or SNAKE_HEAD_IMG
                     head_img = pygame.transform.scale(head_img, (GRID_SIZE, GRID_SIZE))
                     try:
                         rotated = pygame.transform.rotate(head_img, -self.snake_direction.value[0] * 90)
@@ -2051,13 +2028,8 @@ class Game:
                         rotated = head_img
                     self.screen.blit(rotated, (x, y))
                 else:
-                    body_file = self.settings.get('custom_body_p1')
-                    if body_file:
-                        body_img = load_image(body_file)
-                        if body_img is None:
-                            body_img = SNAKE_BODY_IMG
-                    else:
-                        body_img = SNAKE_BODY_IMG
+                    body_img = self.options_menu.get_skin_image(
+                        "Bodies", self.settings.get("custom_body_p1")) or SNAKE_BODY_IMG
                     body_img = pygame.transform.scale(body_img, (GRID_SIZE, GRID_SIZE))
                     self.screen.blit(body_img, (x, y))
 

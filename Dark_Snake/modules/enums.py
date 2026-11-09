@@ -1,4 +1,4 @@
-from enum import Enum, auto
+from enum import Enum, auto, unique
 
 class GameState(Enum):
     INTRO = 0
@@ -18,8 +18,8 @@ class Direction(Enum):
     LEFT = (-1, 0)
     RIGHT = (1, 0)
 
+@unique
 class ItemType(Enum):
-    FLAMEBALL_TRIGGER = auto()  # [KS_TAG: ENUMS_FLAMEBALL]
     FOOD = 0
     SPEED_BOOST = 1
     SPEED_REDUCTION = 2
