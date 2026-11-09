@@ -12,9 +12,12 @@ import pytest
 pygame.init()
 pygame.display.set_mode((1, 1))
 
-from config import DARK_GREY, RED, WHITE
+from config import DARK_GREY, GREEN, GRID_SIZE, RED, WHITE
+from modules.aoe_zones import GrowingBossAOEZone
+from modules.enemies import NormalEnemy
 from modules.enums import GameState
-from modules.game import Game
+from modules.fire_explosion import FireExplosionAnimation
+from modules.game import Boss, Game
 
 
 EFFECT_COLOR = (48, 192, 144)
@@ -85,3 +88,95 @@ def test_draw_game_keeps_hud_for_direct_callers():
     game.draw_game()
     assert_bar(game.screen, 20, 50, (255, 127, 0))
     assert_region(game.screen, (230, 86, 20, 12), EFFECT_COLOR)
+
+
+def solid_sprite(size, color):
+    image = pygame.Surface(size, pygame.SRCALPHA)
+    image.fill(color)
+    return image
+
+
+def test_boss_attack_warning_is_visible_behind_boss_snake_and_health_bar(monkeypatch):
+    game = prepare_world(1)
+    game.game_state = GameState.BOSS_FIGHT
+    game.snake = [(7, 6)]
+    game._reset_snake_interpolation()
+    snake_color = (55, 105, 205)
+    boss_color = (44, 218, 124)
+    skin = solid_sprite((GRID_SIZE, GRID_SIZE), snake_color)
+    monkeypatch.setattr(game.options_menu, "get_skin_image", lambda *_: skin)
+
+    boss = game.boss = Boss(level=1)
+    boss.x, boss.y = 8, 6
+    rect = boss.get_render_rect()
+    now = boss.spawn_time + 10
+    boss.last_move = now
+    boss.next_aoe = now
+    warning = solid_sprite((8, 8), (220, 35, 50))
+    monkeypatch.setattr("modules.game.get_aoe_effect", lambda: warning)
+    assert boss.update(now) == "aoe"
+    boss.image = solid_sprite(rect.size, boss_color)
+    monkeypatch.setattr("modules.game.time.time", lambda: now + 3.5)
+
+    game.draw()
+
+    assert_region(game.screen, (rect.x + 5, rect.y + 5, 8, 8), boss_color)
+    assert_region(game.screen, (rect.x - GRID_SIZE + 5, rect.y + 5, 8, 8), snake_color)
+    assert_region(game.screen, (rect.x + 5, rect.y - 8, 8, 2), GREEN)
+    # The warning extends beyond the sprites and remains visible on the field.
+    warning_pixel = game.screen.get_at((rect.right + 5, rect.centery))
+    assert warning_pixel.r > 100
+    assert_bar(game.screen, 20, 50, (255, 127, 0))
+
+
+@pytest.mark.parametrize("effect_kind", ["growing_zone", "managed_aura", "fire_explosion"])
+def test_world_effects_are_visible_behind_normal_enemies(effect_kind):
+    game = prepare_world(1)
+    enemy = NormalEnemy()
+    enemy.x, enemy.y = 8, 6
+    enemy.width = enemy.height = GRID_SIZE
+    enemy_color = (55, 105, 205)
+    enemy.image = solid_sprite((GRID_SIZE, GRID_SIZE), enemy_color)
+    game.enemies.append(enemy)
+    rect = enemy.get_render_rect()
+    frame = solid_sprite((3 * GRID_SIZE, 3 * GRID_SIZE), EFFECT_COLOR)
+    if effect_kind == "growing_zone":
+        zone = GrowingBossAOEZone(rect.center, GRID_SIZE, 2 * GRID_SIZE, 4,
+                                  (*EFFECT_COLOR, 255))
+        zone.image = frame
+        game.aoe_zones.append(zone)
+    elif effect_kind == "managed_aura":
+        effect = game.effect_manager.spawn("boss_aura", rect.center)
+        effect.frames = [frame]
+    else:
+        explosion = FireExplosionAnimation(rect.center, scale_factor=1)
+        explosion.frames = [frame]
+        game.explosions.append(explosion)
+
+    game.draw()
+
+    assert_region(game.screen, (rect.x + 5, rect.y + 5, 8, 8), enemy_color)
+    assert_region(game.screen, (rect.right + 5, rect.y + 5, 4, 8), EFFECT_COLOR)
+
+
+def test_update_advances_zone_and_explosion_without_painting_them(monkeypatch):
+    game = prepare_world(1)
+    center = (8 * GRID_SIZE, 6 * GRID_SIZE)
+    zone = GrowingBossAOEZone(center, GRID_SIZE, 2 * GRID_SIZE, 4, (*EFFECT_COLOR, 255))
+    zone.image = solid_sprite((GRID_SIZE, GRID_SIZE), EFFECT_COLOR)
+    explosion = FireExplosionAnimation(center, scale_factor=1)
+    explosion.frames = [solid_sprite((GRID_SIZE, GRID_SIZE), EFFECT_COLOR)]
+    game.aoe_zones.append(zone)
+    game.explosions.append(explosion)
+    now = zone.created_time + 1
+    game.last_update_time = now
+    monkeypatch.setattr("modules.game.time.time", lambda: now)
+    monkeypatch.setattr("modules.game.random.random", lambda: 1.0)
+    sentinel = (3, 15, 23)
+    game.screen.fill(sentinel)
+
+    game.update()
+
+    assert zone.radius > GRID_SIZE
+    assert explosion.frame_timer == 1
+    assert_region(game.screen, (center[0] - 4, center[1] - 4, 8, 8), sentinel)

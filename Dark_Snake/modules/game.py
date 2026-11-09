@@ -28,7 +28,11 @@ from modules.graphics import (
     OPTIONS_BUTTON_IMG, PLAY_BUTTON_IMG,
 )
 from modules.level_editor import LevelEditor
-from modules.audio import SOUNDS, get_music_library, play_background_music, set_music_volume, set_sound_volume
+from modules.audio import (
+    DEFAULT_MUSIC_TRACK, DEFAULT_MUSIC_VOLUME, DEFAULT_SFX_VOLUME, SOUNDS,
+    get_music_library, initialize_audio, normalize_volume, play_background_music,
+    set_music_volume, set_sound_volume,
+)
 from modules.ui import Button, Slider, CheckBox, Dropdown
 from modules.aoe_zones import AoEZone, DamageZone, HealZone, DebuffZone, FollowZone, GrowingBossAOEZone  # [KS_TAG: BOSS_AOE]
 from modules.controls import ControlsMenu
@@ -237,23 +241,25 @@ class Boss:
         pygame.draw.rect(screen, GREEN, life_bar)
         pygame.draw.rect(screen, WHITE, (self.x * GRID_SIZE, self.y * GRID_SIZE - 10,
                                          bar_width, bar_height), 1)
-        if self.aoe_effect:
-            elapsed = time.time() - self.aoe_effect["start_time"]
-            if elapsed < self.aoe_effect["duration"]:
-                scale = 1 + elapsed * ((self.aoe_effect["max_size"] / (self.size * GRID_SIZE) - 1)
-                                       / self.aoe_effect["duration"])
-                image = self.aoe_effect["image"]
-                if image is None:
-                    return
-                aoe_img = pygame.transform.scale(image,
-                                                   (int(self.size * GRID_SIZE * scale),
-                                                    int(self.size * GRID_SIZE * scale)))
-                pos_x = self.x * GRID_SIZE + (self.size * GRID_SIZE - aoe_img.get_width()) // 2
-                pos_y = self.y * GRID_SIZE + (self.size * GRID_SIZE - aoe_img.get_height()) // 2
-                aoe_img.set_alpha(204)
-                screen.blit(aoe_img, (pos_x, pos_y))
-            else:
-                self.aoe_effect = None
+
+    def draw_aoe(self, screen):
+        effect = self.aoe_effect
+        if effect is None:
+            return
+        elapsed = time.time() - effect["start_time"]
+        if elapsed >= effect["duration"]:
+            self.aoe_effect = None
+            return
+        image = effect["image"]
+        if image is None:
+            return
+        side = self.size * GRID_SIZE
+        scale = 1 + elapsed * ((effect["max_size"] / side - 1) / effect["duration"])
+        diameter = int(side * scale)
+        aoe_img = pygame.transform.scale(image, (diameter, diameter))
+        aoe_img.set_alpha(204)
+        offset = (side - diameter) // 2
+        screen.blit(aoe_img, (self.x * GRID_SIZE + offset, self.y * GRID_SIZE + offset))
 
     def get_render_rect(self):
         rect = pygame.Rect(self.x * GRID_SIZE, self.y * GRID_SIZE,
@@ -438,9 +444,9 @@ class Game:
         self.settings = {
             'initial_speed': START_SPEED,
             'fullscreen': False,
-            'music_volume': 0.2,
-            'sfx_volume': 1.0,
-            'bg_music_volume': 0.3,
+            'sfx_volume': DEFAULT_SFX_VOLUME,
+            'bg_music_volume': DEFAULT_MUSIC_VOLUME,
+            'music_track': DEFAULT_MUSIC_TRACK,
             'difficulty': 1.0,
             'field_scale': 1.0,
             'snake_design': 0,
@@ -454,11 +460,18 @@ class Game:
             'boss_health_multiplier': 1.0
         }
         self.load_settings()
-        self.get_music_library = get_music_library
-        if not headless:
+        self.music_tracks = get_music_library()
+        if self.settings['music_track'] not in self.music_tracks:
+            self.settings['music_track'] = (DEFAULT_MUSIC_TRACK if DEFAULT_MUSIC_TRACK in self.music_tracks
+                                            else next(iter(self.music_tracks), None))
+        if not headless and initialize_audio():
             set_sound_volume(self.settings['sfx_volume'])
-            play_background_music("DarkSnakeMusicIndi2.mp3",
-                                  self.settings['bg_music_volume'])
+            track = self.settings['music_track']
+            volume = self.settings['bg_music_volume']
+            if track and not play_background_music(track, volume):
+                if track != DEFAULT_MUSIC_TRACK and DEFAULT_MUSIC_TRACK in self.music_tracks:
+                    if play_background_music(DEFAULT_MUSIC_TRACK, volume):
+                        self.settings['music_track'] = DEFAULT_MUSIC_TRACK
         self.player_count = 1
         self.input = InputManager(initialize_joysticks=not headless, load_saved=not headless)
         self.intro_focus = 0
@@ -616,6 +629,9 @@ class Game:
                 for key in self.settings:
                     if key in saved:
                         self.settings[key] = saved[key]
+                music_volume = saved.get('bg_music_volume', saved.get('music_volume'))
+                self.settings['bg_music_volume'] = normalize_volume(music_volume, DEFAULT_MUSIC_VOLUME)
+                self.settings['sfx_volume'] = normalize_volume(self.settings['sfx_volume'], DEFAULT_SFX_VOLUME)
         except FileNotFoundError:
             pass
         except (OSError, ValueError) as exc:
@@ -630,12 +646,6 @@ class Game:
             record_event(f"Einstellungen konnten nicht gespeichert werden: {exc}")
         set_music_volume(self.settings['bg_music_volume'])
         set_sound_volume(self.settings['sfx_volume'])
-
-    def change_bg_music(self, selected_option):
-        self.settings['bg_music_volume'] = self.music_slider.current_val
-        from modules.audio import play_background_music
-        play_background_music(selected_option, self.settings['bg_music_volume'])
-        print(f"Hintergrundmusik geändert: {selected_option}")
 
     def start_game(self, players):
         self.player_count = players
@@ -1166,12 +1176,6 @@ class Game:
                 for _ in enemy.projectiles:
                     self.log_combat_event("projectile_fired", projectile="bolbu_projectile")
                 enemy.projectiles.clear()
-
-        # AoE‑Zonen zeichnen (wird später noch gebraucht)
-        for zone in self.aoe_zones:
-            zone.draw(self.screen)
-        for explosion in self.explosions:
-            explosion.draw(self.screen)
 
         # ───────────────────────── 3) Kollisions­prüfungen ───────────────────────────
             # --- Sichere Kollisionsprüfung für klassische Projektile ---
@@ -2008,6 +2012,11 @@ class Game:
         # 2. AoE-Effekte zeichnen – liegen zwischen Raster und dynamischen Objekten
         for zone in self.aoe_zones:
             zone.draw(self.screen)
+        if self.boss:
+            self.boss.draw_aoe(self.screen)
+        for explosion in self.explosions:
+            explosion.draw(self.screen)
+        self.effect_manager.draw(self.screen, "world")
         # 3. Dynamische Spielobjekte (Spielerebene) zeichnen:
         if self.portal:
             self.portal.draw(self.screen)
@@ -2024,9 +2033,6 @@ class Game:
                 self.metrics.fire_drawn(flame)
         for proj in self.enemy_projectiles:
             proj.draw(self.screen)
-        for explosion in self.explosions:
-            explosion.draw(self.screen)
-        self.effect_manager.draw(self.screen, "world")
         # Spieler (Snake) zeichnen:
         if self.player_count == 2:
             # Spieler 1 zeichnen:

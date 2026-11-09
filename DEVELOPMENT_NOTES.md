@@ -1,0 +1,110 @@
+# DARK Snake · Bestandsaufnahme und nächste Entwicklung
+
+Ausgangsstand ist `main` bei `b8b4377` (PR #112). Das [Architektur-Audit](ARCHITECTURE_AUDIT.md) beschreibt die Zuständigkeiten und den Frame-Ablauf. Die folgenden Erweiterungen sind Vorschläge für eine spätere Prüfung.
+
+## Audio · nachgewiesener Ausgangsstand
+
+Unter Windows 11 mit Pygame 2.6.1 und SDL-Dummy meldeten `pygame.init()`, der anschließende explizite Mixer-Aufruf und der Import von `config` jeweils 44.100 Hz, 16 Bit und zwei Kanäle. Die Aufrufe waren redundant. Die Messung weist keine erneute Öffnung eines physischen Geräts nach. Die sechs WAV-Effekte sind ebenfalls 44.100 Hz, 16 Bit und Stereo. Alle Musikdateien sind 48.000 Hz und Stereo. Damit musste der alte Mixer die Musik umrechnen.
+
+Im Ausgangsstand änderte das Ziehen der Regler zunächst die angezeigten Werte. Beim Speichern wurden Musik- und Effektpegel angewandt, bei der Titelauswahl zusätzlich der Musikpegel. Der gewählte Titel wurde beim Neustart durch den Standardtitel ersetzt. Das sind reproduzierbare Fehler im Bedien- und Startpfad. Gerätespezifisches Knacken, Aussetzer und Übersteuerung lassen sich mit SDL-Dummy nicht beurteilen.
+
+Alle fünf MP3-Pfade wurden mit FFmpeg vollständig und strikt in Float32 dekodiert (`-xerror -err_detect explode -f f32le -acodec pcm_f32le`). `ebur128=peak=true` ermittelte integrierte Lautheit und True Peak. Keine Dekodierfehler und keine dekodierten Samples bei oder über Vollaussteuerung. Die zweite Datei im übergeordneten Sound-Ordner ist bytegleich mit `FürAndreTeil2.mp3`.
+
+| Musikdatei unter `assets/sounds/music` | Lautheit | True Peak |
+| --- | ---: | ---: |
+| `ChillFürAndre.mp3` | −12,4 LUFS | −1,8 dBTP |
+| `DarkSnakeMusicIndi1.mp3` | −11,9 LUFS | −0,8 dBTP |
+| `DarkSnakeMusicIndi2.mp3` | −12,1 LUFS | −1,0 dBTP |
+| `FürAndreTeil2.mp3` | −12,2 LUFS | −1,1 dBTP |
+
+Die Originale bleiben unverändert. Die Werte belegen weder den Pegel nach dem Mischen mehrerer Spielsounds noch die Ausgabequalität des Audiogeräts. Für die Hörprobe unter Windows denselben Track bei derselben Lautstärke und demselben Ausgabegerät vor und nach dem Fix vergleichen. Regler während der Wiedergabe bewegen, Musik auf null ziehen und Effekte prüfen, dann die Probe umgekehrt wiederholen. Einstellungen speichern und nach dem Neustart beide Pegel und den Titel prüfen. Bosskampf und überlappende Soundeffekte separat anhören.
+
+### Audio nach dem Fix
+
+Der normale Start öffnet den Mixer über einen zentralen Einstieg mit 48.000 Hz, 16 Bit, Stereo und 1.024 Samples Puffer. Damit stimmen Musikformat und Mixer-Rate überein. Der Puffer bietet mehr Reserve bei unregelmäßiger Bedienung durch das System. 1.024 Samples entsprechen bei 48 kHz rund 21 ms Pufferdauer. Das ist keine Messung der gesamten Audiolatenz.
+
+Im SDL-Dummy liefen alle vier Titel im Musikordner mit der neuen Mixer-Rate an. Musik und Soundeffekte reagieren getrennt auf Reglerbewegungen. Die Effektvorschau beim Loslassen macht die Einstellung im Menü prüfbar. Eine Reglerbewegung lädt den laufenden Track nicht neu. Beim Speichern werden die beiden Pegel und die Titelauswahl übernommen. Das Spiel kann bei einem nicht verfügbaren Mixer weiter starten. Die vorhandene Zuordnung für den Gegner-Sound ist jetzt mit der bereits enthaltenen WAV-Datei belegt. Die überzählige Musikdatei wird beim Start nicht mehr zusätzlich als langer Soundeffekt in den Speicher geladen.
+
+## AoE · Zeichnung und Reproduktion
+
+Die regulären `AoEZone`-Objekte lagen bereits unter dem Boss. Die wachsende Warnung wurde dagegen innerhalb von `Boss.draw()` nach Sprite und Lebensbalken geblittet. Zwei weitere Pfade, die Boss-Aura des `EffectManager` und die Feuerexplosion, zeichneten nach den normalen Gegnern. `Game.update()` zeichnete die Zonen und Explosionen zusätzlich auf die Spielfläche, bevor der eigentliche Frame den Hintergrund aufbaute.
+
+Der Renderpfad zeichnet diese Welt-Effekte vor den Figuren. `update()` schreibt dafür keine Pixel mehr. In der Regression überlappen vorbereitete Effekte die Boss- und Gegnersprites. Der Test vergleicht die unverdeckten Sprite-Pixel, einen sichtbaren Effektbereich neben der Figur und das HUD über der Welt. Ein Update-Test prüft zusätzlich, dass Radius und Animation weiterlaufen.
+
+## Kampfregeln im klassischen Modus
+
+Die bisherigen Geschwindigkeiten und Bewegungsabläufe sind die Referenz für die folgenden Entscheidungen. Die Reproduktionen liefen unter Windows 11 mit Pygame 2.6.1 und dem SDL-Dummy-Treiber. Ein reproduzierbarer Prüfaufbau friert die Spielzeit bei 100 Sekunden ein, verwendet Seed `20261109`, unterdrückt spontane Zufallsspawns und erzwingt bei Bedarf genau einen Rasterzug.
+
+| Fall | Bestehendes Verhalten | Entscheidung oder nächster Schritt |
+| --- | --- | --- |
+| Klassisches Bossprojektil | Ein Projektil beginnt auf Kopfzelle (4, 4), bewegt sich im Update um 0,5 Rasterzellen nach rechts und bleibt aktiv. 1P fällt von 100 auf 80 HP. Bei zwei überlappenden Köpfen fallen P1/P2 von 100/100 auf 80/90. Die erste Trefferpassage bricht in 2P nach dem ersten Treffer ab, die zweite trifft beide. Die spätere Prüfung nach der Bewegung ruft bei Überschneidung nur `handle_death()` auf. | Vor einer Änderung Trefferkonsum oder Trefferpause pro Projektil und Spieler festlegen. Die doppelte Prüfung anschließend zusammenführen und anhand der bisherigen Geschwindigkeit, Flugbahn und Reaktionszeit testen. |
+| Bosskörper | In 1P führt der Zug von (4, 4) nach (5, 4) in einen mindestens drei Sekunden alten Boss zu einem Aufruf von `handle_death()`. 100 HP und drei Leben bleiben bestehen, weil positive HP den Aufruf beenden. Wenn in 2P nur P2 dieselbe Zelle betritt, wird der Aufruf gar nicht erreicht. Die aktuelle Kontaktprüfung wählt P1 als Ziel. | Kontakt als klar erkennbaren HP-Treffer mit kurzer Trefferpause definieren und dieselbe Regel für beide Spieler prüfen. Stärke, Warnung und Trefferpause vor der Umsetzung festlegen. |
+| Eigenkörper | Eine Kollision mit dem eigenen Körper kostet in 1P und bei P2 ein Leben, auch wenn HP positiv sind. Bei verbleibenden Leben folgt der gemeinsame Respawn in der Mitte mit 100 HP und drei Sekunden Schutz. Die freiziehende eigene Schwanzzelle ist begehbar. Bei einem Item im Zielfeld bleibt sie wegen des Wachstums belegt. | Als vorhandene Regel bewahren. Die Regressionstests decken diese Fälle in 1P und 2P bereits ab. |
+| Andere Schlange | P1 (4, 4) nach rechts und P2 (6, 4) nach links landen beide auf (5, 4), ohne ein Leben zu verlieren. Zwei benachbarte Köpfe dürfen ebenfalls ihre Zellen tauschen. Der Rasterzug prüft pro Spieler nur den eigenen Körper. | Für den klassischen lokalen Modus die derzeit kooperative Durchquerung dokumentieren. Eine abweichende Kopf-an-Kopf-Regel wäre eine eigene Balanceentscheidung. |
+| Bossflamme | Der vorhandene Regressionstest sichert ab, dass eine Bossflamme auf überlappenden 2P-Köpfen beide Spieler einmal trifft und nur einmal entfernt wird. | Bestehende Regel für dieses Flächenereignis beibehalten und von klassischen Projektilen trennen. |
+| Spezialschadens-Item | Bei Level 1 reduziert `SPECIAL_DAMAGE` einen Boss mit 1 HP auf −4 HP und gibt 100 Punkte. Auch nach einem Update bleibt derselbe Boss aktiv und der Zustand ist `BOSS_FIGHT`. Der Item-Pfad ändert `boss.health` direkt und ruft `damage_boss()` für den Abschluss nicht auf. | Als separaten Fehler mit einem Test für tödliche und nicht tödliche Treffer beheben. Vorher festlegen, ob zur Item-Prämie von 100 Punkten beim tödlichen Treffer auch die übliche Boss-Prämie gehört. |
+| Multischuss | Ein `PROJECTILE_SHOOT`-Item setzt einen zusätzlichen Schuss und verlängert die Laufzeit um 900 Sekunden. Bis zu sechs zusätzliche Schüsse sind möglich. Im Test blieben nach HP-Tod und Respawn mit Restleben der zusätzliche Schuss und die Laufzeit erhalten. `reset_game()` setzt beide auf null. Die automatische Zielsuche wählt den nächstgelegenen Gegner ab drei Sekunden Spawndauer und schießt sonst entlang der Blickrichtung. | Beim Waffenentwurf zwischen Lebensverlust und vollständigem Rundenreset unterscheiden. Die bestehende Zielsuche und den begrenzten Multischuss erhalten. |
+
+Die beiden vorhandenen Aktualisierungspfade für Projektile bleiben Teil der Bewegungsreferenz. Eine Konsolidierung der Trefferprüfungen darf nicht nebenbei deren Takt, Lebensdauer, Sprites oder Schadenskonstanten ändern.
+
+## Schwierigkeit und Spawn-Budget
+
+| Einstellung oder Quelle | Tatsächliche Wirkung im aktuellen Stand |
+| --- | --- |
+| Schwierigkeit 0,5–2,0 | Ändert die Chance auf ein gewöhnliches Zufallsitem pro Rasterzug zu `0.005 × difficulty`, also 0,25–1 %. Der normale Zufallspfad stoppt ab fünf Items. Bossstart, Bossportal, Admin und Lebensmittelersatz können zusätzliche Items erzeugen. |
+| Spawnrate 0,001–0,005 | Normalgegner werden nur bei aktivem `projectile_shoot` ausgewürfelt. Die Chance gilt pro Spielupdate. Bei 60 Updates/s entspräche das im Mittel 3,6–18 neuen Gegnern pro aktiver Minute, ohne Abzug getöteter Gegner. Der Standardwert 0,002 entspricht 7,2. Es gibt keine gemeinsame Gegnerobergrenze. |
+| Bolbu-Item | Erzeugt separat ein bis drei Bolbu. Der normale Gegnerspawn und Bolbu teilen sich die Gegnerliste, aber kein gemeinsames Budget. Bolbu kann einen Fächerschuss mit drei Projektilen erzeugen. |
+| Tempo und Boss-HP | Das Starttempo bestimmt die Rasterzugfrequenz. Level erhöhen sie in Schritten von 0,5 bis `MAX_SPEED`. Die Boss-HP-Einstellung multipliziert die Bossgesundheit. Bossstarts kommen aus Levelaufstieg, Portal und Admin. `boss_spawn_timer` zeigt einen Countdown an, löst aber keinen Bossstart aus. |
+| Neutrale AoE-Zonen | Pro Update gilt eine Chance von 0,1 %, wenn insgesamt weniger als fünf Zonen aktiv sind. Boss- und Admin-/Debug-Pfade hängen eigene Zonen unabhängig davon an. |
+| Visuelle Effekte und Projektile | `EffectManager` ist getrennt von den schädigenden Zonen. Schleifen ignorieren ihre Dauer. Auf dem geprüften Ausgangsstand waren nach zwei besiegten Bossen und 61 Sekunden noch zwei Bossauren aktiv. Reguläre Rasterprojektile verschwinden primär am Spielfeldrand; die Klassen für Feuerball, Bossflamme und Bolbu haben eigene Lebensdauern. Für aktive Projektile gibt es kein globales Budget. |
+
+Ein Stresstest mit erzwungenen erfolgreichen Spawnwürfen bestätigte die Trennung. Zehn Updates bei inaktivem Autoschuss ergaben 0 Normalgegner und fünf neutrale Zonen. Vierzig weitere Updates mit aktivem Autoschuss ergaben 40 Normalgegner und weiterhin fünf neutrale Zonen. Das ist ein Kapazitätsnachweis unter erzwungener Zufallsfolge, keine Prognose für eine normale Runde.
+
+### Vorschlag für eine spätere Balancephase
+
+1. Pro Erzeuger die Zahl aktiver Gegner, Projektile und Zonen, höchste gleichzeitige Belastung sowie verworfene Spawnversuche erfassen. Dieselben Seeds in 1P und 2P sowie einen Bosskampf unter Last verwenden.
+2. Zuerst harte Grenzen und faire Platzierung testen. Als **Versuchswerte** eignen sich 8 Gegner in 1P und 12 in 2P, 5 neutrale Zonen plus eine klar angekündigte Bosszone und ein separates Budget für feindliche Projektile. Neue zufällige Gegner außerhalb der unmittelbaren Kopfbereiche platzieren und eine kurze Kontaktwarnung prüfen. Obergrenzen nie durch schnelleres Nachspawnen kompensieren.
+3. Einen angekündigten Bossangriff und garantierte Lebensmittel von Zufallsspawns unterscheiden. Ein volles Budget soll weitere Zufallsspawns auslassen, statt bestehende Projektile oder Angriffe unsichtbar zu löschen. Für belegte Spielfelder die Platzsuche begrenzen. Die heutigen `while True`-Schleifen für freie Itemzellen können auf einem vollständig belegten Raster keinen Kandidaten finden.
+4. Erst nach diesen Schutzmaßnahmen einen langsamen Anstieg mit Spielzeit oder Level erproben. Spawnrate und Schwierigkeit im Menü passend zu ihrer tatsächlichen Wirkung beschriften. Für einen Classic-Preset die bisherigen Mechaniken als Vergleichsgruppe behalten und erst nach Testspiel-Freigabe neue Standardwerte wählen.
+
+## Würfel im klassischen Spiel
+
+- **Würfel-Item.** Ein zufällig erzeugtes Item hat unter den elf gleich gewichteten Item-Typen eine Chance von 1/11 auf `DICE_EVENT`. Die Beutekiste kann denselben Effekt auslösen. Bei einer Kiste wählt das Spiel aus zehn Typen, also mit 1/10 Wahrscheinlichkeit für den Würfeleffekt.
+- **Portal.** Ein neu angelegtes Portal wählt gleichmäßig aus fünf Ereignissen. Davon ist eines ein Würfelwurf. Bei einem Ergebnis von 11–20 gibt es `5 × Wurf` Punkte, bei 1–10 keine Belohnung. Der Portalwurf vergibt keine Erfahrung. Die Würfelanzeige erscheint jeweils für fünf Sekunden.
+- **Bolbu würfelt separat.** Der Gegner verwendet beim Angriffsintervall einen W6. Die 6 startet einen Sprint (1/6), 4–5 erzeugen drei Schüsse (2/6), 1–3 einen Schuss (3/6). Das gehört zur Gegner-KI und verwendet keine D20-Spielerbelohnungen.
+
+Der D20 zieht mit `random.randint(1, 20)` gleichverteilt. Jedes einzelne Ergebnis hat 5 % Wahrscheinlichkeit. Die Tabelle beschreibt die direkten Item-Effekte. Eine erreichte Erfahrungsschwelle löst anschließend das normale Level-up aus, das zusätzliche Punkte vergeben und einen Bosskampf starten kann.
+
+| Wurf | Wahrscheinlichkeit | Punkte | Erfahrung |
+| --- | ---: | ---: | ---: |
+| 1 · Kritischer Fehlschlag | 5 % | 1 | 0 |
+| 2–5 · Fehlschlag | 20 % | Wurf | 0 |
+| 6–10 · Kleiner Erfolg | 25 % | 2 × Wurf | Wurf / 2, abgerundet |
+| 11–15 · Erfolg | 25 % | 3 × Wurf | Wurf |
+| 16–19 · Großer Erfolg | 20 % | 5 × Wurf | 2 × Wurf |
+| 20 · Kritischer Erfolg | 5 % | 300 | Setzt Erfahrung auf die nächste Levelschwelle |
+
+### Optionale Erweiterung zur Freigabe
+
+Klassisch bleibt der Standard. Ein optionales Profil könnte eine reine Auswertung `roll → Ergebnis` pro Quelle (Item, Portal oder später Myzel) verwenden. Der Wurf erhält eine injizierbare Zufallsquelle für feste Seeds. Jede Ergebnistabelle ist separat über alle 20 Werte prüfbar. Die UI zeigt eine Belohnung anhand der tatsächlichen Quelle an. Im Moment benutzt das Portal dieselben Textstufen wie das Item, obwohl es anders belohnt.
+
+Eine niedrige Zahl kann eine kleine Belohnung geben. Eine hohe Zahl kann ein gut sichtbares Bonus-Item oder ein seltenes, angekündigtes Ereignis auslösen. Keine zufälligen Verluste von Leben, Steuerung oder sicherem Platz. Abklingzeit und Mengenlimit sollen verhindern, dass ein Bonus weitere Würfe in einer Kette erzeugt. Pilz- und Sporenereignisse bekommen später eigene Ergebnistabellen.
+
+## Waffen und Effekte zur Freigabe
+
+
+| Baustein | Vorschlag |
+| --- | --- |
+| Waffenprofil | Deklarative Daten für Projektilbild, Schadensquelle, Trefferaktion und optionales Zonenprofil. Die bestehende Projektillogik behält Tempo, Takt und Zielwahl. |
+| Trefferereignis | Ein bestätigter Treffer enthält Position, Quelle und Ziel. Eine optionale Trefferaktion erzeugt höchstens eine Zone pro Projektil. Direktschaden und Zonenschaden erhalten getrennte Tests. |
+| Frost | Ein sichtbarer Radius hinter den Figuren. Eine kurze, konfigurierbare Verlangsamung der Gegner, zunächst höchstens fünf Sekunden. Ein erneuter Treffer verlängert bis zum Limit, statt Multiplikatoren zu stapeln. |
+| Feuer | Ein sichtbarer Radius mit getaktetem Schaden und einem Abklingintervall je Ziel. Ein Gegner erhält maximal einen Schaden pro Tick und Zone. Vor einem Prototyp Grenzwerte für Überlappung und Lebensdauer festlegen. |
+| Multischuss | Bestehendes Auto-Ziel und bestehende Zusatzschüsse als eigene Auflösung beibehalten. Den Zeitpunkt des Zurücksetzens vor einem Umbau ausdrücklich mit Tests festschreiben. |
+
+Das vorhandene AoE-System liefert Radius, Lebensdauer und Darstellung. Die vorhandene Wirkung ist überwiegend auf Spielfiguren ausgelegt. Vor dem ersten Waffenprototyp Zielgruppe und Schadensintervall klar abtrennen. `EffectManager` erhält die sichtbare Wirkung, während die Spiellogik Treffer und Status entscheidet. Dieses Modell erlaubt später Sporenwolken, Frostmyzel und Pilzgegner. Dynamische Wände und Myzel-Netzwerke gehören zur Raster- und Kollisionslogik. Bossmechaniken können dieselben Trefferereignisse verwenden. Es ist kein zusätzlicher Spielmodus erforderlich, um diese Schnittstellen zu testen.
+
+## Vorgeschlagene nächste Phase
+
+1. Audio und Ebenen unter Windows 11 mit echten Ausgabegeräten prüfen.
+2. Die dokumentierten Kampfregeln zu Bosskontakt, Trefferschaden und 2P-Feldbelegung entscheiden. Mit einer Änderung pro Regel beginnen.
+3. Mit festen Seeds Spawn-Spitzen messen und erst danach Obergrenzen für Gegner, Projektile und Zonen festlegen. Einen optionalen Frost-Prototyp erst nach Prüfung dieser Grenzen freigeben.
