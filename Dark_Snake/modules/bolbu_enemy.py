@@ -25,7 +25,7 @@ from modules.projectile_config import (
     BOLBU_PROJECTILE_SPEED_PX_PER_TICK, BOLBU_SHOOT_COOLDOWN_SECONDS,
 )
 from modules.enemies import NormalEnemy
-from modules.graphics import load_image
+from modules.graphics import load_image, load_projectile_image, scale_sprite
 from modules.audio import SOUNDS
 
 class BolbuProjectile:
@@ -42,10 +42,10 @@ class BolbuProjectile:
         self.speed = speed
         self.damage = damage
         self.lifetime = lifetime
-        self.image = load_image("bolbu_projectile.png", "projectiles")
+        self.image = load_projectile_image("bolbu_projectile.png", "projectiles")
         size = int(GRID_SIZE * 1.2)
         if self.image:
-            self.image = pygame.transform.scale(self.image, (size, size))
+            self.image = scale_sprite(self.image, (size, size))
             self.rect = self.image.get_rect()
         else:
             self.rect = pygame.Rect(0, 0, size, size)

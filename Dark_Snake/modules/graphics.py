@@ -1,5 +1,6 @@
 
 # [KS_TAG: GRAPHICS_INIT]
+from functools import lru_cache
 import logging
 import os
 import pygame
@@ -36,6 +37,18 @@ def load_image(name, category=""):
         record_event(message)
         _MISSING_ASSETS.append(str(path))
         return _fallback(name)
+
+
+@lru_cache(maxsize=32)
+def load_projectile_image(name, category=""):
+    """Reuse projectile artwork across shots. Callers treat it as read-only."""
+    return load_image(name, category)
+
+
+@lru_cache(maxsize=64)
+def scale_sprite(image, size):
+    """Reuse read-only sprite sizes across draws."""
+    return image if image.get_size() == size else pygame.transform.scale(image, size)
 
 
 def asset_diagnostics():

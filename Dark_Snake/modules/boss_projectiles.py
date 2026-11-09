@@ -3,7 +3,7 @@
 # Enthält alle Boss-Projektilklassen für Dark Snake
 
 import pygame
-from modules.graphics import load_image
+from modules.graphics import load_projectile_image
 from modules.projectile_config import (
     BOSS_FLAME_DAMAGE, BOSS_FLAME_LIFETIME_TICKS, BOSS_FLAME_SPEED_PX_PER_TICK,
     BOSS_PROJECTILE_DAMAGE, BOSS_PROJECTILE_LIFETIME_TICKS,
@@ -24,7 +24,7 @@ class BossProjectile:
         self.lifetime = lifetime
         self.from_boss = True
 
-        self.image_orig = load_image(image_name)
+        self.image_orig = load_projectile_image(image_name)
         angle = degrees(atan2(-self.direction[1], self.direction[0]))
         self.image = pygame.transform.rotate(self.image_orig, angle)
         self.rect = self.image.get_rect(center=(x, y))
@@ -61,7 +61,7 @@ class BossFlameProjectile:
         self.from_boss = True
 
         # Bild laden und ausrichten
-        self.image_orig = load_image(image_name)
+        self.image_orig = load_projectile_image(image_name)
         angle = degrees(atan2(-direction[1], direction[0]))
         self.image = pygame.transform.rotate(self.image_orig, angle)
         self.rect = self.image.get_rect(center=(x, y))

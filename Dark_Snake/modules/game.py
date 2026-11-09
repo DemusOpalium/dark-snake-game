@@ -7,6 +7,7 @@
 #
 
 import pygame, sys, random, time, os, datetime, json
+from functools import lru_cache
 from math import sqrt, atan2, cos, sin
 from pygame.math import Vector2
 
@@ -16,7 +17,7 @@ from config import (WINDOW_WIDTH, WINDOW_HEIGHT, GRID_SIZE, FPS, GRID_WIDTH, GRI
                     START_SPEED, MAX_SPEED, PROJECTILE_SPEED_FACTOR, AUTO_SHOOT_INTERVAL, BORDER_SIZE, UI_CONTAINER_HEIGHT)
 # <-- Hier den fehlenden Import hinzufügen:
 from modules.graphics import (
-    load_image,                          # the helper itself
+    load_image, load_projectile_image, scale_sprite,
     SNAKE_HEAD_IMG, SNAKE_HEAD1G20, SNAKE_HEAD2G20, SNAKE_HEAD3G20,
     SNAKE_HEAD_BETA,
     SNAKE_BODY_IMG, SNAKE_BODY_BETA, SNAKE_BODY_Body7, SNAKE_BODY_Body5,
@@ -61,7 +62,8 @@ for fname in ["Projektil2.png", "Projektil3.png", "Projektil4.png", "Projektil5.
 def get_random_projectile_color():
     return (random.randint(0,255), random.randint(0,255), random.randint(0,255))
 
-def get_aoe_effect():
+@lru_cache(maxsize=1)
+def _available_aoe_effect_paths():
     effect_folder = asset_path("graphics", "AOEEffekte")
     effect_files = [
         "AcidAOE1.png", "AcidAOE2.png", "AcidAOE3.png", "AcidAOE4.png",
@@ -84,18 +86,24 @@ def get_aoe_effect():
         "WaterAOE1.png", "WaterAOE2.png",
         "WindAOE1.png", "WindAOE2.png"
     ]
-    available_effects = []
-    for fname in effect_files:
-        path = os.path.join(effect_folder, fname)
-        if os.path.exists(path):
-            img = pygame.image.load(path).convert_alpha()
-            img = pygame.transform.scale(img, (int(GRID_SIZE * 3), int(GRID_SIZE * 3)))
-            available_effects.append(img)
-    if available_effects:
-        effect = random.choice(available_effects)
-        print("DEBUG: Effektbild geladen:", effect)
-        return effect
-    print("DEBUG: Kein Effektbild gefunden im Ordner", effect_folder)
+    return tuple(path for fname in effect_files
+                 if os.path.isfile(path := os.path.join(effect_folder, fname)))
+
+
+@lru_cache(maxsize=64)
+def _load_aoe_effect(path, grid_size):
+    image = pygame.image.load(path).convert_alpha()
+    return pygame.transform.scale(image, (grid_size * 3, grid_size * 3))
+
+
+def get_aoe_effect():
+    candidates = list(_available_aoe_effect_paths())
+    while candidates:
+        path = random.choice(candidates)
+        try:
+            return _load_aoe_effect(path, GRID_SIZE)
+        except (OSError, pygame.error):
+            candidates.remove(path)
     return None
 
 # === Boss-Klassen ===
@@ -227,7 +235,10 @@ class Boss:
             if elapsed < self.aoe_effect["duration"]:
                 scale = 1 + elapsed * ((self.aoe_effect["max_size"] / (self.size * GRID_SIZE) - 1)
                                        / self.aoe_effect["duration"])
-                aoe_img = pygame.transform.scale(self.aoe_effect["image"],
+                image = self.aoe_effect["image"]
+                if image is None:
+                    return
+                aoe_img = pygame.transform.scale(image,
                                                    (int(self.size * GRID_SIZE * scale),
                                                     int(self.size * GRID_SIZE * scale)))
                 pos_x = self.x * GRID_SIZE + (self.size * GRID_SIZE - aoe_img.get_width()) // 2
@@ -2006,7 +2017,7 @@ class Game:
                 if i == 0:
                     head_img = self.options_menu.get_skin_image(
                         "Heads", self.settings.get("custom_head_p1")) or SNAKE_HEAD_IMG
-                    head_img = pygame.transform.scale(head_img, (GRID_SIZE, GRID_SIZE))
+                    head_img = scale_sprite(head_img, (GRID_SIZE, GRID_SIZE))
                     try:
                         rotated = pygame.transform.rotate(head_img, -self.snake_direction1.value[0] * 90)
                     except Exception as e:
@@ -2016,14 +2027,14 @@ class Game:
                 else:
                     body_img = self.options_menu.get_skin_image(
                         "Bodies", self.settings.get("custom_body_p1")) or SNAKE_BODY_IMG
-                    body_img = pygame.transform.scale(body_img, (GRID_SIZE, GRID_SIZE))
+                    body_img = scale_sprite(body_img, (GRID_SIZE, GRID_SIZE))
                     self.screen.blit(body_img, (x, y))
             # Spieler 2 zeichnen:
             for i, (x, y) in enumerate(self.get_snake_render_positions(2)):
                 if i == 0:
                     head_img = self.options_menu.get_skin_image(
                         "Heads", self.settings.get("custom_head_p2")) or SNAKE_HEAD_BETA
-                    head_img = pygame.transform.scale(head_img, (GRID_SIZE, GRID_SIZE))
+                    head_img = scale_sprite(head_img, (GRID_SIZE, GRID_SIZE))
                     try:
                         rotated = pygame.transform.rotate(head_img, -self.snake_direction2.value[0] * 90)
                     except Exception as e:
@@ -2033,7 +2044,7 @@ class Game:
                 else:
                     body_img = self.options_menu.get_skin_image(
                         "Bodies", self.settings.get("custom_body_p2")) or SNAKE_BODY_IMG
-                    body_img = pygame.transform.scale(body_img, (GRID_SIZE, GRID_SIZE))
+                    body_img = scale_sprite(body_img, (GRID_SIZE, GRID_SIZE))
                     self.screen.blit(body_img, (x, y))
         else:
             # Einzelspieler: Zeichne die Snake
@@ -2041,7 +2052,7 @@ class Game:
                 if i == 0:
                     head_img = self.options_menu.get_skin_image(
                         "Heads", self.settings.get("custom_head_p1")) or SNAKE_HEAD_IMG
-                    head_img = pygame.transform.scale(head_img, (GRID_SIZE, GRID_SIZE))
+                    head_img = scale_sprite(head_img, (GRID_SIZE, GRID_SIZE))
                     try:
                         rotated = pygame.transform.rotate(head_img, -self.snake_direction.value[0] * 90)
                     except Exception as e:
@@ -2051,7 +2062,7 @@ class Game:
                 else:
                     body_img = self.options_menu.get_skin_image(
                         "Bodies", self.settings.get("custom_body_p1")) or SNAKE_BODY_IMG
-                    body_img = pygame.transform.scale(body_img, (GRID_SIZE, GRID_SIZE))
+                    body_img = scale_sprite(body_img, (GRID_SIZE, GRID_SIZE))
                     self.screen.blit(body_img, (x, y))
 
         # Weitere Elemente (Boss, Projektile, HUD, etc.) werden wie gehabt gezeichnet...
@@ -2061,10 +2072,9 @@ class Game:
             proj_x = int(proj['pos'][0] * GRID_SIZE)
             proj_y = int(proj['pos'][1] * GRID_SIZE)
             if proj.get("from_boss", False):
-                proj_img = pygame.transform.scale(proj.get("image", PROJECTILE_IMG),
-                                                  (GRID_SIZE * 2, GRID_SIZE * 2))
+                proj_img = scale_sprite(proj.get("image", PROJECTILE_IMG), (GRID_SIZE * 2, GRID_SIZE * 2))
             else:
-                proj_img = pygame.transform.scale(PROJECTILE_IMG, (int(GRID_SIZE * 1.5), int(GRID_SIZE * 1.5)))
+                proj_img = scale_sprite(PROJECTILE_IMG, (int(GRID_SIZE * 1.5), int(GRID_SIZE * 1.5)))
             self.screen.blit(proj_img, (proj_x, proj_y))
 
         # --- DEBUG: hitbox overlay (one color per gameplay category) ---
@@ -2313,14 +2323,13 @@ class FlameProjectile:
     def __init__(self, x, y, direction, image_name="projectiles/FlameProjectile1.png",
                  speed=PLAYER_FIREBALL_SPEED_PX_PER_TICK, damage=PLAYER_FIREBALL_DAMAGE,
                  lifetime=PLAYER_FIREBALL_LIFETIME_TICKS):
-        from modules.graphics import load_image
         from math import atan2, degrees
 
         self.direction = direction
         self.speed = speed
         self.damage = damage
         self.lifetime = lifetime
-        self.image_orig = load_image(image_name)
+        self.image_orig = load_projectile_image(image_name)
         angle = degrees(atan2(-self.direction[1], self.direction[0]))
         self.image = pygame.transform.rotate(self.image_orig, angle)
         self.rect = self.image.get_rect(center=(x, y))
