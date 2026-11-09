@@ -28,18 +28,7 @@ import os
 import pygame
 from config import WINDOW_WIDTH, WINDOW_HEIGHT, DARK_GREY, WHITE, PURPLE, ORANGE, FONT_MEDIUM, FONT_SMALL, GRID_SIZE
 
-# -----------------------------------------------------------------------------
-# Bild anhand des Dateinamens laden (aus "assets/graphics")
-# -----------------------------------------------------------------------------
-def load_image(filename):
-    base_dir = os.path.join(os.path.dirname(__file__), "..", "assets", "graphics")
-    path = os.path.join(base_dir, filename)
-    try:
-        image = pygame.image.load(path).convert_alpha()
-        return image
-    except Exception as e:
-        print(f"Bild {filename} konnte nicht geladen werden: {e}")
-        return None
+from modules.resources import find_asset_directory
 
 # -----------------------------------------------------------------------------
 # Zeichnet einen Container im gewünschten Stil.
@@ -171,8 +160,8 @@ class OptionsMenu:
                                                self.inventory_panel.rect.width - 2 * tab_pad,
                                                grid_height)
         self.inventory_scroll_offset = 0
-        self.head_options = self.load_options("assets/graphics/SnakeHeadsbibliothek")
-        self.body_options = self.load_options("assets/graphics/SnakeBodysBibliothek")
+        self.head_options = self.load_options("SnakeHeadsbibliothek")
+        self.body_options = self.load_options("SnakeBodysBibliothek")
         self.current_selected_img = None
 
         # ----- Spalte 3: Final Preview
@@ -199,13 +188,11 @@ class OptionsMenu:
         self.selected_body_p2 = self.game.settings.get('custom_body_p2', None)
 
     # Lädt Bildoptionen und skaliert Thumbnails auf 60×60.
-    def load_options(self, folder_path):
-        base_dir = os.path.join(os.path.dirname(__file__), "..", "assets", "graphics")
-        rel_folder = folder_path.split("assets/graphics/")[-1]
-        full_folder_path = os.path.join(base_dir, rel_folder)
+    def load_options(self, category):
+        full_folder_path = find_asset_directory("graphics", category)
         options = []
         if os.path.exists(full_folder_path):
-            for fname in os.listdir(full_folder_path):
+            for fname in sorted(os.listdir(full_folder_path)):
                 if fname.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.gif')):
                     full_path = os.path.join(full_folder_path, fname)
                     try:
@@ -260,9 +247,11 @@ class OptionsMenu:
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             if self.head_tab_button.rect.collidepoint(pos):
                 self.current_tab = "Heads"
+                self.current_selected_img = None
                 print("Tab Heads ausgewählt.")
             elif self.body_tab_button.rect.collidepoint(pos):
                 self.current_tab = "Bodies"
+                self.current_selected_img = None
                 print("Tab Bodies ausgewählt.")
             else:
                 self.check_inventory_click()
@@ -335,6 +324,10 @@ class OptionsMenu:
             if thumb_rect.collidepoint(pygame.mouse.get_pos()):
                 pygame.draw.rect(surface, WHITE, thumb_rect, 1)
 
+    def get_skin_image(self, tab, filename):
+        options = self.head_options if tab == "Heads" else self.body_options
+        return next((image for name, _, image in options if name == filename), None)
+
     def draw_final_preview(self, surface):
         preview_padding = 10
         inner_rect = self.preview_panel.rect.inflate(-2 * preview_padding, -2 * preview_padding)
@@ -345,11 +338,11 @@ class OptionsMenu:
         def draw_player_preview(head_fname, body_fname, area):
             images = []
             if head_fname:
-                img = load_image(head_fname)
+                img = self.get_skin_image("Heads", head_fname)
                 if img:
                     images.append(img)
             if body_fname:
-                img = load_image(body_fname)
+                img = self.get_skin_image("Bodies", body_fname)
                 if img:
                     images.append(img)
             if not images:
