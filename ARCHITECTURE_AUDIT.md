@@ -52,3 +52,17 @@ Die Richtungsprobe hat 30, 60 und 60 Stichproben, die Feuerprobe wegen des Coold
 2. **Rasterbewegung.** Einen Rasterzug mit alter Zelle, neuer Zelle, Richtung und Grund für einen Sprung beschreiben. Normalen Zug, Randwechsel, Portal und Respawn getrennt absichern, damit die Darstellung keinen falschen Zwischenstand an die Kollision weitergibt.
 3. **Kollisionen und Lebensverlust.** Körper und freiziehende Schwanzfelder pro Spieler einheitlich prüfen und Item-Aufnahme im selben Zug berücksichtigen. Eine Strukturkollision und das Aufbrauchen von HP als unterschiedliche Auslöser testen. Noch zu entscheiden ist, ob beide Spieler beim gleichzeitigen Einfahren in dieselbe Zelle verlieren und ob sie sich gegenseitig durchqueren dürfen. Beide Fälle lassen sich in 2P mit vorgegebenen Köpfen, Richtungen und einem einzelnen Rasterzug reproduzieren.
 4. **Boss und Projektile.** Konfigurationswerte, Sprites und Effekte von der Trefferauflösung trennen. Vor dem Verschieben die Aufrufer in Admin-Menü, Simulator und Portalpfad sowie die Trefferreihenfolge absichern. Boss-Schaden, Projektil-Lebensdauer und Effekte jeweils an einer Stelle pro Spielschritt aktualisieren. Die Verteilung der Zuständigkeiten soll die gemessenen Lastspitzen nachprüfbar machen.
+
+## Nachweis der Render-Schichtung
+
+1. Der Pixeltest in `test_game_render_layers.py` besteht auf dem unveränderten Renderpfad von `main`. Er prüft Rand, gefüllten und leeren Bereich der Lebensbalken bei 25 % in 1P und bei 75 % / 60 % in 2P. Ein überlappendes Welt-Sprite bleibt neben dem Balken sichtbar und wird durch Pause und Game Over abgedunkelt. Balken, Score und Lebensmarker behalten darüber ihre Farbe.
+2. Ein eigener Commit entfernt nur `draw_health_bar()` und `draw_health_bar_two(self)` aus `Game.update()`. Render-Test und vollständige damalige Suite bestehen erneut.
+3. Im nächsten Commit lässt der reguläre `Game.draw()`-Pfad die innere HUD-Zeichnung in `draw_game(include_hud=False)` aus. Das gemeinsame HUD folgt weiterhin nach Pause und Game Over. Direkte `draw_game()`-Aufrufe zeichnen standardmäßig weiterhin Welt und HUD. Der direkte Pixeltest und der Windows-Runtime-Test sichern diese Schnittstelle ab.
+
+Die übrigen Zeichenaufrufe für AoE-Zonen, Explosionen und Stillstands-Countdown in `update()` sind im Audit erfasst. Ihre Auslagerung braucht eigene Pixel- und Lebenszyklusprüfungen.
+
+## Offene Kampfregeln mit Repro
+
+- **Kontakt mit dem Boss:** Mit 100 HP und drei Leben von (4, 4) nach (5, 4) in den aktiven Bosskörper ziehen. `handle_death()` kehrt wegen positiver HP zurück. Vorschlag: Kontakt als dokumentierten HP-Schaden mit einer Trefferpause definieren und separat von einem Lebensverlust bei 0 HP testen.
+- **Klassisches Bossprojektil:** Ein stationäres klassisches Bossprojektil auf dem 1P-Kopf verursacht in einem Update zweimal 10 HP Schaden. Zwei gleichartige Trefferprüfungen laufen in demselben Update. Vorschlag: festlegen, ob ein Treffer das Projektil verbraucht oder eine Trefferpause pro Spieler startet. Danach die Prüfungen zusammenführen und Kadenz sowie Schaden zusammen testen.
+- **Beide Spieler im gleichen Feld:** Ein Boss-Flammenprojektil über zwei überlappenden 2P-Köpfen löste durch zweimaliges Entfernen einen `ValueError` aus. Der neue Test prüft Schaden an beiden Köpfen, eine Explosion und einmaliges Entfernen. Die allgemeine Regel für Kontakt zwischen Schlangen bleibt separat zu entscheiden.
