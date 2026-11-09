@@ -1344,10 +1344,6 @@ class Game:
                                 if current_health <= 0:
                                     self.handle_death()
         self.update_projectiles()
-        if self.player_count == 1:
-            self.draw_health_bar()
-        elif self.player_count == 2:
-            draw_health_bar_two(self)
         if self.player_count == 1 and self.snake:
             player_obj = type("Player", (), {})()
             player_obj.pos = Vector2(self.snake[0][0] * GRID_SIZE, self.snake[0][1] * GRID_SIZE)
