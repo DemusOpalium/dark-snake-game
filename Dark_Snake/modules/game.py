@@ -43,6 +43,7 @@ from modules.fire_explosion import FireExplosionAnimation
 from modules.crash_reporting import record_event
 from modules.simulation_ui import SimulationMenu
 from modules.effect_manager import EffectManager
+from modules.frame_metrics import FrameMetrics
 from modules.projectile_config import (
     PLAYER_FIREBALL_COOLDOWN_SECONDS, PLAYER_FIREBALL_DAMAGE,
     PLAYER_FIREBALL_LIFETIME_TICKS, PLAYER_FIREBALL_SPEED_PX_PER_TICK,
@@ -425,6 +426,7 @@ class Game:
             except Exception as e:
                 print(f"Fehler beim Laden des Icons: {e}")
         self.clock = pygame.time.Clock()
+        self.metrics = FrameMetrics()
         self.effect_manager = EffectManager()
         self._effect_update_time = time.monotonic()
         self.settings = {
@@ -1909,9 +1911,21 @@ class Game:
 
 
     def draw(self):
+        start = self.metrics.stamp()
+        self._render()
+        if (self.metrics.enabled and not self.admin_panel.active and not self.level_editor.active
+                and self.game_state in (GameState.GAME, GameState.BOSS_FIGHT)):
+            self.metrics.draw(self.screen)
+        before_present = self.metrics.stamp()
+        pygame.display.update()
+        presented = self.metrics.stamp()
+        self.metrics.record_phase("draw", start, before_present)
+        self.metrics.record_phase("present", before_present, presented)
+        self.metrics.finish_frame(presented)
+
+    def _render(self):
         if self.level_editor.active:
             self.level_editor.draw(self.screen)
-            pygame.display.update()
             return
         if self.game_state == GameState.INTRO:
             self.draw_intro()
@@ -1943,7 +1957,6 @@ class Game:
             self.achievement_manager.draw_achievements(self.screen)
             self.achievement_manager.draw_portal_event(self.screen)
         self.admin_panel.draw(self.screen)
-        pygame.display.update()
 
     def draw_hud(self):
         score_txt = pygame.font.SysFont('Arial', 30).render(f"Score: {self.score}", True, WHITE)
@@ -2004,7 +2017,9 @@ class Game:
         for proj in self.boss_flame_projectiles:
             proj.draw(self.screen)
         for flame in self.flame_projectiles:
-            flame.draw(self.screen)
+            drawn = flame.draw(self.screen)
+            if self.metrics.enabled and drawn:
+                self.metrics.fire_drawn(flame)
         for proj in self.enemy_projectiles:
             proj.draw(self.screen)
         for explosion in self.explosions:
@@ -2024,6 +2039,8 @@ class Game:
                         print("Fehler bei der Rotation des Spieler 1 Kopfbildes:", e)
                         rotated = head_img
                     self.screen.blit(rotated, (x, y))
+                    if self.metrics.enabled:
+                        self.metrics.head_drawn(1, (x, y), self.snake_direction1.value[0])
                 else:
                     body_img = self.options_menu.get_skin_image(
                         "Bodies", self.settings.get("custom_body_p1")) or SNAKE_BODY_IMG
@@ -2041,6 +2058,8 @@ class Game:
                         print("Fehler bei der Rotation des Spieler 2 Kopfbildes:", e)
                         rotated = head_img
                     self.screen.blit(rotated, (x, y))
+                    if self.metrics.enabled:
+                        self.metrics.head_drawn(2, (x, y), self.snake_direction2.value[0])
                 else:
                     body_img = self.options_menu.get_skin_image(
                         "Bodies", self.settings.get("custom_body_p2")) or SNAKE_BODY_IMG
@@ -2059,6 +2078,8 @@ class Game:
                         print("Fehler bei der Rotation des Kopfbildes:", e)
                         rotated = head_img
                     self.screen.blit(rotated, (x, y))
+                    if self.metrics.enabled:
+                        self.metrics.head_drawn(1, (x, y), self.snake_direction.value[0])
                 else:
                     body_img = self.options_menu.get_skin_image(
                         "Bodies", self.settings.get("custom_body_p1")) or SNAKE_BODY_IMG
@@ -2219,13 +2240,21 @@ class Game:
                 if event.key == pygame.K_ESCAPE:
                     self.set_state(GameState.INTRO)
 
+    def run_frame(self):
+        start = self.metrics.stamp()
+        self.handle_events()
+        after_events = self.metrics.stamp()
+        if (self.game_state in (GameState.GAME, GameState.BOSS_FIGHT)
+                and not self.admin_panel.active and not self.level_editor.active):
+            self.update()
+        after_update = self.metrics.stamp()
+        self.metrics.record_phase("events", start, after_events)
+        self.metrics.record_phase("update", after_events, after_update)
+        self.draw()
+
     def run(self):
         while True:
-            self.handle_events()
-            if (self.game_state in (GameState.GAME, GameState.BOSS_FIGHT)
-                    and not self.admin_panel.active and not self.level_editor.active):
-                self.update()
-            self.draw()
+            self.run_frame()
             self.clock.tick(FPS)
 
     # [KS_TAG: LEVEL_EDITOR_BACKGROUND]
@@ -2350,7 +2379,7 @@ class FlameProjectile:
         return self.rect.union(self.previous_rect)
 
     def draw(self, screen):
-        screen.blit(self.image, self.rect)
+        return screen.blit(self.image, self.rect)
 
 
 if __name__ == "__main__":

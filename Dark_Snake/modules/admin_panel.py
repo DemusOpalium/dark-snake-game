@@ -23,6 +23,7 @@ class AdminPanel:
         ("emoji7.png", "Explosion", "Erzeugt eine Explosion an der Position von Spieler 1.", "spawn_explosion"),
         ("emoji8.png", "Schadenszone", "Erzeugt dort eine rote, zeitlich begrenzte Schadenszone.", "spawn_damage_zone"),
         ("emoji9.png", "Zufallszone", "Erzeugt sofort eine zufällige Schadens-, Heil- oder Slow-Zone.", "spawn_random_zone"),
+        (None, "Bildzeiten", "Zeigt Bildzeiten und Eingabereaktion nach dem Schließen im Spiel.", "toggle_metrics"),
     )
 
     def __init__(self, game):
@@ -34,7 +35,7 @@ class AdminPanel:
         self.title_font = pygame.font.SysFont("Arial", 25, bold=True)
         self.label_font = pygame.font.SysFont("Arial", 14, bold=True)
         self.info_font = pygame.font.SysFont("Arial", 15)
-        self.panel_rect = pygame.Rect(12, 24, 344, 380)
+        self.panel_rect = pygame.Rect(12, 24, 344, 466)
         self._setup_buttons()
 
     def debug_log(self, message):
@@ -45,7 +46,7 @@ class AdminPanel:
             row, col = divmod(index, 3)
             x = self.panel_rect.x + 25 + col * 106
             y = self.panel_rect.y + 58 + row * 86
-            image = load_image(f"Devpanel/{filename}")
+            image = load_image(f"Devpanel/{filename}") if filename else None
             image = pygame.transform.smoothscale(image, (58, 58)) if image else None
 
             def run_action(i=index, method=method_name):
@@ -60,7 +61,7 @@ class AdminPanel:
                     self.debug_log(self.status)
                     return False
 
-            self.buttons.append(Button(x, y, 58, 58, "", image=image, action=run_action))
+            self.buttons.append(Button(x, y, 58, 58, "" if filename else "ms", image=image, action=run_action))
 
     def toggle(self):
         self.active = not self.active
@@ -121,6 +122,10 @@ class AdminPanel:
         self.game.debug_show_hitboxes = not self.game.debug_show_hitboxes
         state = "aktiviert" if self.game.debug_show_hitboxes else "deaktiviert"
         return f"Hitboxen {state}."
+
+    def toggle_metrics(self):
+        state = "aktiviert" if self.game.metrics.toggle() else "deaktiviert"
+        return f"Bildzeiten {state}."
 
     def spawn_bolbu_item(self):
         x, y = self._adjacent_cell()
