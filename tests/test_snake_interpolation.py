@@ -15,7 +15,8 @@ pygame.init()
 pygame.display.set_mode((1, 1))
 
 import modules.game as game_module
-from config import GRID_SIZE
+from config import GRID_HEIGHT, GRID_SIZE, GRID_WIDTH
+from modules.enums import Direction
 from modules.game import Game
 
 
@@ -110,3 +111,89 @@ def test_render_interpolation_scales_with_view_grid_size(monkeypatch):
         positions = game.get_snake_render_positions(now=10.1)
         assert_positions(positions, [(1.5 * grid_size, grid_size)])
         assert_between_cells(positions[0], (1, 1), (2, 1), grid_size)
+
+
+@pytest.mark.parametrize("players,player", [(1, 1), (2, 1), (2, 2)])
+@pytest.mark.parametrize("grid_size", [20, 30, 40])
+@pytest.mark.parametrize(
+    "direction,head,tail,destination",
+    [
+        (Direction.LEFT, (0, 4), (1, 4), (GRID_WIDTH - 1, 4)),
+        (Direction.RIGHT, (GRID_WIDTH - 1, 4), (GRID_WIDTH - 2, 4), (0, 4)),
+        (Direction.UP, (4, 0), (4, 1), (4, GRID_HEIGHT - 1)),
+        (Direction.DOWN, (4, GRID_HEIGHT - 1), (4, GRID_HEIGHT - 2), (4, 0)),
+    ],
+)
+def test_head_and_body_snap_on_actual_wrap(
+    monkeypatch, players, player, grid_size, direction, head, tail, destination
+):
+    game = interpolation_game(players)
+    game.items.clear()
+    suffix = str(player) if players == 2 else ""
+    setattr(game, f"snake{suffix}", [head, tail])
+    setattr(game, f"next_direction{suffix}", direction)
+    game._reset_snake_interpolation()
+    monkeypatch.setattr(game_module, "GRID_SIZE", grid_size)
+    monkeypatch.setattr(game_module.random, "random", lambda: 1.0)
+    now = game_module.time.time()
+    monkeypatch.setattr(game_module.time, "time", lambda: now)
+    game.last_update_time = now - 1.0
+
+    game.update()
+    assert getattr(game, f"snake{suffix}") == [destination, head]
+    head_position, body_position = game.get_snake_render_positions(player, now=now + 0.05)
+    assert_positions([head_position], [tuple(axis * grid_size for axis in destination)])
+    assert_between_cells(body_position, tail, head, grid_size)
+    assert body_position != tuple(axis * grid_size for axis in head)
+
+    now += 1.0
+    game.update()
+    second_head = tuple(axis + step for axis, step in zip(destination, direction.value))
+    assert getattr(game, f"snake{suffix}") == [second_head, destination]
+    head_position, body_position = game.get_snake_render_positions(player, now=now + 0.05)
+    assert_between_cells(head_position, destination, second_head, grid_size)
+    assert_positions([body_position], [tuple(axis * grid_size for axis in destination)])
+
+
+@pytest.mark.parametrize("players", [1, 2])
+def test_portal_resets_interpolation_even_for_an_adjacent_teleport(monkeypatch, players):
+    game = interpolation_game(players)
+    if players == 1:
+        game.snake = [(4, 5), (3, 5)]
+    else:
+        game.snake1 = [(4, 5), (3, 5)]
+        game.snake2 = [(6, 5), (7, 5)]
+    game._reset_snake_interpolation()
+    coordinates = iter([5, 5, 6, 6])
+
+    def randint(minimum, maximum):
+        if minimum == 0 and maximum in (GRID_WIDTH - 1, GRID_HEIGHT - 1):
+            return next(coordinates)
+        return minimum
+
+    monkeypatch.setattr(game_module.random, "randint", randint)
+    game.activate_portal("teleport")
+
+    assert_positions(game.get_snake_render_positions(1, now=10), [
+        (5 * GRID_SIZE, 5 * GRID_SIZE), (3 * GRID_SIZE, 5 * GRID_SIZE)])
+    if players == 2:
+        assert_positions(game.get_snake_render_positions(2, now=10), [
+            (6 * GRID_SIZE, 6 * GRID_SIZE), (7 * GRID_SIZE, 5 * GRID_SIZE)])
+
+
+@pytest.mark.parametrize("players", [1, 2])
+def test_respawn_resets_interpolation_for_every_player(players):
+    game = interpolation_game(players)
+    if players == 1:
+        game.snake = [(1, 1), (2, 1)]
+    else:
+        game.snake1 = [(1, 1), (2, 1)]
+        game.snake2 = [(3, 2), (3, 1)]
+    game._reset_snake_interpolation()
+    game.lives = 2
+    game.handle_self_collision()
+    for player in range(1, players + 1):
+        snake = game.snake if players == 1 else getattr(game, f"snake{player}")
+        assert len(snake) == 1
+        assert_positions(game.get_snake_render_positions(player, now=10), [
+            tuple(axis * GRID_SIZE for axis in snake[0])])

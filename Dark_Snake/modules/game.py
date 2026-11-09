@@ -781,8 +781,12 @@ class Game:
         positions = []
         for index, target in enumerate(current):
             start = previous[min(index, len(previous) - 1)]
-            positions.append((start[0] + (target[0] - start[0]) * alpha,
-                              start[1] + (target[1] - start[1]) * alpha))
+            dx, dy = target[0] - start[0], target[1] - start[1]
+            if abs(dx) + abs(dy) > 1:
+                # A wrapped segment or a teleport never traverses the board.
+                positions.append(target)
+            else:
+                positions.append((start[0] + dx * alpha, start[1] + dy * alpha))
         return positions
 
     def get_snake_render_positions(self, player=1, now=None):
@@ -922,6 +926,7 @@ class Game:
                 self.snake2[0] = (random.randint(0, GRID_WIDTH - 1), random.randint(0, GRID_HEIGHT - 1))
             else:
                 self.snake[0] = (random.randint(0, GRID_WIDTH - 1), random.randint(0, GRID_HEIGHT - 1))
+            self._reset_snake_interpolation()
             self.add_achievement("Teleport!")
         elif event == "boss":
             if self.start_boss_fight():
