@@ -237,23 +237,25 @@ class Boss:
         pygame.draw.rect(screen, GREEN, life_bar)
         pygame.draw.rect(screen, WHITE, (self.x * GRID_SIZE, self.y * GRID_SIZE - 10,
                                          bar_width, bar_height), 1)
-        if self.aoe_effect:
-            elapsed = time.time() - self.aoe_effect["start_time"]
-            if elapsed < self.aoe_effect["duration"]:
-                scale = 1 + elapsed * ((self.aoe_effect["max_size"] / (self.size * GRID_SIZE) - 1)
-                                       / self.aoe_effect["duration"])
-                image = self.aoe_effect["image"]
-                if image is None:
-                    return
-                aoe_img = pygame.transform.scale(image,
-                                                   (int(self.size * GRID_SIZE * scale),
-                                                    int(self.size * GRID_SIZE * scale)))
-                pos_x = self.x * GRID_SIZE + (self.size * GRID_SIZE - aoe_img.get_width()) // 2
-                pos_y = self.y * GRID_SIZE + (self.size * GRID_SIZE - aoe_img.get_height()) // 2
-                aoe_img.set_alpha(204)
-                screen.blit(aoe_img, (pos_x, pos_y))
-            else:
-                self.aoe_effect = None
+
+    def draw_aoe(self, screen):
+        effect = self.aoe_effect
+        if effect is None:
+            return
+        elapsed = time.time() - effect["start_time"]
+        if elapsed >= effect["duration"]:
+            self.aoe_effect = None
+            return
+        image = effect["image"]
+        if image is None:
+            return
+        side = self.size * GRID_SIZE
+        scale = 1 + elapsed * ((effect["max_size"] / side - 1) / effect["duration"])
+        diameter = int(side * scale)
+        aoe_img = pygame.transform.scale(image, (diameter, diameter))
+        aoe_img.set_alpha(204)
+        offset = (side - diameter) // 2
+        screen.blit(aoe_img, (self.x * GRID_SIZE + offset, self.y * GRID_SIZE + offset))
 
     def get_render_rect(self):
         rect = pygame.Rect(self.x * GRID_SIZE, self.y * GRID_SIZE,
@@ -1167,12 +1169,6 @@ class Game:
                     self.log_combat_event("projectile_fired", projectile="bolbu_projectile")
                 enemy.projectiles.clear()
 
-        # AoE‑Zonen zeichnen (wird später noch gebraucht)
-        for zone in self.aoe_zones:
-            zone.draw(self.screen)
-        for explosion in self.explosions:
-            explosion.draw(self.screen)
-
         # ───────────────────────── 3) Kollisions­prüfungen ───────────────────────────
             # --- Sichere Kollisionsprüfung für klassische Projektile ---
         for enemy in self.enemies[:]:
@@ -2008,6 +2004,11 @@ class Game:
         # 2. AoE-Effekte zeichnen – liegen zwischen Raster und dynamischen Objekten
         for zone in self.aoe_zones:
             zone.draw(self.screen)
+        if self.boss:
+            self.boss.draw_aoe(self.screen)
+        for explosion in self.explosions:
+            explosion.draw(self.screen)
+        self.effect_manager.draw(self.screen, "world")
         # 3. Dynamische Spielobjekte (Spielerebene) zeichnen:
         if self.portal:
             self.portal.draw(self.screen)
@@ -2024,9 +2025,6 @@ class Game:
                 self.metrics.fire_drawn(flame)
         for proj in self.enemy_projectiles:
             proj.draw(self.screen)
-        for explosion in self.explosions:
-            explosion.draw(self.screen)
-        self.effect_manager.draw(self.screen, "world")
         # Spieler (Snake) zeichnen:
         if self.player_count == 2:
             # Spieler 1 zeichnen:
