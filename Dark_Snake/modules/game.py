@@ -830,6 +830,23 @@ class Game:
         return [pygame.Rect(round(x), round(y), GRID_SIZE, GRID_SIZE)
                 for x, y in self.get_snake_render_positions(player, now)]
 
+    def _move_snake(self, snake, new_head, invincible):
+        """Commit a grid step, or lose a life when the destination stays occupied."""
+        item_index = next((index for index, item in enumerate(self.items)
+                           if (item.x, item.y) == new_head), None)
+        occupied = snake[1:-1] if item_index is None else snake[1:]
+        if not invincible and new_head in occupied:
+            self.handle_self_collision()
+            return False
+
+        snake.insert(0, new_head)
+        if item_index is None:
+            snake.pop()
+        else:
+            self.handle_item_pickup(self.items[item_index])
+            self.items.pop(item_index)
+        return True
+
     def spawn_food(self):
         while True:
             new_item = Item(ItemType.FOOD)
@@ -1284,10 +1301,7 @@ class Game:
             # Zusätzlich die herkömmliche Kollisionsprüfung mit Gegnern:
             # (Falls der Kopf mit einem Gegner kollidiert)
             for enemy in self.enemies:
-                enemy_rect = enemy.get_rect()
-                enemy_rect.x += (GRID_SIZE - enemy_rect.width) // 2
-                enemy_rect.y += (GRID_SIZE - enemy_rect.height) // 2
-                if not invincible and head_rect.colliderect(enemy_rect):
+                if not invincible and head_rect.colliderect(enemy.get_hitbox()):
                     self.player_health -= 10
                     if self.player_health <= 0:
                         self.handle_death()
@@ -1304,25 +1318,14 @@ class Game:
                         self.activate_portal(self.portal.event)
                         self.portal_effect_active = True
                         self.portal = None
-                    if not invincible and any(
-                        head_rect.colliderect(pygame.Rect(seg[0] * GRID_SIZE,
-                                                          seg[1] * GRID_SIZE,
-                                                          GRID_SIZE, GRID_SIZE))
-                        for seg in snake[1:]
-                    ):
-                        self.handle_self_collision()
-                    else:
-                        for enemy in self.enemies:
-                            enemy_rect = enemy.get_rect()
-                            enemy_rect.x += (GRID_SIZE - enemy_rect.width) // 2
-                            enemy_rect.y += (GRID_SIZE - enemy_rect.height) // 2
-                            if not invincible and head_rect.colliderect(enemy_rect):
-                                current_health = getattr(self, health_attr)
-                                current_health -= 10
-                                setattr(self, health_attr, current_health)
-                                if current_health <= 0:
-                                    self.handle_death()
-                                break
+                    for enemy in self.enemies:
+                        if not invincible and head_rect.colliderect(enemy.get_hitbox()):
+                            current_health = getattr(self, health_attr)
+                            current_health -= 10
+                            setattr(self, health_attr, current_health)
+                            if current_health <= 0:
+                                self.handle_death()
+                            break
         for proj in self.projectiles:
             if proj.get("from_boss", False):
                 if self.player_count == 1 and self.snake:
@@ -1428,6 +1431,7 @@ class Game:
         if delta >= 1.0 / self.speed:
             self._capture_previous_snakes()
             self.last_update_time = current_time
+            self_collision_protected = invincible or current_time < self.effects["invincibility"]
             if self.player_count == 2:
                 if self.portal and self.snake1:
                     head_rect = pygame.Rect(self.snake1[0][0] * GRID_SIZE, self.snake1[0][1] * GRID_SIZE, GRID_SIZE, GRID_SIZE)
@@ -1440,35 +1444,15 @@ class Game:
                     self.snake_direction1 = self.next_direction1 if hasattr(self, 'next_direction1') else Direction.RIGHT
                     new_head1 = ((head1[0] + self.snake_direction1.value[0]) % GRID_WIDTH,
                                  (head1[1] + self.snake_direction1.value[1]) % GRID_HEIGHT)
-                    if new_head1 in self.snake1[1:]:
-                        if not invincible:
-                            self.handle_death()
-                            return
-                    self.snake1.insert(0, new_head1)
-                    for i, item in enumerate(self.items[:]):
-                        if new_head1[0] == item.x and new_head1[1] == item.y:
-                            self.handle_item_pickup(item)
-                            self.items.pop(i)
-                            break
-                    else:
-                        self.snake1.pop()
+                    if not self._move_snake(self.snake1, new_head1, self_collision_protected):
+                        return
                 if self.snake2:
                     head2 = self.snake2[0]
                     self.snake_direction2 = self.next_direction2 if hasattr(self, 'next_direction2') else Direction.RIGHT
                     new_head2 = ((head2[0] + self.snake_direction2.value[0]) % GRID_WIDTH,
                                  (head2[1] + self.snake_direction2.value[1]) % GRID_HEIGHT)
-                    if new_head2 in self.snake2[1:]:
-                        if not invincible:
-                            self.handle_death()
-                            return
-                    self.snake2.insert(0, new_head2)
-                    for i, item in enumerate(self.items[:]):
-                        if new_head2[0] == item.x and new_head2[1] == item.y:
-                            self.handle_item_pickup(item)
-                            self.items.pop(i)
-                            break
-                    else:
-                        self.snake2.pop()
+                    if not self._move_snake(self.snake2, new_head2, self_collision_protected):
+                        return
             else:
                 if self.portal and self.snake:
                     head_rect = pygame.Rect(self.snake[0][0] * GRID_SIZE, self.snake[0][1] * GRID_SIZE, GRID_SIZE, GRID_SIZE)
@@ -1481,18 +1465,8 @@ class Game:
                     self.snake_direction = self.next_direction if hasattr(self, 'next_direction') else Direction.RIGHT
                     new_head = ((head[0] + self.snake_direction.value[0]) % GRID_WIDTH,
                                (head[1] + self.snake_direction.value[1]) % GRID_HEIGHT)
-                    if new_head in self.snake[:-1]:
-                        if not invincible:
-                            self.handle_death()
-                            return
-                    self.snake.insert(0, new_head)
-                    for i, item in enumerate(self.items[:]):
-                        if new_head[0] == item.x and new_head[1] == item.y:
-                            self.handle_item_pickup(item)
-                            self.items.pop(i)
-                            break
-                    else:
-                        self.snake.pop()
+                    if not self._move_snake(self.snake, new_head, self_collision_protected):
+                        return
             if self.boss:
                 if current_time - self.boss.spawn_time >= 3:
                     target = self.snake[0] if self.player_count == 1 and self.snake else (self.snake1[0] if self.player_count == 2 and self.snake1 else None)
