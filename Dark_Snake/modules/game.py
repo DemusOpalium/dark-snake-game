@@ -1258,15 +1258,17 @@ class Game:
                     self.player_health -= proj.damage
                     self.boss_flame_projectiles.remove(proj)
             elif self.player_count == 2:
+                hit = False
                 for snake, attr in [(self.snake1, 'player_health_p1'), (self.snake2, 'player_health_p2')]:
                     if snake:
                         head_rect = pygame.Rect(snake[0][0] * GRID_SIZE, snake[0][1] * GRID_SIZE, GRID_SIZE, GRID_SIZE)
                         if proj.collides_with(head_rect):
                             print(f"[DEBUG] BossFlameProjectile trifft {attr}!")
-                            self.spawn_fire_explosion(proj.rect.center)
-                            current = getattr(self, attr)
-                            setattr(self, attr, current - proj.damage)
-                            self.boss_flame_projectiles.remove(proj)
+                            setattr(self, attr, getattr(self, attr) - proj.damage)
+                            hit = True
+                if hit:
+                    self.spawn_fire_explosion(proj.rect.center)
+                    self.boss_flame_projectiles.remove(proj)
 
 
         # … (Spieler‑ und Boss‑Kollisionen, AoE‑Handling, Bewegung,

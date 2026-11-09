@@ -14,6 +14,7 @@ pygame.display.set_mode((1, 1))
 
 from config import GRID_HEIGHT, GRID_SIZE, GRID_WIDTH
 from modules import game as game_module
+from modules.boss_projectiles import BossFlameProjectile
 from modules.enemies import NormalEnemy
 from modules.enums import Direction, GameState, ItemType
 from modules.game import Game, Item
@@ -24,6 +25,23 @@ LOOP = [(4, 4), (4, 3), (5, 3), (5, 4)]
 BODY_CONTACT = LOOP + [(6, 4)]
 DESTINATION = (5, 4)
 RESPAWN = [(GRID_WIDTH // 2, GRID_HEIGHT // 2)]
+
+
+def test_boss_flame_is_removed_once_when_both_players_overlap(monkeypatch):
+    monkeypatch.setattr(game_module.random, "random", lambda: 1.0)
+    game = Game()
+    game.start_game(2)
+    game.snake1 = game.snake2 = [(5, 5)]
+    center = (5 * GRID_SIZE + GRID_SIZE // 2,) * 2
+    flame = BossFlameProjectile(*center, (1, 0), speed=0, damage=4)
+    game.boss_flame_projectiles.append(flame)
+    game.last_update_time = game_module.time.time() + 10
+
+    game.update()
+
+    assert not game.boss_flame_projectiles
+    assert (game.player_health_p1, game.player_health_p2) == (96, 96)
+    assert len(game.explosions) == 1
 
 
 def setup_turn(monkeypatch, players, suffix, segments):
