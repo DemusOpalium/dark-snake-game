@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 import sys
+import time
 
 os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
 os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
@@ -85,3 +86,32 @@ def test_admin_overlay_stays_enabled_when_admin_menu_closes(monkeypatch):
     assert game.metrics.samples["update"]
     assert game.metrics.samples["draw"]
     assert game.metrics.samples["present"]
+
+
+def test_real_events_measure_turn_at_grid_step_and_separate_fire_cooldown(monkeypatch):
+    monkeypatch.setattr("modules.game.random.random", lambda: 1.0)
+    game = Game(headless=True)
+    game.start_game(1)
+    game.metrics.toggle()
+    game.draw()
+    pygame.event.clear()
+    for key in (pygame.K_a, pygame.K_w, pygame.K_SPACE, pygame.K_SPACE):
+        pygame.event.post(pygame.event.Event(pygame.KEYDOWN, key=key, unicode=""))
+        pygame.event.post(pygame.event.Event(pygame.KEYUP, key=key))
+
+    game.last_update_time = time.time() + 10
+    game.run_frame()
+    metrics = game.metrics
+    assert metrics.rejected["direction", "Gegenrichtung"] == 1
+    assert metrics.rejected["fire", "cooldown"] == 1
+    assert len(metrics.samples["direction", "accept"]) == 1
+    assert not metrics.samples["direction", "wait"]
+    assert not metrics.samples["direction", "visible"]
+    assert len(metrics.samples["fire", "accept"]) == 1
+    assert len(metrics.samples["fire", "visible"]) == 1
+
+    game.last_update_time = 0
+    game.run_frame()
+    assert game.snake_direction == Direction.UP
+    assert len(metrics.samples["direction", "wait"]) == 1
+    assert len(metrics.samples["direction", "visible"]) == 1

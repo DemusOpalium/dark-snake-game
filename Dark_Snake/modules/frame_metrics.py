@@ -100,6 +100,10 @@ class FrameMetrics:
             self.reject("direction", "vor Bild ersetzt")
         self._applied_turns[player] = action
 
+    def discard_direction(self, player):
+        if self._queued_turns.pop(player, None) is not None:
+            self.reject("direction", "überschrieben")
+
     def apply_fire(self, projectile, read_ns, accepted_ns):
         action = self._accept("fire", read_ns, accepted_ns)
         if action is None:

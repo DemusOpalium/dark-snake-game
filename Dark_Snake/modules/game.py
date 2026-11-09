@@ -678,6 +678,7 @@ class Game:
             self.clear_game_state()
         if state == GameState.PAUSE and previous in (GameState.GAME, GameState.BOSS_FIGHT):
             self._paused_state = previous
+            self.metrics.cancel_pending()
         self.game_state = state
         if state == GameState.GAME or (previous == GameState.PAUSE and state == GameState.BOSS_FIGHT):
             self.last_update_time = time.time()
@@ -686,6 +687,7 @@ class Game:
         self.set_state(getattr(self, "_paused_state", GameState.GAME))
 
     def reset_game(self):
+        self.metrics.cancel_pending()
         if hasattr(self, "effect_manager"):
             self.effect_manager.clear()
         self.leaderboard_mode = False
@@ -752,6 +754,7 @@ class Game:
         self.aoe_zones = []
 
     def clear_game_state(self):
+        self.metrics.cancel_pending()
         """Drop every object belonging to a round before showing a menu."""
         self.snake = []
         self.snake1 = []
@@ -780,6 +783,7 @@ class Game:
             self.background = self.level_background_surface
 
     def _reset_snake_interpolation(self):
+        self.metrics.cancel_pending()
         """Synchronize visual history without changing logical grid state."""
         self.previous_snake = list(self.snake)
         self.previous_snake1 = list(self.snake1)
@@ -1446,6 +1450,7 @@ class Game:
                                  (head1[1] + self.snake_direction1.value[1]) % GRID_HEIGHT)
                     if not self._move_snake(self.snake1, new_head1, self_collision_protected):
                         return
+                    self.metrics.apply_direction(1, self.snake_direction1)
                 if self.snake2:
                     head2 = self.snake2[0]
                     self.snake_direction2 = self.next_direction2 if hasattr(self, 'next_direction2') else Direction.RIGHT
@@ -1453,6 +1458,7 @@ class Game:
                                  (head2[1] + self.snake_direction2.value[1]) % GRID_HEIGHT)
                     if not self._move_snake(self.snake2, new_head2, self_collision_protected):
                         return
+                    self.metrics.apply_direction(2, self.snake_direction2)
             else:
                 if self.portal and self.snake:
                     head_rect = pygame.Rect(self.snake[0][0] * GRID_SIZE, self.snake[0][1] * GRID_SIZE, GRID_SIZE, GRID_SIZE)
@@ -1467,6 +1473,7 @@ class Game:
                                (head[1] + self.snake_direction.value[1]) % GRID_HEIGHT)
                     if not self._move_snake(self.snake, new_head, self_collision_protected):
                         return
+                    self.metrics.apply_direction(1, self.snake_direction)
             if self.boss:
                 if current_time - self.boss.spawn_time >= 3:
                     target = self.snake[0] if self.player_count == 1 and self.snake else (self.snake1[0] if self.player_count == 2 and self.snake1 else None)
@@ -1686,6 +1693,7 @@ class Game:
             self.respawn_invincible_until = time.time() + 3
         else:
             # Falls keine Leben mehr vorhanden sind, gehe auf Game Over
+            self.metrics.cancel_pending()
             self.game_state = GameState.GAME_OVER
             self.game_over_time = time.time()
         if len(self.leaderboard) < 10 or self.score > self.leaderboard[-1][1]:
@@ -1707,6 +1715,7 @@ class Game:
                           (snake[0][1] + 0.5) * GRID_SIZE), {"lifetime": 1.0})
         self.lives -= 1
         if self.lives <= 0:
+            self.metrics.cancel_pending()
             self.game_state = GameState.GAME_OVER
             self.game_over_time = time.time()
             if len(self.leaderboard) < 10 or self.score > self.leaderboard[-1][1]:
@@ -1730,7 +1739,9 @@ class Game:
             self.respawn_invincible_until = time.time() + 3
 
     def handle_events(self):
-        for event in pygame.event.get():
+        events = pygame.event.get()
+        read_ns = self.metrics.stamp()
+        for event in events:
             if event.type == pygame.QUIT:
                 sys.exit()
             if self.game_state == GameState.CONTROLS:
@@ -1807,11 +1818,11 @@ class Game:
                         btn.handle_event(event)
             elif self.game_state in (GameState.GAME, GameState.BOSS_FIGHT):
                 if actions:
-                    self._apply_gameplay_actions(actions)
+                    self._apply_gameplay_actions(actions, read_ns)
                 elif event.type == pygame.KEYDOWN:
                     self._handle_debug_key(event.key)
 
-    def _apply_gameplay_actions(self, actions):
+    def _apply_gameplay_actions(self, actions, read_ns=None):
         if "pause" in actions:
             self.set_state(GameState.PAUSE)
             return
@@ -1820,16 +1831,39 @@ class Game:
             ("1", self.snake1), ("2", self.snake2))
         for player, (suffix, snake) in enumerate(players, start=1):
             direction = getattr(self, f"snake_direction{suffix}")
+            next_direction = f"next_direction{suffix}"
             for name, requested in DIRECTION_ACTIONS.items():
-                if f"p{player}_{name}" in actions and requested != OPPOSITE_DIRECTION[direction]:
-                    setattr(self, f"next_direction{suffix}", requested)
+                if f"p{player}_{name}" not in actions:
+                    continue
+                if requested == OPPOSITE_DIRECTION[direction]:
+                    self.metrics.reject("direction", "Gegenrichtung")
+                    continue
+                queued = getattr(self, next_direction)
+                if requested == queued:
+                    self.metrics.reject("direction", "unverändert")
+                    continue
+                if requested == direction:
+                    self.metrics.discard_direction(player)
+                else:
+                    self.metrics.accept_direction(player, requested, read_ns)
+                setattr(self, next_direction, requested)
 
             cooldown = f"fireball_cooldown_p{player}"
-            if f"p{player}_fire" in actions and snake and getattr(self, cooldown) <= 0:
-                x, y = snake[0]
-                self.flame_projectiles.append(FlameProjectile(x * GRID_SIZE, y * GRID_SIZE, direction.value))
-                self.log_combat_event("projectile_fired", projectile="player_fireball", player=player)
-                setattr(self, cooldown, FPS * PLAYER_FIREBALL_COOLDOWN_SECONDS)
+            if f"p{player}_fire" not in actions:
+                continue
+            if not snake:
+                self.metrics.reject("fire", "keine Schlange")
+                continue
+            if getattr(self, cooldown) > 0:
+                self.metrics.reject("fire", "cooldown")
+                continue
+            accepted_ns = self.metrics.stamp()
+            x, y = snake[0]
+            projectile = FlameProjectile(x * GRID_SIZE, y * GRID_SIZE, direction.value)
+            self.flame_projectiles.append(projectile)
+            setattr(self, cooldown, FPS * PLAYER_FIREBALL_COOLDOWN_SECONDS)
+            self.metrics.apply_fire(projectile, read_ns, accepted_ns)
+            self.log_combat_event("projectile_fired", projectile="player_fireball", player=player)
 
         if "special_effect" in actions:
             self._spawn_special_effect()
