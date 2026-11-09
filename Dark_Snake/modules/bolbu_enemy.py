@@ -84,6 +84,7 @@ class BolbuEnemy(NormalEnemy):
         if self.frames[0]:
             self.frames = [pygame.transform.scale(f, (GRID_SIZE, GRID_SIZE)) for f in self.frames]
             self.image = self.frames[0]
+            self.width, self.height = self.image.get_size()
         self.anim_timer = time.time()
         self.projectiles = []
         self.last_shot = time.time()
@@ -135,8 +136,7 @@ class BolbuEnemy(NormalEnemy):
         roll = random.randint(1,6)
         if roll == 6:
             # Geschwindigkeits‑Sprint
-            self.sprint_active = True
-            self.sprint_end_time = time.time() + 0.7
+            self._start_sprint(time.time(), 0.7, target_x, target_y)
         elif roll in (4,5):
             # Dreifachschuss in Fächerform
             for offset in (-0.25, 0, 0.25):
