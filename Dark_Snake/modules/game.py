@@ -8,7 +8,7 @@
 
 import pygame, sys, random, time, os, datetime, json
 from functools import lru_cache
-from math import sqrt, atan2, cos, sin
+from math import sqrt, atan2, cos, sin, pi
 from pygame.math import Vector2
 
 from modules.enums import GameState, Direction, ItemType
@@ -49,6 +49,12 @@ from modules.projectile_config import (
     PLAYER_FIREBALL_LIFETIME_TICKS, PLAYER_FIREBALL_SPEED_PX_PER_TICK,
     PLAYER_PROJECTILE_DAMAGE,
 )
+
+DIRECTION_ACTIONS = {direction.name.lower(): direction for direction in Direction}
+OPPOSITE_DIRECTION = {
+    Direction.UP: Direction.DOWN, Direction.DOWN: Direction.UP,
+    Direction.LEFT: Direction.RIGHT, Direction.RIGHT: Direction.LEFT,
+}
 
 # Boss-Projektil-Grafiken (zufällige Auswahl)
 BOSS_PROJECTILES = []
@@ -454,7 +460,7 @@ class Game:
             play_background_music("DarkSnakeMusicIndi2.mp3",
                                   self.settings['bg_music_volume'])
         self.player_count = 1
-        self.input = InputManager()
+        self.input = InputManager(initialize_joysticks=not headless, load_saved=not headless)
         self.intro_focus = 0
         self.create_ui_elements()
         self.reset_game()
@@ -565,8 +571,8 @@ class Game:
         button_width = 160
         button_height = 40
         self.pause_buttons = [
-            Button(center_x - 100, WINDOW_HEIGHT // 2, button_width, button_height, "PAUSE",
-                   action=lambda: self.set_state(GameState.PAUSE)),
+            Button(center_x - 100, WINDOW_HEIGHT // 2, button_width, button_height, "WEITER",
+                   action=self._resume_game),
             Button(center_x - 100, WINDOW_HEIGHT // 2 + 80, button_width, button_height, "HAUPTMENÜ",
                    color=PURPLE, action=lambda: self.confirm_back_to_main()),
             Button(center_x - 100, WINDOW_HEIGHT // 2 + 160, button_width, button_height, "BEENDEN",
@@ -667,11 +673,17 @@ class Game:
         self.set_state(self.intro_state())
 
     def set_state(self, state):
-        if state == GameState.INTRO and getattr(self, "game_state", None) != GameState.INTRO:
+        previous = getattr(self, "game_state", None)
+        if state == GameState.INTRO and previous != GameState.INTRO:
             self.clear_game_state()
+        if state == GameState.PAUSE and previous in (GameState.GAME, GameState.BOSS_FIGHT):
+            self._paused_state = previous
         self.game_state = state
-        if state == GameState.GAME:
+        if state == GameState.GAME or (previous == GameState.PAUSE and state == GameState.BOSS_FIGHT):
             self.last_update_time = time.time()
+
+    def _resume_game(self):
+        self.set_state(getattr(self, "_paused_state", GameState.GAME))
 
     def reset_game(self):
         if hasattr(self, "effect_manager"):
@@ -1744,12 +1756,13 @@ class Game:
             self.respawn_invincible_until = time.time() + 3
 
     def handle_events(self):
-        keys = pygame.key.get_pressed()
-
         for event in pygame.event.get():
-            actions = self.input.actions_for(event)
             if event.type == pygame.QUIT:
                 sys.exit()
+            if self.game_state == GameState.CONTROLS:
+                self.controls_menu.handle_event(event)
+                continue
+            actions = self.input.actions_for(event, player_count=self.player_count)
             if event.type == pygame.KEYDOWN and event.key == pygame.K_TAB:
                 self.level_editor.active = False
                 self.admin_panel.toggle()
@@ -1777,8 +1790,6 @@ class Game:
                     self.set_state(self.intro_state())
             if self.game_state == GameState.SETTINGS:
                 self.options_menu.handle_event(event)
-            elif self.game_state == GameState.CONTROLS:
-                self.controls_menu.handle_event(event)
             elif self.game_state == GameState.SIMULATION:
                 self.simulation_menu.handle_event(event)
             elif self.game_state == GameState.CUSTOMIZATION:
@@ -1797,6 +1808,9 @@ class Game:
                     btn.check_hover(pygame.mouse.get_pos())
                     btn.handle_event(event)
             elif self.game_state == GameState.PAUSE:
+                if "pause" in actions:
+                    self._resume_game()
+                    continue
                 for btn in self.pause_buttons:
                     btn.check_hover(pygame.mouse.get_pos())
                     btn.handle_event(event)
@@ -1818,97 +1832,75 @@ class Game:
                         btn.check_hover(pygame.mouse.get_pos())
                         btn.handle_event(event)
             elif self.game_state in (GameState.GAME, GameState.BOSS_FIGHT):
-                direction_map = {"up": Direction.UP, "down": Direction.DOWN,
-                                 "left": Direction.LEFT, "right": Direction.RIGHT}
-                for player in (1, 2):
-                    if player == 2 and self.player_count != 2:
-                        continue
-                    current = self.snake_direction if self.player_count == 1 else getattr(self, f"snake_direction{player}")
-                    opposite = {Direction.UP: Direction.DOWN, Direction.DOWN: Direction.UP,
-                                Direction.LEFT: Direction.RIGHT, Direction.RIGHT: Direction.LEFT}
-                    for name, direction in direction_map.items():
-                        if f"p{player}_{name}" in actions and direction != opposite[current]:
-                            setattr(self, "next_direction" if self.player_count == 1 else f"next_direction{player}", direction)
-                for player in (1, 2):
-                    if f"p{player}_fire" in actions and (player == 1 or self.player_count == 2):
-                        snake = self.snake if self.player_count == 1 else getattr(self, f"snake{player}")
-                        direction = self.snake_direction if self.player_count == 1 else getattr(self, f"snake_direction{player}")
-                        cooldown = "fireball_cooldown_p1" if player == 1 else "fireball_cooldown_p2"
-                        if snake and getattr(self, cooldown) <= 0:
-                            self.flame_projectiles.append(FlameProjectile(snake[0][0] * GRID_SIZE, snake[0][1] * GRID_SIZE, direction.value))
-                            projectile = "player_fireball"
-                            self.log_combat_event("projectile_fired", projectile=projectile, player=player)
-                            setattr(self, cooldown, FPS * PLAYER_FIREBALL_COOLDOWN_SECONDS)
-                if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_p:
-                        self.set_state(GameState.PAUSE)
-                    else:
-                        from math import sqrt, pi
-                        zone_radius = int(sqrt(0.25 * WINDOW_WIDTH * WINDOW_HEIGHT / pi))
-                        if event.key == pygame.K_r:
-                            from modules.aoe_zones import DamageZone
-                            pos = (self.snake[0][0] * GRID_SIZE, self.snake[0][1] * GRID_SIZE)
-                            zone = DamageZone(pos, zone_radius, 5, (255, 0, 0, 128), effect_type="damage")
-                            self.aoe_zones.append(zone)
-                            print("DEBUG: DamageZone erzeugt an Position:", pos)
-                        elif event.key == pygame.K_t:
-                            from modules.aoe_zones import DebuffZone
-                            pos = (self.snake[0][0] * GRID_SIZE, self.snake[0][1] * GRID_SIZE)
-                            zone = DebuffZone(pos, zone_radius, 6, (0, 0, 255, 128), effect_type="slow")
-                            self.aoe_zones.append(zone)
-                            print("DEBUG: DebuffZone erzeugt an Position:", pos)
-                        elif event.key == pygame.K_z:
-                            from modules.aoe_zones import HealZone
-                            pos = (self.snake[0][0] * GRID_SIZE, self.snake[0][1] * GRID_SIZE)
-                            zone = HealZone(pos, zone_radius, 8, (0, 255, 0, 128), effect_type="heal")
-                            self.aoe_zones.append(zone)
-                            print("DEBUG: HealZone erzeugt an Position:", pos)
+                if actions:
+                    self._apply_gameplay_actions(actions)
+                elif event.type == pygame.KEYDOWN:
+                    self._handle_debug_key(event.key)
 
-                        elif event.key == pygame.K_u:
-                            from modules.aoe_zones import FollowZone
-                            dummy = type("Dummy", (), {})()
-                            pos = (self.snake[0][0] * GRID_SIZE, self.snake[0][1] * GRID_SIZE) if self.player_count == 1 else (self.snake1[0][0] * GRID_SIZE, self.snake1[0][1] * GRID_SIZE)
-                            from pygame.math import Vector2
-                            dummy.pos = Vector2(pos)
-                            dummy.health = 100
-                            dummy.base_speed = 5
-                            dummy.speed = 5
-                            zone = FollowZone(dummy.pos, zone_radius, 10, (255, 0, 255, 128), effect_type="aura")
-                            self.aoe_zones.append(zone)
-                            print("DEBUG: FollowZone (Aura) erzeugt an Position:", pos)
-                        elif event.key == pygame.K_i:
-                            from modules.aoe_zones import AoEZone, get_aoe_effect
-                            pos = (self.snake[0][0] * GRID_SIZE, self.snake[0][1] * GRID_SIZE) if self.player_count == 1 else (self.snake1[0][0] * GRID_SIZE, self.snake1[0][1] * GRID_SIZE)
-                            effect_img = get_aoe_effect()
-                            if effect_img is None:
-                                print("DEBUG: SpecialZone nicht erzeugt, da KEIN Effektbild gefunden wurde!")
-                            else:
-                                zone = AoEZone(pos, zone_radius, 7, (255, 255, 255, 128), effect_type="special")
-                                zone.image = effect_img
-                                self.aoe_zones.append(zone)
-                                print("DEBUG: SpecialZone mit Effektbild erzeugt an Position:", pos)
-                        elif event.key == pygame.K_o:
-                            from modules.aoe_zones import AoEZone, get_aoe_effect
-                            pos = (self.snake[0][0] * GRID_SIZE, self.snake[0][1] * GRID_SIZE) if self.player_count == 1 else (self.snake1[0][0] * GRID_SIZE, self.snake1[0][1] * GRID_SIZE)
-                            zone = AoEZone(pos, zone_radius, 7, (200, 200, 200, 128), effect_type="extra")
-                            zone.image = get_aoe_effect()
-                            self.aoe_zones.append(zone)
-                            if zone.image is None:
-                                print("DEBUG: ExtraZone erzeugt, aber KEIN Effektbild gefunden!")
-                            else:
-                                print("DEBUG: ExtraZone mit Effektbild erzeugt an Position:", pos)
-                        elif event.unicode == "ü":
-                            from modules.aoe_zones import BackgroundEffectZone
-                            try:
-                                bg_image = pygame.image.load(asset_path("graphics", "AOEEffekte", "Backround0021.png")).convert_alpha()
-                            except Exception as e:
-                                print(f"DEBUG: Fehler beim Laden des Hintergrundbildes: {e}")
-                                bg_image = None
-                            if bg_image:
-                                zone = BackgroundEffectZone(bg_image, 7)
-                                self.aoe_zones.insert(0, zone)
-                                print("DEBUG: BackgroundEffectZone (Hintergrund-Effekt) erzeugt!")
+    def _apply_gameplay_actions(self, actions):
+        if "pause" in actions:
+            self.set_state(GameState.PAUSE)
+            return
 
+        players = (("", self.snake),) if self.player_count == 1 else (
+            ("1", self.snake1), ("2", self.snake2))
+        for player, (suffix, snake) in enumerate(players, start=1):
+            direction = getattr(self, f"snake_direction{suffix}")
+            for name, requested in DIRECTION_ACTIONS.items():
+                if f"p{player}_{name}" in actions and requested != OPPOSITE_DIRECTION[direction]:
+                    setattr(self, f"next_direction{suffix}", requested)
+
+            cooldown = f"fireball_cooldown_p{player}"
+            if f"p{player}_fire" in actions and snake and getattr(self, cooldown) <= 0:
+                x, y = snake[0]
+                self.flame_projectiles.append(FlameProjectile(x * GRID_SIZE, y * GRID_SIZE, direction.value))
+                self.log_combat_event("projectile_fired", projectile="player_fireball", player=player)
+                setattr(self, cooldown, FPS * PLAYER_FIREBALL_COOLDOWN_SECONDS)
+
+        if "special_effect" in actions:
+            self._spawn_special_effect()
+
+    def _spawn_special_effect(self):
+        from modules.aoe_zones import BackgroundEffectZone
+
+        path = asset_path("graphics", "AOEEffekte", "Backround0021.png")
+        try:
+            image = pygame.image.load(path).convert_alpha()
+        except (OSError, pygame.error) as exc:
+            record_event(f"Spezialeffekt konnte nicht geladen werden: {exc}")
+            return
+        self.aoe_zones.insert(0, BackgroundEffectZone(image, 7))
+
+    def _handle_debug_key(self, key):
+        if key not in (pygame.K_r, pygame.K_t, pygame.K_z, pygame.K_u, pygame.K_i, pygame.K_o):
+            return
+        snake = self.snake if self.player_count == 1 else self.snake1
+        if not snake:
+            return
+        x, y = snake[0]
+        pos = (x * GRID_SIZE, y * GRID_SIZE)
+        radius = int(sqrt(0.25 * WINDOW_WIDTH * WINDOW_HEIGHT / pi))
+
+        if key == pygame.K_r:
+            zone = DamageZone(pos, radius, 5, (255, 0, 0, 128), effect_type="damage")
+        elif key == pygame.K_t:
+            zone = DebuffZone(pos, radius, 6, (0, 0, 255, 128), effect_type="slow")
+        elif key == pygame.K_z:
+            zone = HealZone(pos, radius, 8, (0, 255, 0, 128), effect_type="heal")
+        elif key == pygame.K_u:
+            zone = FollowZone(Vector2(pos), radius, 10, (255, 0, 255, 128), effect_type="aura")
+        else:
+            from modules.aoe_zones import get_aoe_effect
+
+            image = get_aoe_effect()
+            if key == pygame.K_i:
+                if image is None:
+                    return
+                zone = AoEZone(pos, radius, 7, (255, 255, 255, 128), effect_type="special")
+            else:
+                zone = AoEZone(pos, radius, 7, (200, 200, 200, 128), effect_type="extra")
+            zone.image = image
+        self.aoe_zones.append(zone)
 
     def draw(self):
         start = self.metrics.stamp()
