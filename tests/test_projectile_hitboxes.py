@@ -9,11 +9,13 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "Dark_Snake"))
 
 import pygame
+import pytest
 
 pygame.init()
 pygame.display.set_mode((1, 1))
 
 from config import GRID_SIZE
+from modules import game as game_module
 from modules.bolbu_enemy import BolbuProjectile
 from modules.enums import GameState, ItemType
 from modules.game import FlameProjectile, Game, Item
@@ -112,3 +114,82 @@ def test_fireballs_share_source_artwork_but_move_independently():
     first.update()
     assert first.get_render_rect() != start
     assert second.get_render_rect() == start
+
+
+def setup_classic_boss_shot(monkeypatch, players=1, second_head=(4, 4)):
+    game = Game(headless=True)
+    game.start_game(players)
+    game.items.clear()
+    if players == 1:
+        game.snake = [(4, 4)]
+    else:
+        game.snake1 = [(4, 4)]
+        game.snake2 = [second_head]
+    now = game_module.time.time()
+    monkeypatch.setattr(game_module.time, "time", lambda: now)
+    monkeypatch.setattr(game_module.random, "random", lambda: 1.0)
+    game.last_update_time = now
+    game.respawn_invincible_until = now - 1
+    projectile = {"from_boss": True, "pos": (4, 4), "dir": (0.5, 0)}
+    game.projectiles.append(projectile)
+    return game, projectile
+
+
+def test_classic_boss_shot_hits_once_per_update_and_keeps_moving(monkeypatch):
+    game, projectile = setup_classic_boss_shot(monkeypatch)
+
+    game.update()
+    assert game.player_health == 90
+    assert game.projectiles == [projectile]
+    assert projectile["pos"] == (4.5, 4)
+
+    game.update()
+    assert game.player_health == 80
+    assert game.projectiles == [projectile]
+    assert projectile["pos"] == (5.0, 4)
+
+
+def test_classic_boss_shot_keeps_grid_move_cadence(monkeypatch):
+    game, projectile = setup_classic_boss_shot(monkeypatch)
+    game.last_update_time -= 1
+
+    game.update()
+    assert game.player_health == 90
+    assert game.snake[0] == (5, 4)
+    assert projectile["pos"] == (5.0, 4)
+
+
+@pytest.mark.parametrize("second_head, expected_p2", [((4, 4), 90), ((4, 5), 100)])
+def test_classic_boss_shot_applies_same_rule_to_both_players(monkeypatch, second_head, expected_p2):
+    game, _ = setup_classic_boss_shot(monkeypatch, 2, second_head)
+
+    game.update()
+    assert (game.player_health_p1, game.player_health_p2) == (90, expected_p2)
+
+
+def test_classic_boss_shot_respects_respawn_protection(monkeypatch):
+    game, projectile = setup_classic_boss_shot(monkeypatch)
+    game.respawn_invincible_until = game_module.time.time() + 1
+
+    game.update()
+    assert game.player_health == 100
+    assert projectile["pos"] == (4.5, 4)
+
+
+def test_two_distinct_classic_boss_shots_apply_two_hits(monkeypatch):
+    game, projectile = setup_classic_boss_shot(monkeypatch)
+    game.projectiles.append(projectile.copy())
+
+    game.update()
+    assert game.player_health == 80
+
+
+def test_lethal_classic_boss_shot_on_both_heads_costs_one_shared_life(monkeypatch):
+    game, _ = setup_classic_boss_shot(monkeypatch, 2)
+    game.player_health_p1 = game.player_health_p2 = 10
+    game.lives = 1
+
+    game.update()
+    assert game.game_state == GameState.GAME_OVER
+    assert game.lives == 0
+    assert (game.player_health_p1, game.player_health_p2) == (0, 0)
