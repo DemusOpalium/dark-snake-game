@@ -14,6 +14,8 @@ Die erste offizielle Windows-Version ist in Vorbereitung. Sobald sie verfügbar 
 
 **Installation nach der Veröffentlichung:** Windows-ZIP aus dem Release herunterladen, vollständig entpacken und die DARK-Snake-EXE starten.
 
+[Windows-Build, SHA-256 und Hinweise zu Firefox](WINDOWS_BUILD.md)
+
 <!-- Nach Veröffentlichung von v1.0.0 und Prüfung des Windows-ZIP-Assets die Überschrift in „🎮 Jetzt kostenlos spielen!“ ändern, den Statusabsatz durch [**⬇️ DOWNLOAD – Neueste Windows-Version**](https://github.com/DemusOpalium/dark-snake-game/releases/latest) ersetzen und „nach der Veröffentlichung“ entfernen. -->
 
 *Eine düstere Snake-Reinkarnation mit Bossfights, Portalen, Effekten, Items und integriertem Leveleditor mit 500+ Tiles.*
