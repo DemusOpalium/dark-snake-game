@@ -69,7 +69,17 @@ jobs:
           include-hidden-files: false
 
       - name: Package Windows release ZIP
-        run: python scripts/package_windows.py dist/main.exe dist/DARK-Snake-v1.0.0-Windows-x64.zip --source-commit $env:GITHUB_SHA
+        run: |
+          $zip = 'dist/DARK-Snake-v1.0.0-Windows-x64.zip'
+          python scripts/package_windows.py dist/main.exe $zip --source-commit $env:GITHUB_SHA
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          $checksum = (Get-Content -LiteralPath "$zip.sha256" -Raw).Trim()
+          $digest = (Get-FileHash -Algorithm SHA256 -LiteralPath $zip).Hash
+          if (($checksum -split '\s+')[0] -ne $digest) {
+            throw 'The Windows ZIP checksum does not match'
+          }
+          Write-Output $checksum
+          Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value ('`{0}`' -f $checksum)
 
       - name: Upload Windows release ZIP
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
