@@ -35,6 +35,19 @@ def test_clear_removes_looping_effects():
     assert not manager.active_effects()
 
 
+def test_stop_removes_only_the_selected_effect_instance():
+    manager = EffectManager()
+    first = manager.spawn("boss_aura", (10, 10), {"loop": True})
+    second = manager.spawn("boss_aura", (10, 10), {"loop": True})
+    assert first == second
+
+    manager.stop(second)
+    manager.stop(second)
+
+    remaining, = manager.active_effects()
+    assert remaining is first
+
+
 def test_shared_animation_frame_keeps_each_effect_opacity():
     manager = EffectManager()
     frame = pygame.Surface((2, 2), pygame.SRCALPHA)

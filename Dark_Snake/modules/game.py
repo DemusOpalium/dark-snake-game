@@ -549,7 +549,6 @@ class Game:
         self.admin_panel = AdminPanel(self)
         self.debug_show_hitboxes = False  # [KS_TAG: DEBUG_HITBOX]
         self.combat_events = []
-        self._defeated_boss_ids = set()
         self.respawn_invincible_until = 0
         self.level_editor = LevelEditor(self)
         self.simulation_menu = SimulationMenu(self)
@@ -932,8 +931,9 @@ class Game:
         self.boss_fight_active = True
         boss_center = ((self.boss.x + self.boss.size / 2) * GRID_SIZE,
                        (self.boss.y + self.boss.size / 2) * GRID_SIZE)
-        self.effect_manager.spawn("boss_aura", boss_center,
-                                  {"loop": True, "lifetime": 60.0})
+        self.boss.aura_effect = self.effect_manager.spawn(
+            "boss_aura", boss_center, {"loop": True, "lifetime": 60.0},
+        )
         record_event(f"Bosskampf gestartet: Level {self.level}")
         return True
 
@@ -945,21 +945,22 @@ class Game:
         self.combat_events.append(event)
         record_event(event_type + (f": {details}" if details else ""))
 
-    def damage_boss(self, damage, source):
+    def damage_boss(self, damage, source, *, is_projectile=True):
         """Apply boss damage and process the reward/transition exactly once."""
         boss = self.boss
-        if boss is None or id(boss) in self._defeated_boss_ids:
+        if boss is None:
             return False
         old_health = boss.health
         boss.health = max(0, boss.health - damage)
         self.log_combat_event("boss_damage", source=source, damage=old_health - boss.health,
                               health=boss.health)
-        self.log_combat_event("projectile_hit", projectile=source, target="boss")
+        if is_projectile:
+            self.log_combat_event("projectile_hit", projectile=source, target="boss")
         if boss.health > 0:
             return False
-        self._defeated_boss_ids.add(id(boss))
         center = boss.get_hitbox().center
         self.boss = None
+        self.effect_manager.stop(getattr(boss, "aura_effect", None))
         self.boss_fight_active = False
         self.game_state = GameState.GAME
         self.boss_spawn_timer = time.time() + 60 + random.randint(0, 30)
@@ -1626,14 +1627,13 @@ class Game:
                 self.add_achievement("Fehlschlag!")
                 self.score += self.dice_result
         elif item.type == ItemType.SPECIAL_DAMAGE:
-            if self.boss is not None:
-                if current_time - self.last_boss_effect_time >= self.boss_effect_cooldown:
-                    dmg = 5 * self.level
-                    self.boss.health -= dmg
-                    self.last_boss_effect_time = current_time
-                    if SOUNDS.get("powerup"):
-                        SOUNDS["powerup"].play()
-                    self.score += 100
+            if (self.boss is not None
+                    and current_time - self.last_boss_effect_time >= self.boss_effect_cooldown):
+                self.last_boss_effect_time = current_time
+                if SOUNDS.get("powerup"):
+                    SOUNDS["powerup"].play()
+                self.score += 100
+                self.damage_boss(5 * self.level, "special_damage_item", is_projectile=False)
         
         elif item.type == ItemType.SPAWN_BOLBU:
             print('[DEBUG] SPAWN_BOLBU Item aufgenommen')
