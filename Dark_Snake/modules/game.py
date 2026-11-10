@@ -1066,6 +1066,35 @@ class Game:
             new_proj.append(proj)
         self.projectiles = new_proj
 
+    def _resolve_classic_boss_projectile_hits(self):
+        players = ((self.snake, "player_health"),) if self.player_count == 1 else (
+            (self.snake1, "player_health_p1"), (self.snake2, "player_health_p2")
+        )
+        heads = [
+            (pygame.Rect(snake[0][0] * GRID_SIZE, snake[0][1] * GRID_SIZE, GRID_SIZE, GRID_SIZE), health_attr)
+            for snake, health_attr in players if snake
+        ]
+        for projectile in self.projectiles:
+            if not projectile.get("from_boss", False):
+                continue
+            x, y = projectile["pos"]
+            rect = pygame.Rect(x * GRID_SIZE, y * GRID_SIZE, GRID_SIZE, GRID_SIZE)
+            targets = [health_attr for head, health_attr in heads if head.colliderect(rect)]
+            if not targets:
+                continue
+
+            lethal = False
+            for health_attr in targets:
+                health = getattr(self, health_attr) - 10
+                setattr(self, health_attr, health)
+                lethal = lethal or health <= 0
+            if SOUNDS.get("damage"):
+                SOUNDS["damage"].play()
+            if lethal:
+                # In 2P both heads take damage before resolving the shared life.
+                self.handle_death()
+                return
+
     def check_boss_collision(self, snake_head):
         if self.boss:
             boss_rect = self.boss.get_rect()
@@ -1336,57 +1365,12 @@ class Game:
                             if current_health <= 0:
                                 self.handle_death()
                             break
-        for proj in self.projectiles:
-            if proj.get("from_boss", False):
-                if self.player_count == 1 and self.snake:
-                    head_rect = pygame.Rect(self.snake[0][0] * GRID_SIZE,
-                                            self.snake[0][1] * GRID_SIZE,
-                                            GRID_SIZE, GRID_SIZE)
-                    proj_rect = pygame.Rect(proj['pos'][0] * GRID_SIZE,
-                                            proj['pos'][1] * GRID_SIZE,
-                                            GRID_SIZE, GRID_SIZE)
-                    if not invincible and head_rect.colliderect(proj_rect):
-                        self.player_health -= 10
-                        if self.player_health <= 0:
-                            self.handle_death()
-                elif self.player_count == 2:
-                    for snake, health_attr in [(self.snake1, 'player_health_p1'),
-                                                 (self.snake2, 'player_health_p2')]:
-                        if snake:
-                            head_rect = pygame.Rect(snake[0][0] * GRID_SIZE,
-                                                    snake[0][1] * GRID_SIZE,
-                                                    GRID_SIZE, GRID_SIZE)
-                            proj_rect = pygame.Rect(proj['pos'][0] * GRID_SIZE,
-                                                    proj['pos'][1] * GRID_SIZE,
-                                                    GRID_SIZE, GRID_SIZE)
-                            if not invincible and head_rect.colliderect(proj_rect):
-                                current_health = getattr(self, health_attr)
-                                current_health -= 10
-                                setattr(self, health_attr, current_health)
-                                if current_health <= 0:
-                                    self.handle_death()
-                                break
-        for proj in self.projectiles:
-            if proj.get("from_boss", False):
-                if self.player_count == 1 and self.snake:
-                    head_rect = pygame.Rect(self.snake[0][0] * GRID_SIZE, self.snake[0][1] * GRID_SIZE, GRID_SIZE, GRID_SIZE)
-                    proj_rect = pygame.Rect(proj['pos'][0] * GRID_SIZE, proj['pos'][1] * GRID_SIZE, GRID_SIZE, GRID_SIZE)
-                    if not invincible and head_rect.colliderect(proj_rect):
-                        self.player_health -= 10
-                        if self.player_health <= 0:
-                            self.handle_death()
-                elif self.player_count == 2:
-                    for snake, health_attr in [(self.snake1, 'player_health_p1'), (self.snake2, 'player_health_p2')]:
-                        if snake:
-                            head_rect = pygame.Rect(snake[0][0] * GRID_SIZE, snake[0][1] * GRID_SIZE, GRID_SIZE, GRID_SIZE)
-                            proj_rect = pygame.Rect(proj['pos'][0] * GRID_SIZE, proj['pos'][1] * GRID_SIZE, GRID_SIZE, GRID_SIZE)
-                            if not invincible and head_rect.colliderect(proj_rect):
-                                current_health = getattr(self, health_attr)
-                                current_health -= 10
-                                setattr(self, health_attr, current_health)
-                                if current_health <= 0:
-                                    self.handle_death()
+        if self.projectiles and current_time >= self.respawn_invincible_until and self.game_state != GameState.GAME_OVER:
+            self._resolve_classic_boss_projectile_hits()
+            invincible = current_time < self.respawn_invincible_until
         self.update_projectiles()
+        if self.game_state == GameState.GAME_OVER:
+            return
         if self.player_count == 1 and self.snake:
             player_obj = type("Player", (), {})()
             player_obj.pos = Vector2(self.snake[0][0] * GRID_SIZE, self.snake[0][1] * GRID_SIZE)
@@ -1530,24 +1514,7 @@ class Game:
             if random.random() < 0.005 * self.settings['difficulty'] and len(self.items) < 5:
                 self.spawn_new_item()
             self.update_projectiles()
-        for proj in self.projectiles:
-            if proj.get("from_boss", False):
-                if self.player_count == 1 and self.snake:
-                    head_rect = pygame.Rect(self.snake[0][0] * GRID_SIZE, self.snake[0][1] * GRID_SIZE, GRID_SIZE, GRID_SIZE)
-                    proj_rect = pygame.Rect(proj['pos'][0] * GRID_SIZE, proj['pos'][1] * GRID_SIZE, GRID_SIZE, GRID_SIZE)
-                    if head_rect.colliderect(proj_rect) and not invincible:
-                        if SOUNDS.get("damage"):
-                            SOUNDS["damage"].play()
-                        self.handle_death()
-                elif self.player_count == 2:
-                    for snake, health_attr in [(self.snake1, 'player_health_p1'), (self.snake2, 'player_health_p2')]:
-                        if snake:
-                            head_rect = pygame.Rect(snake[0][0] * GRID_SIZE, snake[0][1] * GRID_SIZE, GRID_SIZE, GRID_SIZE)
-                            proj_rect = pygame.Rect(proj['pos'][0] * GRID_SIZE, proj['pos'][1] * GRID_SIZE, GRID_SIZE, GRID_SIZE)
-                            if head_rect.colliderect(proj_rect) and not invincible:
-                                if SOUNDS.get("damage"):
-                                    SOUNDS["damage"].play()
-                                self.handle_death()
+
              #  Admin-Shortcut: Item exakt an Koordinate spawnen
     def spawn_item_at(self, item_type, grid_x, grid_y):
         """
