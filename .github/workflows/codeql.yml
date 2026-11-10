@@ -4,7 +4,7 @@ on:
   push:
     branches: ["main"]
   pull_request:
-    branches: ["main"]
+    branches: ["main", "fix/classic-boss-combat"]
   schedule:
     - cron: "17 3 * * 1"
   workflow_dispatch:
