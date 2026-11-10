@@ -122,6 +122,10 @@ class EffectManager:
                            (radius, radius), radius, max(1, radius // 4))
         surface.blit(overlay, overlay.get_rect(center=effect.position))
 
+    def stop(self, effect):
+        """Remove one effect instance without changing any other effects."""
+        self._effects[:] = [active for active in self._effects if active is not effect]
+
     def clear(self):
         self._effects.clear()
 

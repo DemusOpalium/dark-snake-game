@@ -75,6 +75,81 @@ def test_normal_shot_and_fireball_share_boss_death_handler():
         assert len(defeated) == 1 and defeated[0]["source"] == source
 
 
+def test_special_damage_item_logs_nonlethal_boss_damage_and_keeps_cooldown():
+    game, boss = make_game_with_boss(12)
+    item = Item(ItemType.SPECIAL_DAMAGE)
+    game.handle_item_pickup(item)
+    game.handle_item_pickup(item)
+
+    assert boss.health == 7
+    assert game.score == 100
+    assert game.boss is boss
+    assert game.game_state is GameState.BOSS_FIGHT
+    events = game.combat_events
+    assert [event["type"] for event in events] == ["boss_damage"]
+    assert events[0]["source"] == "special_damage_item"
+    assert events[0]["damage"] == 5
+    assert events[0]["health"] == 7
+
+
+def test_lethal_special_damage_item_awards_item_and_boss_points_once():
+    game, boss = make_game_with_boss(1)
+    game.level = 2
+    item = Item(ItemType.SPECIAL_DAMAGE)
+    game.handle_item_pickup(item)
+
+    assert boss.health == 0
+    assert game.boss is None
+    assert game.game_state is GameState.GAME
+    assert not game.boss_fight_active
+    game.handle_item_pickup(item)
+    assert not game.damage_boss(1, "player_fireball")
+
+    assert game.score == 300
+    assert game.effects["boss_loot"] > game_module.time.time()
+    assert game.boss_spawn_timer > game.effects["boss_loot"]
+    damage, victory = game.combat_events
+    assert (damage["type"], damage["source"], damage["damage"], damage["health"]) == (
+        "boss_damage", "special_damage_item", 1, 0,
+    )
+    assert (victory["type"], victory["source"], victory["score"]) == (
+        "boss_defeated", "special_damage_item", 200,
+    )
+    assert [effect.name for effect in game.effect_manager.active_effects()] == ["explosion"]
+
+
+def test_successive_boss_fights_remove_only_their_own_aura():
+    game = Game(headless=True)
+    game.start_game(1)
+    effects = game.effect_manager
+    other_aura = effects.spawn("boss_aura", (-10, -10), {"loop": True})
+    fog = effects.spawn("fog", (20, 20), {"loop": True})
+
+    for _ in range(2):
+        before = effects.active_effects()
+        assert game.start_boss_fight()
+        fight_effects = effects.active_effects()
+        aura = fight_effects[-1]
+        assert aura.name == "boss_aura"
+        assert all(aura is not effect for effect in before)
+
+        assert game.damage_boss(game.boss.health, "player_fireball")
+
+        after = effects.active_effects()
+        assert all(effect is not aura for effect in after)
+        assert all(any(effect is previous for effect in after) for previous in before)
+        assert sum(effect.name == "boss_aura" for effect in after) == 1
+        victory_explosion = after[-1]
+        assert victory_explosion.name == "explosion"
+        effects.update(0.05)
+        assert victory_explosion.age == pytest.approx(0.05)
+
+    assert any(effect is other_aura for effect in effects.active_effects())
+    assert any(effect is fog for effect in effects.active_effects())
+    assert game.score == 200
+    assert sum(event["type"] == "boss_defeated" for event in game.combat_events) == 2
+
+
 def test_multishot_projectiles_are_identified_separately():
     game = Game(headless=True)
     game.start_game(1)
