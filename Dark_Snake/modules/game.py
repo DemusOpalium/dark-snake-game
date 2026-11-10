@@ -49,10 +49,14 @@ from modules.simulation_ui import SimulationMenu
 from modules.effect_manager import EffectManager
 from modules.frame_metrics import FrameMetrics
 from modules.projectile_config import (
+    MAX_BOSS_FLAMES, MAX_BOSS_GRID_PROJECTILES, MAX_ENEMY_PROJECTILES,
+    MAX_PLAYER_GRID_PROJECTILES,
     PLAYER_FIREBALL_COOLDOWN_SECONDS, PLAYER_FIREBALL_DAMAGE,
     PLAYER_FIREBALL_LIFETIME_TICKS, PLAYER_FIREBALL_SPEED_PX_PER_TICK,
     PLAYER_PROJECTILE_DAMAGE,
 )
+
+ENEMY_LIMIT = {1: 12, 2: 16}
 
 DIRECTION_ACTIONS = {direction.name.lower(): direction for direction in Direction}
 OPPOSITE_DIRECTION = {
@@ -862,12 +866,25 @@ class Game:
         return True
 
     def spawn_food(self):
-        while True:
-            new_item = Item(ItemType.FOOD)
-            occ = (self.snake1 + self.snake2) if self.player_count == 2 else self.snake
-            if (new_item.x, new_item.y) not in occ and not any(item.x == new_item.x and item.y == new_item.y for item in self.items):
-                self.items.append(new_item)
-                break
+        return self._spawn_item_in_free_cell(ItemType.FOOD)
+
+    def _spawn_item_in_free_cell(self, item_type):
+        occupied = set(self.snake1 + self.snake2 if self.player_count == 2 else self.snake)
+        occupied.update((item.x, item.y) for item in self.items)
+        if len(occupied) < GRID_WIDTH * GRID_HEIGHT:
+            for _ in range(16):
+                item = Item(item_type)
+                if (item.x, item.y) not in occupied:
+                    self.items.append(item)
+                    return item
+        free = [(x, y) for y in range(GRID_HEIGHT) for x in range(GRID_WIDTH)
+                if (x, y) not in occupied]
+        if not free:
+            return None
+        item = Item(item_type)
+        item.x, item.y = random.choice(free)
+        self.items.append(item)
+        return item
 
     # --------------------------------------------------------------------
     # Gleichmäßiger Item-Spawn  –  jedes Item ≈ 9 %  (11 Einträge)
@@ -892,14 +909,7 @@ class Game:
         if itype == ItemType.SPAWN_BOLBU:
             print("[DEBUG] Zufälliges SPAWN_BOLBU-Item erzeugt")
 
-        # freie Feld­position suchen
-        while True:
-            new_item = Item(itype)
-            occ = (self.snake1 + self.snake2) if self.player_count == 2 else self.snake
-            pos_belegt = any(i.x == new_item.x and i.y == new_item.y for i in self.items)
-            if (new_item.x, new_item.y) not in occ and not pos_belegt:
-                self.items.append(new_item)
-                break
+        return self._spawn_item_in_free_cell(itype)
 
     def level_up(self):
         self.level += 1
@@ -915,7 +925,7 @@ class Game:
             return False
         boss_class = random.choice([Boss, Boss2])
         self.boss = boss_class(self.level, health_multiplier=self.settings['boss_health_multiplier'])
-        self.items.append(Item(ItemType.PROJECTILE_SHOOT))
+        self._spawn_item_in_free_cell(ItemType.PROJECTILE_SHOOT)
         self.add_achievement(self.boss.announcement)
         self.game_state = GameState.BOSS_FIGHT
         self.background = self.level_background_surface
@@ -1104,6 +1114,10 @@ class Game:
         return False
 
     def auto_shoot_for_head(self, head, current_direction):
+        slots = MAX_PLAYER_GRID_PROJECTILES - sum(not shot.get("from_boss", False)
+                                                  for shot in self.projectiles)
+        if slots <= 0:
+            return
         target = None
         min_dist = float("inf")
         for enemy in self.enemies:
@@ -1126,7 +1140,7 @@ class Game:
                 "projectile_type": "player_projectile"}
         self.projectiles.append(proj)
         self.log_combat_event("projectile_fired", projectile="player_projectile")
-        for _ in range(self.extra_auto_shots):
+        for _ in range(min(self.extra_auto_shots, slots - 1)):
             deviation = random.uniform(-0.3, 0.3)
             proj_extra = {'pos': (head[0], head[1]),
                           'dir': (dir_x + deviation, dir_y + deviation),
@@ -1184,7 +1198,8 @@ class Game:
         if self.effects['projectile_shoot'] > current_time:
             self.auto_shoot()
             # -- Gegner-Spawn ---------------------------------------------
-            if random.random() < self.settings['enemy_spawn_rate']:
+            if (random.random() < self.settings['enemy_spawn_rate']
+                    and len(self.enemies) < ENEMY_LIMIT[self.player_count]):
                 enemy = NormalEnemy()
                 enemy.spawn_time = time.time()
                 self.enemies.append(enemy)
@@ -1201,8 +1216,10 @@ class Game:
                 px = py = None
             enemy.update(px, py)
             if hasattr(enemy, 'projectiles'):
-                self.enemy_projectiles.extend(enemy.projectiles)
-                for _ in enemy.projectiles:
+                slots = max(0, MAX_ENEMY_PROJECTILES - len(self.enemy_projectiles))
+                admitted = enemy.projectiles[:slots]
+                self.enemy_projectiles.extend(admitted)
+                for _ in admitted:
                     self.log_combat_event("projectile_fired", projectile="bolbu_projectile")
                 enemy.projectiles.clear()
 
@@ -1498,7 +1515,9 @@ class Game:
                         elif act == "boss_shoot":
                             self.boss_shoots_flame()
                             target = self.snake[0] if self.player_count == 1 and self.snake else (self.snake1[0] if self.player_count == 2 and self.snake1 else None)
-                            if target and not invincible:
+                            if (target and not invincible
+                                    and sum(shot.get("from_boss", False) for shot in self.projectiles)
+                                    < MAX_BOSS_GRID_PROJECTILES):
                                 dx = 1 if target[0] > self.boss.x else -1 if target[0] < self.boss.x else 0
                                 dy = 1 if target[1] > self.boss.y else -1 if target[1] < self.boss.y else 0
                                 boss_proj_img = random.choice(BOSS_PROJECTILES) if BOSS_PROJECTILES else PROJECTILE_IMG
@@ -1619,7 +1638,10 @@ class Game:
         elif item.type == ItemType.SPAWN_BOLBU:
             print('[DEBUG] SPAWN_BOLBU Item aufgenommen')
             from modules.bolbu_enemy import BolbuEnemy
-            spawn_count = random.randint(1,3)
+            slots = max(0, ENEMY_LIMIT[self.player_count] - len(self.enemies))
+            spawn_count = min(random.randint(1, 3), slots)
+            if not spawn_count:
+                self.add_achievement("Gegnerlimit erreicht")
             for _ in range(spawn_count):
                 bolbu = BolbuEnemy()
                 bolbu.spawn_time = current_time
@@ -2266,6 +2288,8 @@ class Game:
     # [KS_TAG: BOSS_FLAME_PROJECTILE]
     def boss_shoots_flame(self):
         from modules.boss_projectiles import BossFlameProjectile
+        if len(self.boss_flame_projectiles) >= MAX_BOSS_FLAMES:
+            return
         if not self.boss:
             print("[DEBUG] Kein Boss vorhanden – BossFlameProjectile nicht erzeugt.")
             return
