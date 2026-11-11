@@ -47,6 +47,7 @@ from modules.fire_explosion import FireExplosionAnimation
 from modules.crash_reporting import record_event
 from modules.simulation_ui import SimulationMenu
 from modules.effect_manager import EffectManager
+from modules.frost_prototype import FrostPrototype
 from modules.frame_metrics import FrameMetrics
 from modules.projectile_config import (
     MAX_BOSS_FLAMES, MAX_BOSS_GRID_PROJECTILES, MAX_ENEMY_PROJECTILES,
@@ -449,6 +450,7 @@ class Game:
         self.clock = pygame.time.Clock()
         self.metrics = FrameMetrics()
         self.effect_manager = EffectManager()
+        self.frost = FrostPrototype()
         self._effect_update_time = time.monotonic()
         self.settings = {
             'initial_speed': START_SPEED,
@@ -708,6 +710,7 @@ class Game:
         self.set_state(getattr(self, "_paused_state", GameState.GAME))
 
     def reset_game(self):
+        self.frost.clear()
         self.metrics.cancel_pending()
         self._reset_snake_stalls()
         if hasattr(self, "effect_manager"):
@@ -795,6 +798,7 @@ class Game:
         self.enemy_projectiles = []
         self.explosions = []
         self.effect_manager.clear()
+        self.frost.clear()
         self.portal = None
         self.portal_effect_active = False
         self.portal_effect_type = None
@@ -1294,6 +1298,8 @@ class Game:
         self._advance_stall_clock(effect_now)
         self.effect_manager.update(effect_now - self._effect_update_time)
         self._effect_update_time = effect_now
+        if self.frost.zones:
+            self.frost.update(effect_now)
         # === [KS_FIX: PORTAL VISUAL RESTORE] ===
         if self.portal_effect_active and current_time >= self.portal_effect_end:
             print("[DEBUG] Portal-Effekt endet")
@@ -1334,7 +1340,11 @@ class Game:
                 px, py = self.snake1[0]
             else:
                 px = py = None
-            enemy.update(px, py)
+            if self.frost.zones and isinstance(enemy, NormalEnemy):
+                factor = self.frost.movement_factor_at(enemy.x, enemy.y)
+                enemy.update(px, py, movement_factor=factor)
+            else:
+                enemy.update(px, py)
             if hasattr(enemy, 'projectiles'):
                 slots = max(0, MAX_ENEMY_PROJECTILES - len(self.enemy_projectiles))
                 admitted = enemy.projectiles[:slots]
@@ -1372,8 +1382,10 @@ class Game:
         for flame in self.flame_projectiles[:]:
             hit = self._resolve_fireball_hit(flame)
             if hit is not None:
-                self.spawn_fire_explosion(flame.rect.center)
+                impact_center = flame.rect.center
+                self.spawn_fire_explosion(impact_center)
                 self.flame_projectiles.remove(flame)
+                self.frost.on_fireball_hit(impact_center, effect_now)
                 if hit == "boss":
                     break
 
@@ -2033,6 +2045,7 @@ class Game:
         self.screen.blit(self.background, (0, 0))
         self.effect_manager.draw(self.screen, "background")
         # 2. AoE-Effekte zeichnen – liegen zwischen Raster und dynamischen Objekten
+        self.frost.draw(self.screen)
         for zone in self.aoe_zones:
             zone.draw(self.screen)
         if self.boss:
