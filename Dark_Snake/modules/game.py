@@ -60,6 +60,7 @@ ENEMY_LIMIT = {1: 12, 2: 16}
 BOSS_BODY_DAMAGE = 10
 BOSS_BODY_HIT_INTERVAL = 1.0
 BOSS_SPAWN_PROTECTION = 3.0
+CLASSIC_BOSS_PROJECTILE_DAMAGE = 10
 
 DIRECTION_ACTIONS = {direction.name.lower(): direction for direction in Direction}
 OPPOSITE_DIRECTION = {
@@ -1095,13 +1096,18 @@ class Game:
                 continue
             x, y = projectile["pos"]
             rect = pygame.Rect(x * GRID_SIZE, y * GRID_SIZE, GRID_SIZE, GRID_SIZE)
-            targets = [health_attr for head, health_attr in heads if head.colliderect(rect)]
+            hit_players = projectile.get("hit_players", ())
+            targets = tuple(
+                health_attr for head, health_attr in heads
+                if health_attr not in hit_players and head.colliderect(rect)
+            )
             if not targets:
                 continue
 
+            projectile["hit_players"] = hit_players + targets
             lethal = False
             for health_attr in targets:
-                health = getattr(self, health_attr) - 10
+                health = getattr(self, health_attr) - CLASSIC_BOSS_PROJECTILE_DAMAGE
                 setattr(self, health_attr, health)
                 lethal = lethal or health <= 0
             if SOUNDS.get("damage"):
