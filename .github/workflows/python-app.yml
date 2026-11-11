@@ -4,7 +4,8 @@ on:
   push:
     branches: [ "main" ]
   pull_request:
-    branches: [ "main" ]
+    # The Frost draft targets the tested Classic branch until Classic lands.
+    branches: [ "main", "fix/classic-boss-combat" ]
 
 permissions:
   contents: read

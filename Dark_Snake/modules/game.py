@@ -57,6 +57,11 @@ from modules.projectile_config import (
 )
 
 ENEMY_LIMIT = {1: 12, 2: 16}
+BOSS_BODY_DAMAGE = 10
+BOSS_BODY_HIT_INTERVAL = 1.0
+BOSS_SPAWN_PROTECTION = 3.0
+CLASSIC_BOSS_PROJECTILE_DAMAGE = 10
+SNAKE_STALL_TIMEOUT = 3.0
 
 DIRECTION_ACTIONS = {direction.name.lower(): direction for direction in Direction}
 OPPOSITE_DIRECTION = {
@@ -497,9 +502,6 @@ class Game:
         self.last_click_time = 0
         self.double_click_interval = 0.5
         self.respawn_invincible_until = 0
-        self.last_head_pos = None
-        self.still_timer = None
-
         # Health-Variablen
         self.player_health = 100  
         self.player_health_p1 = 100
@@ -687,12 +689,18 @@ class Game:
 
     def set_state(self, state):
         previous = getattr(self, "game_state", None)
+        was_playing = self._gameplay_active()
         if state == GameState.INTRO and previous != GameState.INTRO:
             self.clear_game_state()
         if state == GameState.PAUSE and previous in (GameState.GAME, GameState.BOSS_FIGHT):
             self._paused_state = previous
             self.metrics.cancel_pending()
         self.game_state = state
+        playing = self._gameplay_active()
+        if playing and not was_playing:
+            self._stall_clock_sample = time.monotonic()
+        elif was_playing and not playing:
+            self._suspend_stall_clock()
         if state == GameState.GAME or (previous == GameState.PAUSE and state == GameState.BOSS_FIGHT):
             self.last_update_time = time.time()
 
@@ -701,6 +709,7 @@ class Game:
 
     def reset_game(self):
         self.metrics.cancel_pending()
+        self._reset_snake_stalls()
         if hasattr(self, "effect_manager"):
             self.effect_manager.clear()
         self.leaderboard_mode = False
@@ -740,6 +749,7 @@ class Game:
                                        'invincibility', 'length_shortener', 'length_double', 'projectile_shoot')}
         self.boss = None
         self.boss_fight_active = False
+        self._boss_contact_ready_at = {}
         self.boss_spawn_timer = time.time() + 60
         self.game_over_time = 0
         self.pause_time = 0
@@ -767,8 +777,9 @@ class Game:
         self.aoe_zones = []
 
     def clear_game_state(self):
-        self.metrics.cancel_pending()
         """Drop every object belonging to a round before showing a menu."""
+        self.metrics.cancel_pending()
+        self._reset_snake_stalls()
         self.snake = []
         self.snake1 = []
         self.snake2 = []
@@ -847,15 +858,39 @@ class Game:
         return [pygame.Rect(round(x), round(y), GRID_SIZE, GRID_SIZE)
                 for x, y in self.get_snake_render_positions(player, now)]
 
-    def _move_snake(self, snake, new_head, invincible):
-        """Commit a grid step, or lose a life when the destination stays occupied."""
+    def _gameplay_active(self):
+        return (self.game_state in (GameState.GAME, GameState.BOSS_FIGHT)
+                and not self.admin_panel.active and not self.level_editor.active)
+
+    def _reset_snake_stalls(self):
+        self._blocked_since = {}
+        self._stall_active_time = 0.0
+        self._stall_clock_sample = None
+
+    def _advance_stall_clock(self, now):
+        """Advance the shared active clock used by each player's block timer."""
+        if self._stall_clock_sample is not None:
+            self._stall_active_time += max(0.0, now - self._stall_clock_sample)
+        self._stall_clock_sample = now
+
+    def _suspend_stall_clock(self):
+        if self._stall_clock_sample is not None:
+            self._advance_stall_clock(time.monotonic())
+            self._stall_clock_sample = None
+
+    def _move_snake(self, player, snake, direction, invincible):
+        """Commit a grid step unless the destination remains occupied by the body."""
+        x, y = snake[0]
+        dx, dy = direction.value
+        new_head = ((x + dx) % GRID_WIDTH, (y + dy) % GRID_HEIGHT)
         item_index = next((index for index, item in enumerate(self.items)
                            if (item.x, item.y) == new_head), None)
         occupied = snake[1:-1] if item_index is None else snake[1:]
         if not invincible and new_head in occupied:
-            self.handle_self_collision()
+            self._blocked_since.setdefault(player, self._stall_active_time)
             return False
 
+        self._blocked_since.pop(player, None)
         snake.insert(0, new_head)
         if item_index is None:
             snake.pop()
@@ -863,6 +898,24 @@ class Game:
             self.handle_item_pickup(self.items[item_index])
             self.items.pop(item_index)
         return True
+
+    def _advance_snakes(self, invincible):
+        players = (("", self.snake),) if self.player_count == 1 else (
+            ("1", self.snake1), ("2", self.snake2))
+        for player, (suffix, snake) in enumerate(players, start=1):
+            if not snake:
+                continue
+            if player == 1 and self.portal:
+                x, y = snake[0]
+                head_rect = pygame.Rect(x * GRID_SIZE, y * GRID_SIZE, GRID_SIZE, GRID_SIZE)
+                if head_rect.colliderect(self.portal.get_rect()):
+                    self.activate_portal(self.portal.event)
+                    self.portal_effect_active = True
+                    self.portal = None
+            direction = getattr(self, f"next_direction{suffix}", Direction.RIGHT)
+            if self._move_snake(player, snake, direction, invincible):
+                setattr(self, f"snake_direction{suffix}", direction)
+                self.metrics.apply_direction(player, direction)
 
     def spawn_food(self):
         return self._spawn_item_in_free_cell(ItemType.FOOD)
@@ -924,6 +977,7 @@ class Game:
             return False
         boss_class = random.choice([Boss, Boss2])
         self.boss = boss_class(self.level, health_multiplier=self.settings['boss_health_multiplier'])
+        self._boss_contact_ready_at.clear()
         self._spawn_item_in_free_cell(ItemType.PROJECTILE_SHOOT)
         self.add_achievement(self.boss.announcement)
         self.game_state = GameState.BOSS_FIGHT
@@ -993,6 +1047,7 @@ class Game:
                 self.snake2[0] = (random.randint(0, GRID_WIDTH - 1), random.randint(0, GRID_HEIGHT - 1))
             else:
                 self.snake[0] = (random.randint(0, GRID_WIDTH - 1), random.randint(0, GRID_HEIGHT - 1))
+            self._blocked_since.clear()
             self._reset_snake_interpolation()
             self.add_achievement("Teleport!")
         elif event == "boss":
@@ -1057,46 +1112,56 @@ class Game:
             proj['pos'] = (new_x, new_y)
             if new_x < 0 or new_x >= GRID_WIDTH or new_y < 0 or new_y >= GRID_HEIGHT:
                 continue
-            proj_rect = pygame.Rect(new_x * GRID_SIZE, new_y * GRID_SIZE, GRID_SIZE, GRID_SIZE)
-            if self.boss and (not proj.get("from_boss", False)) and self.boss.get_rect().colliderect(proj_rect):
-                self.damage_boss(PLAYER_PROJECTILE_DAMAGE,
-                                 proj.get("projectile_type", "player_projectile"))
+            if not proj.get("from_boss", False) and self._resolve_player_grid_projectile_hit(proj):
                 continue
-            if not proj.get("from_boss", False):
-                size = GRID_SIZE // 2
-            else:
-                size = int(GRID_SIZE * proj.get("scale", 2))
-            if new_x < 0 or new_x >= GRID_WIDTH or new_y < 0 or new_y >= GRID_HEIGHT:
-                continue
-            proj_rect = pygame.Rect(new_x * GRID_SIZE, new_y * GRID_SIZE, size, size)
-            target = self.snake1[0] if self.player_count == 2 and self.snake1 else (self.snake[0] if self.snake else None)
-            if target:
-                head_rect = pygame.Rect(target[0] * GRID_SIZE, target[1] * GRID_SIZE, GRID_SIZE, GRID_SIZE)
-                if head_rect.colliderect(proj_rect) and not proj.get("from_boss", False):
-                    continue
             new_proj.append(proj)
         self.projectiles = new_proj
 
-    def _resolve_classic_boss_projectile_hits(self):
+    def _resolve_player_grid_projectile_hit(self, projectile):
+        """Resolve collisions at the shot's new position and report consumption."""
+        x, y = projectile["pos"]
+        boss_hitbox = pygame.Rect(x * GRID_SIZE, y * GRID_SIZE, GRID_SIZE, GRID_SIZE)
+        if self.boss and self.boss.get_rect().colliderect(boss_hitbox):
+            self.damage_boss(PLAYER_PROJECTILE_DAMAGE,
+                             projectile.get("projectile_type", "player_projectile"))
+            return True
+
+        snake = self.snake1 if self.player_count == 2 and self.snake1 else self.snake
+        if not snake:
+            return False
+        head_x, head_y = snake[0]
+        head_rect = pygame.Rect(head_x * GRID_SIZE, head_y * GRID_SIZE, GRID_SIZE, GRID_SIZE)
+        shot_rect = pygame.Rect(x * GRID_SIZE, y * GRID_SIZE, GRID_SIZE // 2, GRID_SIZE // 2)
+        return head_rect.colliderect(shot_rect)
+
+    def _player_heads_with_health(self):
         players = ((self.snake, "player_health"),) if self.player_count == 1 else (
             (self.snake1, "player_health_p1"), (self.snake2, "player_health_p2")
         )
+        return [(snake[0], health_attr) for snake, health_attr in players if snake]
+
+    def _resolve_classic_boss_projectile_hits(self):
         heads = [
-            (pygame.Rect(snake[0][0] * GRID_SIZE, snake[0][1] * GRID_SIZE, GRID_SIZE, GRID_SIZE), health_attr)
-            for snake, health_attr in players if snake
+            (pygame.Rect(x * GRID_SIZE, y * GRID_SIZE, GRID_SIZE, GRID_SIZE), health_attr)
+            for (x, y), health_attr in self._player_heads_with_health()
         ]
         for projectile in self.projectiles:
             if not projectile.get("from_boss", False):
                 continue
             x, y = projectile["pos"]
             rect = pygame.Rect(x * GRID_SIZE, y * GRID_SIZE, GRID_SIZE, GRID_SIZE)
-            targets = [health_attr for head, health_attr in heads if head.colliderect(rect)]
+            hit_players = projectile.get("hit_players", ())
+            targets = tuple(
+                health_attr for head, health_attr in heads
+                if health_attr not in hit_players and head.colliderect(rect)
+            )
             if not targets:
                 continue
 
+            projectile["hit_players"] = hit_players + targets
             lethal = False
             for health_attr in targets:
-                health = getattr(self, health_attr) - 10
+                health = getattr(self, health_attr) - CLASSIC_BOSS_PROJECTILE_DAMAGE
                 setattr(self, health_attr, health)
                 lethal = lethal or health <= 0
             if SOUNDS.get("damage"):
@@ -1106,6 +1171,34 @@ class Game:
                 self.handle_death()
                 return
 
+    def _resolve_fireball_hit(self, flame):
+        """Apply the first confirmed hit and identify its target for the update."""
+        hitbox = flame.get_hitbox()
+        if self.boss and hitbox.colliderect(self.boss.get_hitbox().inflate(-10, -10)):
+            self.damage_boss(flame.damage, "player_fireball")
+            return "boss"
+
+        for enemy in self.enemies:
+            if time.time() - getattr(enemy, "spawn_time", 0) < 2:
+                continue
+            if hitbox.colliderect(enemy.get_hitbox()):
+                enemy.health -= flame.damage
+                if enemy.health <= 0:
+                    self.enemies.remove(enemy)
+                    self.score += 20
+                    self.add_achievement("Enemy roasted!")
+                return "enemy"
+        return None
+
+    def _resolve_boss_flame_hits(self, projectile):
+        hit = False
+        for (x, y), health_attr in self._player_heads_with_health():
+            head_rect = pygame.Rect(x * GRID_SIZE, y * GRID_SIZE, GRID_SIZE, GRID_SIZE)
+            if projectile.collides_with(head_rect):
+                setattr(self, health_attr, getattr(self, health_attr) - projectile.damage)
+                hit = True
+        return hit
+
     def check_boss_collision(self, snake_head):
         if self.boss:
             boss_rect = self.boss.get_rect()
@@ -1113,6 +1206,30 @@ class Game:
             head_y = snake_head[1] * GRID_SIZE + GRID_SIZE // 2
             return boss_rect.collidepoint(head_x, head_y)
         return False
+
+    def _resolve_boss_body_contact(self, now):
+        if (self.boss is None or self.game_state == GameState.GAME_OVER
+                or now < self.respawn_invincible_until
+                or now - self.boss.spawn_time < BOSS_SPAWN_PROTECTION):
+            return False
+
+        targets = [
+            health_attr for head, health_attr in self._player_heads_with_health()
+            if now >= self._boss_contact_ready_at.get(health_attr, 0)
+            and self.check_boss_collision(head)
+        ]
+        if not targets:
+            return False
+
+        for health_attr in targets:
+            self._boss_contact_ready_at[health_attr] = now + BOSS_BODY_HIT_INTERVAL
+            setattr(self, health_attr, getattr(self, health_attr) - BOSS_BODY_DAMAGE)
+        if SOUNDS.get("damage"):
+            SOUNDS["damage"].play()
+        # Both players take their hit before the shared life can reset their health.
+        if any(getattr(self, health_attr) <= 0 for health_attr in targets):
+            self.handle_death()
+        return True
 
     def auto_shoot_for_head(self, head, current_direction):
         slots = MAX_PLAYER_GRID_PROJECTILES - sum(not shot.get("from_boss", False)
@@ -1169,10 +1286,12 @@ class Game:
 
     # === Haupt‑Update‑Schleife ===============================================
     def update(self):
-        if self.admin_panel.active or self.level_editor.active:
+        if not self._gameplay_active():
+            self._stall_clock_sample = None
             return
         current_time = time.time()
         effect_now = time.monotonic()
+        self._advance_stall_clock(effect_now)
         self.effect_manager.update(effect_now - self._effect_update_time)
         self._effect_update_time = effect_now
         # === [KS_FIX: PORTAL VISUAL RESTORE] ===
@@ -1251,32 +1370,11 @@ class Game:
 
         # ---------- 3a)  **FlameProjectile**  ----------
         for flame in self.flame_projectiles[:]:
-            # → Boss treffen
-            if self.boss:
-                boss_rect = self.boss.get_hitbox().inflate(-10, -10)
-                if flame.get_hitbox().colliderect(boss_rect):
-                    self.damage_boss(flame.damage, "player_fireball")
-                    self.spawn_fire_explosion(flame.rect.center)
-                    self.flame_projectiles.remove(flame)
-                    break  # <-- korrekt beendet
-
-            # → normalen Gegner treffen
-            for enemy in self.enemies[:]:
-                enemy_rect = enemy.get_hitbox()
-
-                if time.time() - getattr(enemy, 'spawn_time', 0) < 2:
-                    continue
-
-                if flame.get_hitbox().colliderect(enemy_rect):
-                    enemy.health -= flame.damage
-                    self.spawn_fire_explosion(flame.rect.center)
-                    if enemy.health <= 0:
-                        if enemy in self.enemies:
-                            self.enemies.remove(enemy)
-                        self.score += 20
-                        self.add_achievement("Enemy roasted!")
-                    if flame in self.flame_projectiles:
-                        self.flame_projectiles.remove(flame)
+            hit = self._resolve_fireball_hit(flame)
+            if hit is not None:
+                self.spawn_fire_explosion(flame.rect.center)
+                self.flame_projectiles.remove(flame)
+                if hit == "boss":
                     break
 
 
@@ -1301,25 +1399,9 @@ class Game:
                             if proj in self.enemy_projectiles:
                              self.enemy_projectiles.remove(proj)
         for proj in self.boss_flame_projectiles[:]:
-            if self.player_count == 1 and self.snake:
-                head_rect = pygame.Rect(self.snake[0][0] * GRID_SIZE, self.snake[0][1] * GRID_SIZE, GRID_SIZE, GRID_SIZE)
-                if proj.collides_with(head_rect):
-                    print("[DEBUG] BossFlameProjectile trifft Spieler 1!")
-                    self.spawn_fire_explosion(proj.rect.center)
-                    self.player_health -= proj.damage
-                    self.boss_flame_projectiles.remove(proj)
-            elif self.player_count == 2:
-                hit = False
-                for snake, attr in [(self.snake1, 'player_health_p1'), (self.snake2, 'player_health_p2')]:
-                    if snake:
-                        head_rect = pygame.Rect(snake[0][0] * GRID_SIZE, snake[0][1] * GRID_SIZE, GRID_SIZE, GRID_SIZE)
-                        if proj.collides_with(head_rect):
-                            print(f"[DEBUG] BossFlameProjectile trifft {attr}!")
-                            setattr(self, attr, getattr(self, attr) - proj.damage)
-                            hit = True
-                if hit:
-                    self.spawn_fire_explosion(proj.rect.center)
-                    self.boss_flame_projectiles.remove(proj)
+            if self._resolve_boss_flame_hits(proj):
+                self.spawn_fire_explosion(proj.rect.center)
+                self.boss_flame_projectiles.remove(proj)
 
 
         # … (Spieler‑ und Boss‑Kollisionen, AoE‑Handling, Bewegung,
@@ -1333,28 +1415,6 @@ class Game:
                 self.activate_portal(self.portal.event)
                 self.portal_effect_active = True
                 self.portal = None
-            # Prüfe, ob der Spieler stillsteht (kein Positionswechsel)
-            current_head = self.snake[0]
-            if self.last_head_pos is None or current_head != self.last_head_pos:
-                # Bewegung festgestellt → Timer zurücksetzen
-                self.last_head_pos = current_head
-                self.still_timer = None
-            else:
-                # Kein Positionswechsel – Timer starten bzw. fortschreiben
-                if self.still_timer is None:
-                    self.still_timer = current_time
-                else:
-                    still_elapsed = current_time - self.still_timer
-                    # Zeige den Countdown an (2,5 Sek. Gesamtzeit)
-                    countdown = max(0.0, 2.5 - still_elapsed)
-                    countdown_text = pygame.font.SysFont('Arial', 40, bold=True).render(f"{countdown:.1f}", True, RED)
-                    self.screen.blit(countdown_text, ((WINDOW_WIDTH - countdown_text.get_width()) // 2,
-                                                      (WINDOW_HEIGHT - countdown_text.get_height()) // 2))
-                    # Wenn der Spieler insgesamt 2,5 Sek. stillgestanden hat → Respawn auslösen
-                    if still_elapsed >= 2.5:
-                        self.handle_self_collision()
-                        self.still_timer = None  # Timer zurücksetzen, damit nicht mehrfach ausgelöst wird
-
             # Zusätzlich die herkömmliche Kollisionsprüfung mit Gegnern:
             # (Falls der Kopf mit einem Gegner kollidiert)
             for enemy in self.enemies:
@@ -1383,6 +1443,8 @@ class Game:
                             if current_health <= 0:
                                 self.handle_death()
                             break
+        if self._resolve_boss_body_contact(current_time):
+            invincible = current_time < self.respawn_invincible_until
         if self.projectiles and current_time >= self.respawn_invincible_until and self.game_state != GameState.GAME_OVER:
             self._resolve_classic_boss_projectile_hits()
             invincible = current_time < self.respawn_invincible_until
@@ -1439,57 +1501,25 @@ class Game:
         self.aoe_zones = [zone for zone in self.aoe_zones if zone.alive]
         if random.random() < 0.001 and len(self.aoe_zones) < 5:
             self.spawn_independent_aoe_zone()
+        stall_expired = any(self._stall_active_time - started >= SNAKE_STALL_TIMEOUT
+                            for started in self._blocked_since.values())
+        if stall_expired:
+            self.handle_self_collision()
+            if self.game_state == GameState.GAME_OVER:
+                return
+            invincible = True
         delta = current_time - self.last_update_time
         if delta >= 1.0 / self.speed:
             self._capture_previous_snakes()
             self.last_update_time = current_time
             self_collision_protected = invincible or current_time < self.effects["invincibility"]
-            if self.player_count == 2:
-                if self.portal and self.snake1:
-                    head_rect = pygame.Rect(self.snake1[0][0] * GRID_SIZE, self.snake1[0][1] * GRID_SIZE, GRID_SIZE, GRID_SIZE)
-                    if head_rect.colliderect(self.portal.get_rect()):
-                        self.activate_portal(self.portal.event)
-                        self.portal_effect_active = True
-                        self.portal = None
-                if self.snake1:
-                    head1 = self.snake1[0]
-                    self.snake_direction1 = self.next_direction1 if hasattr(self, 'next_direction1') else Direction.RIGHT
-                    new_head1 = ((head1[0] + self.snake_direction1.value[0]) % GRID_WIDTH,
-                                 (head1[1] + self.snake_direction1.value[1]) % GRID_HEIGHT)
-                    if not self._move_snake(self.snake1, new_head1, self_collision_protected):
-                        return
-                    self.metrics.apply_direction(1, self.snake_direction1)
-                if self.snake2:
-                    head2 = self.snake2[0]
-                    self.snake_direction2 = self.next_direction2 if hasattr(self, 'next_direction2') else Direction.RIGHT
-                    new_head2 = ((head2[0] + self.snake_direction2.value[0]) % GRID_WIDTH,
-                                 (head2[1] + self.snake_direction2.value[1]) % GRID_HEIGHT)
-                    if not self._move_snake(self.snake2, new_head2, self_collision_protected):
-                        return
-                    self.metrics.apply_direction(2, self.snake_direction2)
-            else:
-                if self.portal and self.snake:
-                    head_rect = pygame.Rect(self.snake[0][0] * GRID_SIZE, self.snake[0][1] * GRID_SIZE, GRID_SIZE, GRID_SIZE)
-                    if head_rect.colliderect(self.portal.get_rect()):
-                        self.activate_portal(self.portal.event)
-                        self.portal_effect_active = True
-                        self.portal = None
-                if self.snake:
-                    head = self.snake[0]
-                    self.snake_direction = self.next_direction if hasattr(self, 'next_direction') else Direction.RIGHT
-                    new_head = ((head[0] + self.snake_direction.value[0]) % GRID_WIDTH,
-                               (head[1] + self.snake_direction.value[1]) % GRID_HEIGHT)
-                    if not self._move_snake(self.snake, new_head, self_collision_protected):
-                        return
-                    self.metrics.apply_direction(1, self.snake_direction)
+            if not stall_expired:
+                self._advance_snakes(self_collision_protected)
             if self.boss:
-                if current_time - self.boss.spawn_time >= 3:
-                    target = self.snake[0] if self.player_count == 1 and self.snake else (self.snake1[0] if self.player_count == 2 and self.snake1 else None)
-                    if target and self.check_boss_collision(target) and not invincible:
-                        if SOUNDS.get("damage"):
-                            SOUNDS["damage"].play()
-                        self.handle_death()
-                    else:
+                if current_time - self.boss.spawn_time >= BOSS_SPAWN_PROTECTION:
+                    if self._resolve_boss_body_contact(current_time):
+                        invincible = current_time < self.respawn_invincible_until
+                    if self.game_state != GameState.GAME_OVER:
                         act = self.boss.update(current_time)
                         if act == "aoe":
 
@@ -1659,12 +1689,13 @@ class Game:
             self.level_up()
 
     def handle_self_collision(self):
+        self._blocked_since.clear()
         # Spiele den Schadens-Sound (sofern vorhanden)
         if SOUNDS.get("damage"):
             SOUNDS["damage"].play()
         # Ziehe ein Leben ab, aber nur, wenn noch Leben übrig sind
         self.lives -= 1
-        print("DEBUG: Selbstkollision erkannt – Leben abgezogen, verbleibende Leben:", self.lives)
+        print("DEBUG: Stillstand – Leben abgezogen, verbleibende Leben:", self.lives)
     
         # Falls noch Leben vorhanden, respawne die Schlange (nur im Singleplayer; in Mehrspieler anpassen)
         if self.lives > 0:
@@ -1695,12 +1726,15 @@ class Game:
             self.leaderboard_mode = True
 
     def handle_death(self):
+        if self.game_state == GameState.GAME_OVER:
+            return
         if self.player_count == 1:
             if self.player_health > 0:
                 return
         elif self.player_count == 2:
             if self.player_health_p1 > 0 and self.player_health_p2 > 0:
                 return
+        self._blocked_since.clear()
         if SOUNDS.get("gameover"):
             SOUNDS["gameover"].play()
         snake = self.snake if self.player_count == 1 else self.snake1
@@ -2239,11 +2273,16 @@ class Game:
 
     def run_frame(self):
         start = self.metrics.stamp()
+        was_playing = self._gameplay_active()
+        # A frame that starts behind an overlay may resume gameplay via input.
+        if not was_playing:
+            self._stall_clock_sample = None
         self.handle_events()
         after_events = self.metrics.stamp()
-        if (self.game_state in (GameState.GAME, GameState.BOSS_FIGHT)
-                and not self.admin_panel.active and not self.level_editor.active):
+        if self._gameplay_active():
             self.update()
+        elif was_playing:
+            self._suspend_stall_clock()
         after_update = self.metrics.stamp()
         self.metrics.record_phase("events", start, after_events)
         self.metrics.record_phase("update", after_events, after_update)
