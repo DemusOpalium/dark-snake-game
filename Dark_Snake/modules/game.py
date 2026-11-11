@@ -57,6 +57,9 @@ from modules.projectile_config import (
 )
 
 ENEMY_LIMIT = {1: 12, 2: 16}
+BOSS_BODY_DAMAGE = 10
+BOSS_BODY_HIT_INTERVAL = 1.0
+BOSS_SPAWN_PROTECTION = 3.0
 
 DIRECTION_ACTIONS = {direction.name.lower(): direction for direction in Direction}
 OPPOSITE_DIRECTION = {
@@ -740,6 +743,7 @@ class Game:
                                        'invincibility', 'length_shortener', 'length_double', 'projectile_shoot')}
         self.boss = None
         self.boss_fight_active = False
+        self._boss_contact_ready_at = {}
         self.boss_spawn_timer = time.time() + 60
         self.game_over_time = 0
         self.pause_time = 0
@@ -924,6 +928,7 @@ class Game:
             return False
         boss_class = random.choice([Boss, Boss2])
         self.boss = boss_class(self.level, health_multiplier=self.settings['boss_health_multiplier'])
+        self._boss_contact_ready_at.clear()
         self._spawn_item_in_free_cell(ItemType.PROJECTILE_SHOOT)
         self.add_achievement(self.boss.announcement)
         self.game_state = GameState.BOSS_FIGHT
@@ -1113,6 +1118,33 @@ class Game:
             head_y = snake_head[1] * GRID_SIZE + GRID_SIZE // 2
             return boss_rect.collidepoint(head_x, head_y)
         return False
+
+    def _resolve_boss_body_contact(self, now):
+        if (self.boss is None or self.game_state == GameState.GAME_OVER
+                or now < self.respawn_invincible_until
+                or now - self.boss.spawn_time < BOSS_SPAWN_PROTECTION):
+            return False
+
+        players = ((self.snake, "player_health"),) if self.player_count == 1 else (
+            (self.snake1, "player_health_p1"), (self.snake2, "player_health_p2")
+        )
+        targets = [
+            health_attr for snake, health_attr in players
+            if snake and now >= self._boss_contact_ready_at.get(health_attr, 0)
+            and self.check_boss_collision(snake[0])
+        ]
+        if not targets:
+            return False
+
+        for health_attr in targets:
+            self._boss_contact_ready_at[health_attr] = now + BOSS_BODY_HIT_INTERVAL
+            setattr(self, health_attr, getattr(self, health_attr) - BOSS_BODY_DAMAGE)
+        if SOUNDS.get("damage"):
+            SOUNDS["damage"].play()
+        # Both players take their hit before the shared life can reset their health.
+        if any(getattr(self, health_attr) <= 0 for health_attr in targets):
+            self.handle_death()
+        return True
 
     def auto_shoot_for_head(self, head, current_direction):
         slots = MAX_PLAYER_GRID_PROJECTILES - sum(not shot.get("from_boss", False)
@@ -1383,6 +1415,8 @@ class Game:
                             if current_health <= 0:
                                 self.handle_death()
                             break
+        if self._resolve_boss_body_contact(current_time):
+            invincible = current_time < self.respawn_invincible_until
         if self.projectiles and current_time >= self.respawn_invincible_until and self.game_state != GameState.GAME_OVER:
             self._resolve_classic_boss_projectile_hits()
             invincible = current_time < self.respawn_invincible_until
@@ -1483,13 +1517,10 @@ class Game:
                         return
                     self.metrics.apply_direction(1, self.snake_direction)
             if self.boss:
-                if current_time - self.boss.spawn_time >= 3:
-                    target = self.snake[0] if self.player_count == 1 and self.snake else (self.snake1[0] if self.player_count == 2 and self.snake1 else None)
-                    if target and self.check_boss_collision(target) and not invincible:
-                        if SOUNDS.get("damage"):
-                            SOUNDS["damage"].play()
-                        self.handle_death()
-                    else:
+                if current_time - self.boss.spawn_time >= BOSS_SPAWN_PROTECTION:
+                    if self._resolve_boss_body_contact(current_time):
+                        invincible = current_time < self.respawn_invincible_until
+                    if self.game_state != GameState.GAME_OVER:
                         act = self.boss.update(current_time)
                         if act == "aoe":
 
@@ -1695,6 +1726,8 @@ class Game:
             self.leaderboard_mode = True
 
     def handle_death(self):
+        if self.game_state == GameState.GAME_OVER:
+            return
         if self.player_count == 1:
             if self.player_health > 0:
                 return
