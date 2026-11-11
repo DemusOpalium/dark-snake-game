@@ -18,7 +18,7 @@ from modules import game as game_module
 from modules.boss_projectiles import BossFlameProjectile
 from modules.enemies import NormalEnemy
 from modules.enums import Direction, GameState, ItemType
-from modules.game import Game, Item
+from modules.game import Game, Item, Portal
 
 
 PLAYER_CASES = [(1, ""), (2, "1"), (2, "2")]
@@ -215,6 +215,7 @@ def test_other_player_and_world_keep_moving_while_one_head_is_blocked(monkeypatc
     monkeypatch.setattr(game_module.random, "choice", choose_direction)
     assert game.start_boss_fight()
     game.boss.x, game.boss.y = (32, 23)
+    game.boss.spawn_time = clock.now - 4
     game.boss.chase_speed = 0.125
     game.boss.last_move = clock.now - 0.125
     enemy = NormalEnemy()
@@ -278,10 +279,14 @@ def test_first_player_escape_does_not_change_second_players_deadline(monkeypatch
     assert game.snake1 == game.snake2 == respawn_position()
 
 
-def test_teleport_restarts_the_timer_for_a_new_body_block(monkeypatch):
-    game, clock = setup_turn(monkeypatch, 1, "", BODY_CONTACT)
+@pytest.mark.parametrize("players,suffix", [(1, ""), (2, "1")])
+def test_teleport_restarts_the_timer_for_a_new_body_block(monkeypatch, players, suffix):
+    game, clock = setup_turn(monkeypatch, players, suffix, BODY_CONTACT)
     game.update()
     advance_frames(clock, game.update, 16)
+    game.portal = Portal()
+    game.portal.x, game.portal.y = BODY_CONTACT[0]
+    game.portal.event = "teleport"
     original_randint = game_module.random.randint
 
     def teleport_coordinates(low, high):
@@ -290,15 +295,16 @@ def test_teleport_restarts_the_timer_for_a_new_body_block(monkeypatch):
         return original_randint(low, high)
 
     monkeypatch.setattr(game_module.random, "randint", teleport_coordinates)
-    game.activate_portal("teleport")
-    assert game.snake[0] == (3, 3)
-    advance_frames(clock, game.update, 24)
-    assert game.snake[0] == (3, 3)
+    advance_frames(clock, game.update, 1)
+    assert game.portal is None
+    assert getattr(game, f"snake{suffix}")[0] == (3, 3)
+    advance_frames(clock, game.update, 23)
+    assert getattr(game, f"snake{suffix}")[0] == (3, 3)
     assert game.lives == 3
 
     advance_frames(clock, game.update, 1)
     assert game.lives == 2
-    assert game.snake == respawn_position()
+    assert getattr(game, f"snake{suffix}") == respawn_position()
 
 
 @pytest.mark.parametrize("round_change", ["restart", "respawn"])
