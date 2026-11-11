@@ -16,7 +16,6 @@ from config import DARK_GREY, ORANGE, PURPLE, RED, WHITE, WINDOW_HEIGHT, WINDOW_
 from developer_simulator import (SCENARIOS, SIMULATION_PROFILES, SimulationControl,
                                  failed_simulation_report, run_simulation, save_report)
 from modules.simulation_reports import latest_report, report_directory
-from modules.ui import Button
 
 
 def simulation_worker(messages, resume_event, cancel_event, options):
@@ -47,6 +46,9 @@ class SimulationMenu:
     TIMEOUT_SECONDS = 10.0
 
     def __init__(self, game, process_context=None, monotonic=time.monotonic):
+        # A spawned simulation imports this module before its SDL display exists.
+        from modules.ui import Button
+
         self.game = game
         self._context = process_context or multiprocessing.get_context("spawn")
         self._monotonic = monotonic

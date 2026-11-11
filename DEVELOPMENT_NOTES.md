@@ -140,7 +140,7 @@ Der Bericht trennt bestandene, fehlgeschlagene und nicht ausgeführte Spielregel
 
 ### Windows-Spielprobe für die Berichtsverwaltung
 
-1. Die ZIP entpacken, die EXE öffnen und im Hauptmenü **Entwickler-Simulation** wählen. Das Profil **Smoke** auswählen und einen Batch starten.
+1. Die ZIP entpacken, die EXE öffnen und im Hauptmenü **Entwickler** wählen. Das Profil **Smoke** auswählen und einen Batch starten.
 2. Nach Abschluss den letzten Bericht und den angezeigten Pfad prüfen. **Berichtsordner öffnen** wählen und das gleichnamige TXT/JSON-Paar im Explorer prüfen.
 3. Einen zweiten Batch ausführen und beide Paare prüfen. Einen laufenden Batch abbrechen und den Abbruchgrund im Bericht prüfen.
 

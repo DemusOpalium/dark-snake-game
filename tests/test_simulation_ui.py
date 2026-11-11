@@ -1,5 +1,6 @@
 import os
 import queue
+import subprocess
 import sys
 from pathlib import Path
 
@@ -97,6 +98,16 @@ def test_start_creates_background_process():
     menu.start()
     assert context.last_process.started
     assert menu.running and menu.status == "Läuft"
+
+
+def test_importing_worker_entry_point_does_not_load_graphics_before_sdl():
+    result = subprocess.run(
+        [sys.executable, "-c",
+         "import sys; from modules.simulation_ui import simulation_worker; "
+         "assert 'modules.graphics' not in sys.modules"],
+        cwd=ROOT / "Dark_Snake", capture_output=True, text=True, timeout=15,
+    )
+    assert result.returncode == 0, result.stderr[-2000:]
 
 
 def test_progress_message_updates_visible_state():
