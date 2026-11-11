@@ -1063,33 +1063,38 @@ class Game:
             proj['pos'] = (new_x, new_y)
             if new_x < 0 or new_x >= GRID_WIDTH or new_y < 0 or new_y >= GRID_HEIGHT:
                 continue
-            proj_rect = pygame.Rect(new_x * GRID_SIZE, new_y * GRID_SIZE, GRID_SIZE, GRID_SIZE)
-            if self.boss and (not proj.get("from_boss", False)) and self.boss.get_rect().colliderect(proj_rect):
-                self.damage_boss(PLAYER_PROJECTILE_DAMAGE,
-                                 proj.get("projectile_type", "player_projectile"))
+            if not proj.get("from_boss", False) and self._resolve_player_grid_projectile_hit(proj):
                 continue
-            if not proj.get("from_boss", False):
-                size = GRID_SIZE // 2
-            else:
-                size = int(GRID_SIZE * proj.get("scale", 2))
-            if new_x < 0 or new_x >= GRID_WIDTH or new_y < 0 or new_y >= GRID_HEIGHT:
-                continue
-            proj_rect = pygame.Rect(new_x * GRID_SIZE, new_y * GRID_SIZE, size, size)
-            target = self.snake1[0] if self.player_count == 2 and self.snake1 else (self.snake[0] if self.snake else None)
-            if target:
-                head_rect = pygame.Rect(target[0] * GRID_SIZE, target[1] * GRID_SIZE, GRID_SIZE, GRID_SIZE)
-                if head_rect.colliderect(proj_rect) and not proj.get("from_boss", False):
-                    continue
             new_proj.append(proj)
         self.projectiles = new_proj
 
-    def _resolve_classic_boss_projectile_hits(self):
+    def _resolve_player_grid_projectile_hit(self, projectile):
+        """Resolve collisions at the shot's new position and report consumption."""
+        x, y = projectile["pos"]
+        boss_hitbox = pygame.Rect(x * GRID_SIZE, y * GRID_SIZE, GRID_SIZE, GRID_SIZE)
+        if self.boss and self.boss.get_rect().colliderect(boss_hitbox):
+            self.damage_boss(PLAYER_PROJECTILE_DAMAGE,
+                             projectile.get("projectile_type", "player_projectile"))
+            return True
+
+        snake = self.snake1 if self.player_count == 2 and self.snake1 else self.snake
+        if not snake:
+            return False
+        head_x, head_y = snake[0]
+        head_rect = pygame.Rect(head_x * GRID_SIZE, head_y * GRID_SIZE, GRID_SIZE, GRID_SIZE)
+        shot_rect = pygame.Rect(x * GRID_SIZE, y * GRID_SIZE, GRID_SIZE // 2, GRID_SIZE // 2)
+        return head_rect.colliderect(shot_rect)
+
+    def _player_heads_with_health(self):
         players = ((self.snake, "player_health"),) if self.player_count == 1 else (
             (self.snake1, "player_health_p1"), (self.snake2, "player_health_p2")
         )
+        return [(snake[0], health_attr) for snake, health_attr in players if snake]
+
+    def _resolve_classic_boss_projectile_hits(self):
         heads = [
-            (pygame.Rect(snake[0][0] * GRID_SIZE, snake[0][1] * GRID_SIZE, GRID_SIZE, GRID_SIZE), health_attr)
-            for snake, health_attr in players if snake
+            (pygame.Rect(x * GRID_SIZE, y * GRID_SIZE, GRID_SIZE, GRID_SIZE), health_attr)
+            for (x, y), health_attr in self._player_heads_with_health()
         ]
         for projectile in self.projectiles:
             if not projectile.get("from_boss", False):
@@ -1117,6 +1122,34 @@ class Game:
                 self.handle_death()
                 return
 
+    def _resolve_fireball_hit(self, flame):
+        """Apply the first confirmed hit and identify its target for the update."""
+        hitbox = flame.get_hitbox()
+        if self.boss and hitbox.colliderect(self.boss.get_hitbox().inflate(-10, -10)):
+            self.damage_boss(flame.damage, "player_fireball")
+            return "boss"
+
+        for enemy in self.enemies:
+            if time.time() - getattr(enemy, "spawn_time", 0) < 2:
+                continue
+            if hitbox.colliderect(enemy.get_hitbox()):
+                enemy.health -= flame.damage
+                if enemy.health <= 0:
+                    self.enemies.remove(enemy)
+                    self.score += 20
+                    self.add_achievement("Enemy roasted!")
+                return "enemy"
+        return None
+
+    def _resolve_boss_flame_hits(self, projectile):
+        hit = False
+        for (x, y), health_attr in self._player_heads_with_health():
+            head_rect = pygame.Rect(x * GRID_SIZE, y * GRID_SIZE, GRID_SIZE, GRID_SIZE)
+            if projectile.collides_with(head_rect):
+                setattr(self, health_attr, getattr(self, health_attr) - projectile.damage)
+                hit = True
+        return hit
+
     def check_boss_collision(self, snake_head):
         if self.boss:
             boss_rect = self.boss.get_rect()
@@ -1131,13 +1164,10 @@ class Game:
                 or now - self.boss.spawn_time < BOSS_SPAWN_PROTECTION):
             return False
 
-        players = ((self.snake, "player_health"),) if self.player_count == 1 else (
-            (self.snake1, "player_health_p1"), (self.snake2, "player_health_p2")
-        )
         targets = [
-            health_attr for snake, health_attr in players
-            if snake and now >= self._boss_contact_ready_at.get(health_attr, 0)
-            and self.check_boss_collision(snake[0])
+            health_attr for head, health_attr in self._player_heads_with_health()
+            if now >= self._boss_contact_ready_at.get(health_attr, 0)
+            and self.check_boss_collision(head)
         ]
         if not targets:
             return False
@@ -1289,32 +1319,11 @@ class Game:
 
         # ---------- 3a)  **FlameProjectile**  ----------
         for flame in self.flame_projectiles[:]:
-            # → Boss treffen
-            if self.boss:
-                boss_rect = self.boss.get_hitbox().inflate(-10, -10)
-                if flame.get_hitbox().colliderect(boss_rect):
-                    self.damage_boss(flame.damage, "player_fireball")
-                    self.spawn_fire_explosion(flame.rect.center)
-                    self.flame_projectiles.remove(flame)
-                    break  # <-- korrekt beendet
-
-            # → normalen Gegner treffen
-            for enemy in self.enemies[:]:
-                enemy_rect = enemy.get_hitbox()
-
-                if time.time() - getattr(enemy, 'spawn_time', 0) < 2:
-                    continue
-
-                if flame.get_hitbox().colliderect(enemy_rect):
-                    enemy.health -= flame.damage
-                    self.spawn_fire_explosion(flame.rect.center)
-                    if enemy.health <= 0:
-                        if enemy in self.enemies:
-                            self.enemies.remove(enemy)
-                        self.score += 20
-                        self.add_achievement("Enemy roasted!")
-                    if flame in self.flame_projectiles:
-                        self.flame_projectiles.remove(flame)
+            hit = self._resolve_fireball_hit(flame)
+            if hit is not None:
+                self.spawn_fire_explosion(flame.rect.center)
+                self.flame_projectiles.remove(flame)
+                if hit == "boss":
                     break
 
 
@@ -1339,25 +1348,9 @@ class Game:
                             if proj in self.enemy_projectiles:
                              self.enemy_projectiles.remove(proj)
         for proj in self.boss_flame_projectiles[:]:
-            if self.player_count == 1 and self.snake:
-                head_rect = pygame.Rect(self.snake[0][0] * GRID_SIZE, self.snake[0][1] * GRID_SIZE, GRID_SIZE, GRID_SIZE)
-                if proj.collides_with(head_rect):
-                    print("[DEBUG] BossFlameProjectile trifft Spieler 1!")
-                    self.spawn_fire_explosion(proj.rect.center)
-                    self.player_health -= proj.damage
-                    self.boss_flame_projectiles.remove(proj)
-            elif self.player_count == 2:
-                hit = False
-                for snake, attr in [(self.snake1, 'player_health_p1'), (self.snake2, 'player_health_p2')]:
-                    if snake:
-                        head_rect = pygame.Rect(snake[0][0] * GRID_SIZE, snake[0][1] * GRID_SIZE, GRID_SIZE, GRID_SIZE)
-                        if proj.collides_with(head_rect):
-                            print(f"[DEBUG] BossFlameProjectile trifft {attr}!")
-                            setattr(self, attr, getattr(self, attr) - proj.damage)
-                            hit = True
-                if hit:
-                    self.spawn_fire_explosion(proj.rect.center)
-                    self.boss_flame_projectiles.remove(proj)
+            if self._resolve_boss_flame_hits(proj):
+                self.spawn_fire_explosion(proj.rect.center)
+                self.boss_flame_projectiles.remove(proj)
 
 
         # … (Spieler‑ und Boss‑Kollisionen, AoE‑Handling, Bewegung,
