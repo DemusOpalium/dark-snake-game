@@ -168,8 +168,17 @@ Fenster, Audioausgabe oder Echtzeit-Wartezeiten ausführen:
 python Dark_Snake/developer_simulator.py --rounds 5 --seed 12345
 ```
 
-Standardmäßig entstehen `simulation-report.json` und `simulation-report.txt`.
-Ein Exit-Code ungleich null zeigt mindestens einen gruppierten Simulationsfehler an.
+Nach jedem Batch entstehen ein TXT- und ein JSON-Bericht mit Zeitstempel und Seed.
+Bei der entpackten Windows-Version liegt der Ordner **Entwicklerberichte** neben
+der EXE, sofern er beschreibbar ist. Andernfalls und beim Start aus dem Quellcode
+liegen die Berichte unter `~/.dark-snake/Entwicklerberichte`. Mit
+`--output PFAD` lässt sich für einen Konsolenlauf ein anderer Ordner angeben.
+Im Spiel zeigt die Entwickler-Simulation den letzten Bericht und öffnet den
+tatsächlichen Ablageort über **Berichtsordner öffnen**.
+
+Ein Exit-Code ungleich null meldet einen Spielfehler, eine technische Ausnahme,
+eine Zeitüberschreitung, einen Abbruch oder einen Fehler beim Speichern. Der
+Bericht weist nicht ausgeführte Spielregelprüfungen einzeln aus.
 
 ---
 
