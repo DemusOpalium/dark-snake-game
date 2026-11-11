@@ -16,6 +16,27 @@ ASSETS = ROOT / "assets"
 DATA_DIR = Path.home() / ".dark-snake"
 
 
+def installation_root() -> Path:
+    """Locate the portable game directory or the source project directory."""
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).parent
+    return Path(__file__).resolve().parents[2]
+
+
+def simulation_report_directories() -> tuple[Path, ...]:
+    """Prefer the portable EXE directory, with a user data fallback."""
+    fallback = DATA_DIR / "Entwicklerberichte"
+    if getattr(sys, "frozen", False):
+        return (installation_root() / "Entwicklerberichte", fallback)
+    return (fallback,)
+
+
+def is_temporary_bundle_path(path: Path) -> bool:
+    """Identify paths inside PyInstaller's temporary resource directory."""
+    bundle = getattr(sys, "_MEIPASS", None)
+    return bool(bundle and path.resolve().is_relative_to(Path(bundle).resolve()))
+
+
 def asset_path(*parts: str) -> str:
     return str(ASSETS.joinpath(*parts))
 
