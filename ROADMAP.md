@@ -44,7 +44,10 @@
 - ✅ PR #119: 223 Headless-Tests, 30 Smoke-Simulationen, Windows-CI und CodeQL grün.
 - ⬜ Erweiterte manuelle Frost-Spielprobe (Standardgegner, Bolbu, Überlappung, 2P) bleibt offen.
 - 🔧 Vorhandene Boss- und Kampfmechaniken überprüfen.
-- 🔧 Entwickler-Simulator und Testberichte verbessern.
+- ✅ Entwickler-Simulator 2.0, Schritt 1 durch PR #120 in `main` übernommen: automatische TXT/JSON-Berichte, Berichtsordner öffnen, fünf gezielte Spielregelprüfungen.
+- ✅ PR #120: laut Entwicklungsbericht 249 Headless-Tests, 30 Smoke-Simulationen, Windows-CI und CodeQL erfolgreich; Windows-EXE mit Berichtsexport geprüft.
+- ⬜ Erweiterte Simulatorabdeckung (Bosskörperkontakt, 2P-Sonderfälle, Bolbu-Frost, Render-Schichtung, Controller) bleibt offen.
+- ⬜ Berichtsfunktion und Spielregeln zusätzlich durch Demus im entpackten Windows-Build prüfen.
 - 🔧 Grafik- und Ressourcenverwaltung untersuchen.
 - ⬜ Aktuelle Arbeiten abschließen, bevor größere neue Systeme beginnen.
 - ⬜ Offizielles Windows-Release separat fertigstellen.
@@ -199,7 +202,10 @@
 
 - ✅ Einfacher LevelEditor bereits vorhanden.
 - ✅ Grafik-Kacheln auswählen und platzieren möglich.
-- ✅ Undo/Redo sowie JSON-Speicherung vorhanden.
+- ✅ Undo/Redo sowie JSON-Speicherung vorhanden (derzeit ein einziges `custom_level.json`).
+- ⬜ **Kleine vorgezogene Etappe:** vorhandenen F2-Editor stabilisieren und benannte Level-Entwürfe getrennt speichern/laden können, damit Demus ohne Codex weitere Welten gestalten kann.
+- ⬜ Alte `custom_level.json` kompatibel halten und Classic-Spielstart nicht unbeabsichtigt mit einem Entwurf überschreiben.
+- ⬜ Vorhandene `Sim Start`/`Sim Stop`-Funktion prüfen: derzeit in erster Linie Hintergrundübernahme, noch kein unabhängiger echter Spieltest.
 - ⬜ Bestehenden Editor grundlegend erweitern.
 - ⬜ Eigenen großen Editor-Bildschirm entwickeln.
 - ⬜ Level Studio über die Entwicklerkonsole öffnen.
@@ -403,7 +409,7 @@
 # 🗺️ ENTWICKLUNGSREIHENFOLGE
 
 **PHASE 1 – AKTUELLE ARBEIT**
-Frost auf main bestätigt; als Nächstes Simulator-Qualität, auffindbare Berichte, gezielte Windows-Spielprobe und Grafikprüfung.
+Frost und Simulator 2.0 Schritt 1 auf `main` bestätigt; als Nächstes Windows-Spielprobe und gezielte Grafikprüfung. Eine kleine Level-Studio-Etappe (benannte Entwürfe) darf vorgezogen werden, damit Demus selbstständig Levels gestalten kann.
 
 **PHASE 2 – EFFECT & WEAPON SYSTEM 2.0**
 Gemeinsame Effektarchitektur, Frost, Feuer, Gift, Sporen, Spezialmunition.
@@ -460,4 +466,4 @@ Das langfristige Ziel ist ein modularer Spielebaukasten, in dem kreative Ideen z
 
 *Gemeinsame Entwicklungs- und Ideentafel von Demus & Irian.*
 
-**Version der Ideenliste: 1.1 – jederzeit erweiterbar.**
+**Version der Ideenliste: 1.2 – jederzeit erweiterbar.**
