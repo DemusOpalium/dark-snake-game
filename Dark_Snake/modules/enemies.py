@@ -41,12 +41,13 @@ class NormalEnemy:
         else:
             self.sprint_dir = (random.choice([-1, 0, 1]), random.choice([-1, 0, 1]))
 
-    def update(self, player_x=None, player_y=None):
+    def update(self, player_x=None, player_y=None, *, movement_factor=1.0):
         current_time = self._frame_time = time.time()
         if not self.sprint_active and random.random() < self.sprint_chance:
             self._start_sprint(current_time, self.sprint_duration, player_x, player_y)
 
         current_speed = self.speed * (self.sprint_speed_multiplier if self.sprint_active else 1)
+        current_speed *= movement_factor
         interval = 1.0 / current_speed
         if current_time - self.last_move >= interval:
             self.last_move = current_time
