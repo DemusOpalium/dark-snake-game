@@ -24,6 +24,7 @@ class AdminPanel:
         ("emoji8.png", "Schadenszone", "Erzeugt dort eine rote, zeitlich begrenzte Schadenszone.", "spawn_damage_zone"),
         ("emoji9.png", "Zufallszone", "Erzeugt sofort eine zufällige Schadens-, Heil- oder Slow-Zone.", "spawn_random_zone"),
         (None, "Bildzeiten", "Zeigt Bildzeiten und Eingabereaktion nach dem Schließen im Spiel.", "toggle_metrics"),
+        (None, "Frost-Test", "Schaltet Frostzonen für bestätigte Feuerballtreffer ein oder aus.", "toggle_frost"),
     )
 
     def __init__(self, game):
@@ -61,7 +62,8 @@ class AdminPanel:
                     self.debug_log(self.status)
                     return False
 
-            self.buttons.append(Button(x, y, 58, 58, "" if filename else "ms", image=image, action=run_action))
+            text = {"toggle_metrics": "ms", "toggle_frost": "F"}.get(method_name, "")
+            self.buttons.append(Button(x, y, 58, 58, text, image=image, action=run_action))
 
     def toggle(self):
         self.active = not self.active
@@ -127,6 +129,10 @@ class AdminPanel:
         state = "aktiviert" if self.game.metrics.toggle() else "deaktiviert"
         return f"Bildzeiten {state}."
 
+    def toggle_frost(self):
+        state = "aktiviert" if self.game.frost.toggle() else "deaktiviert"
+        return f"Frost-Test {state}."
+
     def spawn_bolbu_item(self):
         x, y = self._adjacent_cell()
         self.game.spawn_item_at(ItemType.SPAWN_BOLBU, x, y)
@@ -190,7 +196,9 @@ class AdminPanel:
         now, hovered = time.time(), None
         for index, button in enumerate(self.buttons):
             button.draw(screen)
-            name = self.ACTIONS[index][1]
+            _, name, _, method = self.ACTIONS[index]
+            if method == "toggle_frost":
+                name = f"{name} {'an' if self.game.frost.enabled else 'aus'}"
             label = self.label_font.render(name, True, (245, 245, 245))
             screen.blit(label, (button.rect.centerx - label.get_width() // 2, button.rect.bottom + 3))
             if button.is_hovered:

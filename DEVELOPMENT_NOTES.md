@@ -107,11 +107,19 @@ Eine niedrige Zahl kann eine kleine Belohnung geben. Eine hohe Zahl kann ein gut
 | --- | --- |
 | Waffenprofil | Deklarative Daten für Projektilbild, Schadensquelle, Trefferaktion und optionales Zonenprofil. Die bestehende Projektillogik behält Tempo, Takt und Zielwahl. |
 | Trefferereignis | Ein bestätigter Treffer enthält Position, Quelle und Ziel. Eine optionale Trefferaktion erzeugt höchstens eine Zone pro Projektil. Direktschaden und Zonenschaden erhalten getrennte Tests. |
-| Frost | Ein sichtbarer Radius hinter den Figuren. Eine kurze, konfigurierbare Verlangsamung der Gegner, zunächst höchstens fünf Sekunden. Ein erneuter Treffer verlängert bis zum Limit, statt Multiplikatoren zu stapeln. |
+| Frost | Der Entwickler-Test erzeugt auf bestätigte Feuerballtreffer eine sichtbare Zone hinter den Figuren. Überlappende Zonen verlangsamen Gegner mit demselben Faktor wie eine einzelne Zone. |
 | Feuer | Ein sichtbarer Radius mit getaktetem Schaden und einem Abklingintervall je Ziel. Ein Gegner erhält maximal einen Schaden pro Tick und Zone. Vor einem Prototyp Grenzwerte für Überlappung und Lebensdauer festlegen. |
 | Multischuss | Bestehendes Auto-Ziel und bestehende Zusatzschüsse als eigene Auflösung beibehalten. Den Zeitpunkt des Zurücksetzens vor einem Umbau ausdrücklich mit Tests festschreiben. |
 
 Das vorhandene AoE-System liefert Radius, Lebensdauer und Darstellung. Die vorhandene Wirkung ist überwiegend auf Spielfiguren ausgelegt. Vor dem ersten Waffenprototyp Zielgruppe und Schadensintervall klar abtrennen. `EffectManager` erhält die sichtbare Wirkung, während die Spiellogik Treffer und Status entscheidet. Dieses Modell erlaubt später Sporenwolken, Frostmyzel und Pilzgegner. Dynamische Wände und Myzel-Netzwerke gehören zur Raster- und Kollisionslogik. Bossmechaniken können dieselben Trefferereignisse verwenden. Es ist kein zusätzlicher Spielmodus erforderlich, um diese Schnittstellen zu testen.
+
+### Frost-Prototyp im Entwickler-Test
+
+Der Schalter **Frost-Test** im Admin-Menü startet bei jedem Programmstart ausgeschaltet. Jeder bestätigte Feuerballtreffer kann bei eingeschaltetem Test eine Zone am Einschlag erzeugen. Die **Spieltestwerte** sind zwei Rasterzellen Radius, drei Sekunden Dauer und 30 Prozent langsamere Rasterbewegung für Standardgegner und Bolbu. Der Faktor ist auch bei mehreren gleichzeitig aktiven Zonen 0,7. Die Zone folgt der Zeitbasis der Welteffekte. Abgelaufene Zonen verschwinden beim nächsten Spiel-Update, auch nach einer Pause. Das Ausschalten des Tests und ein Rundenneustart räumen die Zonen auf.
+
+1. Im Einzelspiel mit ausgeschaltetem Frost einen Gegner per Feuerball treffen. Beim Treffer erscheint die gewohnte Explosion. Die Gegner bewegen sich wie im Classic-Modus.
+2. Mit **Tab** das Admin-Menü öffnen und **Frost-Test** einschalten. Optional dort ein **Bolbu-Item** ablegen, das Menü schließen und das Item einsammeln. Einen Gegner mit der Feuerballtaste treffen, standardmäßig mit **Leertaste**. Am Einschlag sollte eine blaue Zone hinter den Figuren erscheinen. Ein Fehlschuss lässt die Spielfläche frei.
+3. Einen Standardgegner und Bolbu innerhalb und außerhalb der Zone beobachten. Zwei Treffer in kurzer Folge nahe beieinander erzeugen überlappende Zonen. Im Überlappungsbereich gilt derselbe Bewegungsfaktor wie in einer einzelnen Zone. Nach ungefähr drei Sekunden endet die Verlangsamung, sobald keine aktive Zone den Gegner mehr erfasst.
 
 ## Vorgeschlagene nächste Phase
 
