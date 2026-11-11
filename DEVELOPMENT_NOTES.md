@@ -121,6 +121,29 @@ Der Schalter **Frost-Test** im Admin-Menü startet bei jedem Programmstart ausge
 2. Mit **Tab** das Admin-Menü öffnen und **Frost-Test** einschalten. Optional dort ein **Bolbu-Item** ablegen, das Menü schließen und das Item einsammeln. Einen Gegner mit der Feuerballtaste treffen, standardmäßig mit **Leertaste**. Am Einschlag sollte eine blaue Zone hinter den Figuren erscheinen. Ein Fehlschuss lässt die Spielfläche frei.
 3. Einen Standardgegner und Bolbu innerhalb und außerhalb der Zone beobachten. Zwei Treffer in kurzer Folge nahe beieinander erzeugen überlappende Zonen. Im Überlappungsbereich gilt derselbe Bewegungsfaktor wie in einer einzelnen Zone. Nach ungefähr drei Sekunden endet die Verlangsamung, sobald keine aktive Zone den Gegner mehr erfasst.
 
+## Entwickler-Simulator 2.0 – Schritt 1
+
+Der bestehende Simulator steuert zehn Szenarien mit einem reproduzierbaren Seed und 60 Spiel-Updates pro virtueller Sekunde. Die Oberfläche startet dafür einen eigenen Prozess mit Pause, Fortschritt und Abbruch. Die bisherigen Berichte erfassen Läufe, Spielzeit, Ereignisse und Ausnahmen. Das Speichern in der Oberfläche erforderte einen Klick, und die erfassten Ereignisse waren keine Spielregelprüfungen.
+
+Die Oberfläche speichert jetzt nach Abschluss automatisch ein TXT/JSON-Paar und zeigt den letzten Bericht sowie seinen Ordner an. **Berichtsordner öffnen** öffnet diesen Ordner unter Windows. Die entpackte EXE bevorzugt `Entwicklerberichte` neben sich. Bei fehlenden Schreibrechten und beim Start aus dem Quellcode liegen die Berichte in `~/.dark-snake/Entwicklerberichte`. Das temporäre PyInstaller-Verzeichnis wird beim Speichern ausgeschlossen. Zeitstempel, Seed und bei Bedarf eine laufende Nummer halten die Dateinamen eindeutig.
+
+Pro Batch laufen die passenden Prüfungen in kurzen eigenen Spielinstanzen mit virtueller Zeit:
+
+| Ausgewählte Szenarien | Spielregelprüfung |
+| --- | --- |
+| `1p` | Ein blockierter Eigenkörperzug kostet zunächst keine HP und kein Leben. Pause zählt nicht mit. Nach drei aktiven Sekunden folgt ein Lebensverlust mit Respawn. |
+| `boss`, `boss_final_fireball` | Feuerballschaden senkt die Boss-HP. Der tödliche Treffer beendet den Kampf und vergibt die normale Prämie einmal. |
+| `2p`, `boss`, `projectiles` | Ein klassisches Bossprojektil verursacht einmal 10 HP Schaden pro getroffenem Spieler. |
+| `projectiles` | Ein bestätigter Feuerballtreffer erzeugt eine Frostzone, die nach drei Sekunden endet. Überlappende Zonen verstärken die Verlangsamung eines Standardgegners nicht. |
+
+Der Bericht trennt bestandene, fehlgeschlagene und nicht ausgeführte Spielregelprüfungen von technischen Ausnahmen, Zeitüberschreitungen und Abbrüchen. Die Probe mit `--scenario portal` führt alle fünf Spielregelprüfungen als nicht ausgeführt auf. Die gezielten Simulatorprüfungen decken unter anderem Bosskontakt, simultanen Lebensverlust, Bolbus Bewegung im Frost, visuelle Schichtung und Controller-Eingaben noch nicht ab. Bestehende separate Regressionstests bleiben dafür relevant.
+
+### Windows-Spielprobe für die Berichtsverwaltung
+
+1. Die ZIP entpacken, die EXE öffnen und im Hauptmenü **Entwickler** wählen. Das Profil **Smoke** auswählen und einen Batch starten.
+2. Nach Abschluss den letzten Bericht und den angezeigten Pfad prüfen. **Berichtsordner öffnen** wählen und das gleichnamige TXT/JSON-Paar im Explorer prüfen.
+3. Einen zweiten Batch ausführen und beide Paare prüfen. Einen laufenden Batch abbrechen und den Abbruchgrund im Bericht prüfen.
+
 ## Vorgeschlagene nächste Phase
 
 1. Audio und Ebenen unter Windows 11 mit echten Ausgabegeräten prüfen.

@@ -3,32 +3,38 @@
 from __future__ import annotations
 
 import multiprocessing
+import os
 import queue
 import random
 import time
-import traceback
-from pathlib import Path
+from bisect import bisect_right
+from concurrent.futures import ThreadPoolExecutor
 
 import pygame
 
 from config import DARK_GREY, ORANGE, PURPLE, RED, WHITE, WINDOW_HEIGHT, WINDOW_WIDTH
 from developer_simulator import (SCENARIOS, SIMULATION_PROFILES, SimulationControl,
-                                 run_simulation, save_report)
-from modules.resources import user_data_path
-from modules.ui import Button
+                                 failed_simulation_report, run_simulation, save_report)
+from modules.simulation_reports import latest_report, report_directory
 
 
 def simulation_worker(messages, resume_event, cancel_event, options):
     """Process entry point; run_simulation owns its hidden dummy display."""
     control = SimulationControl(resume_event, cancel_event)
+    started_at = time.monotonic()
     try:
         messages.put({"type": "started"})
         report = run_simulation(control=control, progress=messages.put, **options)
-        messages.put({"type": "finished", "report": report,
-                      "cancelled": control.cancelled})
+        messages.put({"type": "finished", "report": report})
     except BaseException as exc:
+        scenarios = options["scenarios"]
+        report = failed_simulation_report(
+            exc, scenarios, options["base_seed"],
+            planned_runs=options["rounds"] * len(scenarios),
+            duration_seconds=time.monotonic() - started_at,
+        )
         messages.put({"type": "fatal", "error": f"{type(exc).__name__}: {exc}",
-                      "traceback": "".join(traceback.format_exception(exc))})
+                      "report": report})
 
 
 class SimulationMenu:
@@ -40,6 +46,9 @@ class SimulationMenu:
     TIMEOUT_SECONDS = 10.0
 
     def __init__(self, game, process_context=None, monotonic=time.monotonic):
+        # A spawned simulation imports this module before its SDL display exists.
+        from modules.ui import Button
+
         self.game = game
         self._context = process_context or multiprocessing.get_context("spawn")
         self._monotonic = monotonic
@@ -49,6 +58,15 @@ class SimulationMenu:
         self.profile_index = 1
         self.process = self.messages = self.resume_event = self.cancel_event = None
         self.report = None
+        self.report_paths = None
+        self.last_report_paths = None
+        self.report_directory = None
+        self.report_notice = None
+        self._report_location_loaded = False
+        self._report_write = None
+        self._leave_after_run = False
+        self._started_at = None
+        self._selected_scenarios = ()
         self.status = "Bereit"
         self.current_scenario = "–"
         self.current_round = self.completed = self.errors = 0
@@ -61,13 +79,19 @@ class SimulationMenu:
         self.focus = 0
 
         scale = WINDOW_HEIGHT / 620
-        w, h, gap = int(260 * scale), int(40 * scale), int(8 * scale)
-        x, y = WINDOW_WIDTH // 2 - w // 2, int(190 * scale)
-        actions = (self.start, self.pause, self.cancel, self.save_report_files, self.back)
-        labels = ("Start", "Pause", "Abbrechen", "Bericht speichern", "Zurück")
-        self.buttons = [Button(x, y + i * (h + gap), w, h, label,
-                               color=RED if i == 2 else PURPLE, action=action)
-                        for i, (label, action) in enumerate(zip(labels, actions))]
+        w, h, gap = int(360 * scale), int(40 * scale), int(8 * scale)
+        x, y = WINDOW_WIDTH // 2 - w - gap // 2, int(190 * scale)
+        controls = (
+            ("Start", self.start), ("Pause", self.pause),
+            ("Abbrechen", self.cancel), ("Bericht speichern", self.save_report_files),
+            ("Berichtsordner öffnen", self.open_report_directory), ("Zurück", self.back),
+        )
+        self.buttons = []
+        for i, (label, action) in enumerate(controls):
+            row, column = divmod(i, 2)
+            self.buttons.append(Button(x + column * (w + gap), y + row * (h + gap),
+                                       w, h, label, color=RED if i == 2 else PURPLE,
+                                       action=action))
 
     @property
     def running(self):
@@ -75,15 +99,16 @@ class SimulationMenu:
 
     def start(self):
         self.poll()
-        if self.running:
+        if self.running or self._report_write is not None:
             return
         self._dispose_worker()
-        self.report = None
+        self.report = self.report_paths = self.report_notice = None
         self.status = "Läuft"
         self.current_scenario = self.SCENARIOS[self.scenario_index]
         self.current_round = self.completed = self.errors = 0
         chosen = self.SCENARIOS[self.scenario_index]
         selected = SCENARIOS if chosen == "all" else (chosen,)
+        self._selected_scenarios = selected
         self.total = self.rounds * len(selected)
         self.last_error = None
         self.messages = self._context.Queue()
@@ -99,11 +124,11 @@ class SimulationMenu:
             target=simulation_worker,
             args=(self.messages, self.resume_event, self.cancel_event, options),
             name="DarkSnakeSimulation", daemon=True)
-        self.last_message_at = self._monotonic()
+        self._started_at = self.last_message_at = self._monotonic()
         self.process.start()
 
     def pause(self):
-        if not self.running or not self.resume_event:
+        if not self.running or self.cancel_event.is_set():
             return
         if self.resume_event.is_set():
             self.resume_event.clear()
@@ -114,22 +139,30 @@ class SimulationMenu:
             self.last_message_at = self._monotonic()
 
     def cancel(self):
-        if not self.process:
+        self.poll()
+        if not self.running or self.cancel_event.is_set():
             return
-        if self.cancel_event:
-            self.cancel_event.set()
-        if self.resume_event:
-            self.resume_event.set()
-        self.status = "Abgebrochen"
-        self._stop_worker()
+        self.cancel_event.set()
+        self.resume_event.set()
+        self.last_message_at = self._monotonic()
+        self.status = "Abbruch läuft"
 
     def back(self):
-        self.cancel()
+        if self.process:
+            self._leave_after_run = True
+            self.cancel()
+        else:
+            self._return_to_menu()
+
+    def _return_to_menu(self):
+        self._leave_after_run = False
         self._reset_run_state()
         self.game.set_state(self.game.intro_state())
 
     def poll(self):
         """Consume worker messages; call once per UI frame."""
+        self._poll_report_write()
+        worker_exited = self.process is not None and not self.process.is_alive()
         if self.messages:
             while True:
                 try:
@@ -153,55 +186,58 @@ class SimulationMenu:
                     self.bot_action = message.get("bot_action", "–")
                     self.current_game_state = message.get("game_state", "–")
                 elif kind == "fatal":
-                    self._record_worker_failure("Worker-Fehler", message["error"],
-                                                message["traceback"])
                     self._stop_worker()
+                    self._finish_run(message["report"], "Worker-Fehler", message["error"])
                     return
                 elif kind == "finished":
-                    self.report = message["report"]
-                    complete = self.report.get("completion", {}).get("complete", False)
-                    if message["cancelled"]:
-                        self.status = "Abgebrochen"
-                    elif complete:
-                        self.status = "Fertig"
-                    else:
-                        self.status = "Fehler"
-                        self.last_error = (
-                            "Nicht alle ausgewählten Szenarien wurden vollständig "
-                            "ausgeführt"
-                        )
                     self._dispose_worker()
+                    self._finish_run(message["report"])
                     return
 
         paused = self.resume_event is not None and not self.resume_event.is_set()
         if (self.running and not paused and self.last_message_at is not None and
                 self._monotonic() - self.last_message_at > self.TIMEOUT_SECONDS):
-            self._record_worker_failure("Timeout", "Simulation antwortet nicht",
-                                        "Timeout: Worker lieferte keinen Heartbeat.\n")
+            cancelling = self.cancel_event.is_set()
             self._stop_worker()
-        elif self.process and not self.process.is_alive() and self.report is None:
+            if cancelling:
+                self._record_worker_failure("Abgebrochen", "Worker hat den Abbruch nicht bestätigt.",
+                                            reason="cancelled")
+            else:
+                self._record_worker_failure("Timeout", "Worker lieferte keinen Heartbeat.",
+                                            reason="timeout")
+        elif worker_exited:
             exitcode = getattr(self.process, "exitcode", "unbekannt")
-            self._record_worker_failure(
-                "Worker-Fehler", f"Worker unerwartet beendet (Exitcode {exitcode})",
-                f"Worker beendet; Exitcode={exitcode}\n")
             self._dispose_worker()
+            self._record_worker_failure("Worker-Fehler",
+                                        f"Worker unerwartet beendet (Exitcode {exitcode})")
 
-    def _record_worker_failure(self, status, cause, stacktrace):
-        """Keep fatal/timeout details exportable instead of discarding a run."""
-        self.status = status
-        self.errors += 1
-        self.last_error = cause
-        seed = self.base_seed if self.base_seed is not None else 0
-        failure = {"seed": seed, "scenario": self.current_scenario,
-                   "round": self.current_round, "status": status, "cause": cause,
-                   "game_time": 0.0, "game_state": "not_initialized",
-                   "level": 0, "score": 0, "exception": status,
-                   "code_line": "simulation_worker", "stacktrace": stacktrace}
-        key = f"{status}@simulation_worker"
-        self.report = {"configuration": {"base_seed": seed}, "runs": [failure],
-                       "failure_groups": {key: [failure]}}
-        with open(user_data_path("simulation-traceback.txt"), "a", encoding="utf-8") as output:
-            output.write(stacktrace)
+    def _record_worker_failure(self, status, cause, *, reason="exception"):
+        report = failed_simulation_report(
+            RuntimeError(cause) if reason == "exception" else cause,
+            self._selected_scenarios, self.base_seed, reason=reason,
+            planned_runs=self.total, duration_seconds=self._monotonic() - self._started_at,
+        )
+        self._finish_run(report, status, cause)
+
+    def _finish_run(self, report, status=None, cause=None):
+        self.report = report
+        outcome = report["outcome"]
+        labels = {
+            "completed": "Fertig",
+            "incomplete": "Fehler",
+            "rule_failed": "Regelprüfung fehlgeschlagen",
+            "exception": "Fehler",
+            "timeout": "Timeout",
+            "cancelled": "Abgebrochen",
+        }
+        self.status = status or labels[outcome["status"]]
+        self.errors = report["summary"]["technical_exceptions"]
+        self.last_error = cause or (
+            outcome["reason"] if outcome["status"] not in ("completed", "cancelled") else None
+        )
+        self.save_report_files()
+        if self._leave_after_run:
+            self._return_to_menu()
 
     def _stop_worker(self):
         process = self.process
@@ -219,7 +255,7 @@ class SimulationMenu:
         self.last_message_at = None
 
     def _reset_run_state(self):
-        self.report = None
+        self.report = self.report_paths = None
         self.status = "Bereit"
         self.current_scenario = "–"
         self.current_round = self.completed = self.errors = 0
@@ -228,17 +264,83 @@ class SimulationMenu:
         self.bot_action = self.current_game_state = "–"
 
     def save_report_files(self):
-        if not self.report:
-            self.status = "Fehler"
-            self.last_error = "Noch kein Bericht vorhanden"
+        if self._report_write is not None:
             return
-        scenario = self.SCENARIOS[self.scenario_index]
-        directory = user_data_path("")
-        paths = save_report(self.report, Path(directory), scenario)
-        self.status = f"Gespeichert: {paths[0].name}, {paths[1].name}"
+        if not self.report:
+            self.report_notice = "Noch kein Bericht vorhanden."
+            return
+        if self.report_paths is not None:
+            self.report_notice = "Dieser Bericht ist bereits gespeichert."
+            return
+        scenarios = self.report["configuration"]["scenarios"]
+        scenario = scenarios[0] if len(scenarios) == 1 else "all"
+        self.report_notice = "Bericht wird gespeichert …"
+        writer = ThreadPoolExecutor(max_workers=1, thread_name_prefix="SnakeReport")
+        self._report_write = writer.submit(save_report, self.report, scenario=scenario)
+        writer.shutdown(wait=False)
+
+    def _poll_report_write(self):
+        future = self._report_write
+        if future is None or not future.done():
+            return
+        self._report_write = None
+        try:
+            paths = future.result()
+        except Exception as error:
+            self.report_notice = f"Bericht konnte nicht gespeichert werden. {error}"
+            return
+        if self.report is not None:
+            self.report_paths = paths
+        self.last_report_paths = paths
+        self.report_directory = paths[0].parent
+        self._report_location_loaded = True
+        self.report_notice = "TXT und JSON gespeichert."
+
+    def _load_report_location(self):
+        if self._report_location_loaded:
+            return
+        self._report_location_loaded = True
+        try:
+            self.last_report_paths = latest_report()
+            self.report_directory = (self.last_report_paths[0].parent if self.last_report_paths
+                                     else report_directory())
+        except OSError as error:
+            self.report_notice = f"Berichtsordner nicht verfügbar. {error}"
+
+    def open_report_directory(self):
+        self._poll_report_write()
+        self._load_report_location()
+        if self.report_directory is None:
+            return
+        startfile = getattr(os, "startfile", None)
+        if startfile is None:
+            self.report_notice = "Berichtsordner bitte über den angezeigten Pfad öffnen."
+            return
+        try:
+            startfile(self.report_directory)
+        except OSError as error:
+            self.report_notice = f"Berichtsordner konnte nicht geöffnet werden. {error}"
 
     def save_text(self): self.save_report_files()
     def save_json(self): self.save_report_files()
+
+    def _report_lines(self):
+        yield f"Status: {self.status}"
+        if self.last_error:
+            yield f"Letzter Fehler: {self.last_error}"
+        if self.report:
+            summary = self.report["summary"]
+            yield (
+                f"Regelprüfungen: {summary['rule_checks_passed']} bestanden, "
+                f"{summary['rule_checks_failed']} fehlgeschlagen, "
+                f"{summary['rule_checks_not_run']} nicht ausgeführt"
+            )
+            yield f"Zeitüberschreitungen: {summary['timeouts']}   Abbrüche: {summary['cancelled']}"
+        yield f"Berichtsordner: {self.report_directory or '–'}"
+        latest = f"{self.last_report_paths[0].stem} (.txt und .json)" if self.last_report_paths else "–"
+        yield f"Letzter Bericht: {latest}"
+        if self.report_notice:
+            yield self.report_notice
 
     def handle_event(self, event):
         self.poll()
@@ -266,6 +368,7 @@ class SimulationMenu:
 
     def draw(self, screen):
         self.poll()
+        self._load_report_location()
         scale = WINDOW_HEIGHT / 620
         screen.fill((18, 18, 22))
         title_font = pygame.font.SysFont("Arial", int(32 * scale), bold=True)
@@ -284,7 +387,7 @@ class SimulationMenu:
         pygame.draw.rect(screen, DARK_GREY, bar)
         pygame.draw.rect(screen, ORANGE, (bar.x, bar.y, int(bar.width * progress), bar.height))
         detail = (f"Fortschritt: {self.completed}/{self.total}   Szenario: {self.current_scenario}   "
-                  f"Runde: {self.current_round}   Fehler: {self.errors}")
+                  f"Runde: {self.current_round}   Technische Ausnahmen: {self.errors}")
         screen.blit(font.render(detail, True, WHITE), (int(150 * scale), int(140 * scale)))
         live = f"Bot: {self.bot_action}   GameState: {self.current_game_state}"
         screen.blit(font.render(live, True, WHITE), (int(150 * scale), int(164 * scale)))
@@ -293,8 +396,16 @@ class SimulationMenu:
             button.draw(screen)
             if i != self.focus:
                 button.is_hovered = False
-        screen.blit(font.render(f"Status: {self.status}", True, WHITE),
-                    (int(150 * scale), int(500 * scale)))
-        error = "Letzter Fehler: " + (self.last_error or "–")
-        screen.blit(font.render(error[:100], True, WHITE),
-                    (int(150 * scale), int(530 * scale)))
+        x, y = int(40 * scale), int(350 * scale)
+        width = screen.get_width() - 2 * x
+        line_height = font.get_linesize()
+        for detail in self._report_lines():
+            for line in detail.splitlines():
+                while line and y + line_height <= screen.get_height():
+                    end = bisect_right(range(1, len(line) + 1), width,
+                                       key=lambda length: font.size(line[:length])[0])
+                    end = max(1, end)
+                    screen.blit(font.render(line[:end], True, WHITE), (x, y))
+                    y += line_height
+                    line = line[end:]
+            y += int(4 * scale)

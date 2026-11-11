@@ -9,6 +9,9 @@ import io
 import json
 import os
 import random
+import re
+import subprocess
+import sys
 import threading
 import time
 import traceback
@@ -17,6 +20,10 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
 from unittest.mock import patch
+
+from modules.resources import application_root, installation_root
+from modules.simulation_checks import run_rule_checks
+from modules.simulation_reports import save_reports, unique_report_paths
 
 TICK_SECONDS = 1.0 / 60.0
 SIMULATION_PROFILES = {"smoke": 2, "normal": 60, "stress": 300}
@@ -310,6 +317,77 @@ def _failure_location(exc: BaseException) -> str:
     return f"{frames[-1].filename}:{frames[-1].lineno}" if frames else "unknown"
 
 
+def _source_commit() -> str | None:
+    try:
+        if getattr(sys, "frozen", False):
+            embedded = application_root() / "build-commit.txt"
+            if embedded.is_file():
+                value = embedded.read_text(encoding="ascii").strip()
+            else:
+                manifest = installation_root() / "BUILD.json"
+                value = json.loads(manifest.read_text(encoding="utf-8")).get("source_commit")
+        else:
+            value = subprocess.check_output(
+                ["git", "-C", str(installation_root()), "rev-parse", "HEAD"],
+                stderr=subprocess.DEVNULL, timeout=2, text=True,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            ).strip()
+    except (OSError, subprocess.SubprocessError, ValueError, AttributeError):
+        return None
+    return value if isinstance(value, str) and re.fullmatch(r"[0-9a-f]{40}", value) else None
+
+
+def _report_metadata() -> dict:
+    return {
+        "created_at": datetime.now().astimezone().isoformat(timespec="seconds"),
+        "source_commit": _source_commit(),
+    }
+
+
+def _check_counts(checks: list[dict], scenario_exceptions: int = 0) -> dict:
+    counts = Counter(check["status"] for check in checks)
+    return {
+        "rule_checks_passed": counts["passed"],
+        "rule_checks_failed": counts["failed"],
+        "rule_checks_not_run": counts["not_run"],
+        "rule_checks_exceptions": counts["exception"],
+        "technical_exceptions": scenario_exceptions + counts["exception"],
+    }
+
+
+def failed_simulation_report(exc, scenarios, base_seed, *, reason="exception",
+                             planned_runs=0, duration_seconds=0.0) -> dict:
+    """Report a failure outside the per-scenario loop in the same file format."""
+    names = list(SCENARIOS if scenarios is None else scenarios)
+    detail = f"{type(exc).__name__}: {exc}" if isinstance(exc, BaseException) else str(exc)
+    exception = type(exc).__name__ if isinstance(exc, BaseException) else "WorkerError"
+    location = _failure_location(exc) if isinstance(exc, BaseException) else "simulation_worker"
+    stack = "".join(traceback.format_exception(exc)) if isinstance(exc, BaseException) else None
+    failure = {
+        "seed": base_seed, "scenario": names[0] if len(names) == 1 else "all",
+        "game_time": 0.0, "game_state": "not_initialized", "level": 0, "score": 0,
+        "completed": False, "completion_reason": reason, "cause": detail,
+        "exception": exception if reason == "exception" else None,
+        "code_line": location, "stacktrace": stack,
+    }
+    checks = run_rule_checks(names, base_seed, skip_reason=detail)
+    return {
+        "metadata": _report_metadata(),
+        "configuration": {"base_seed": base_seed, "scenarios": names},
+        "summary": {
+            **_check_counts(checks, int(reason == "exception")),
+            "errors": int(reason == "exception"), "timeouts": int(reason == "timeout"),
+            "cancelled": int(reason == "cancelled"), "duration_seconds": duration_seconds,
+        },
+        "outcome": {"status": reason, "reason": detail},
+        "abort_reason": detail,
+        "runs": [failure], "seeds": [], "rule_checks": checks,
+        "failure_groups": {f"{exception}@{location}": [failure]} if reason == "exception" else {},
+        "completion": {"planned_runs": planned_runs, "completed_runs": 0,
+                       "executed_runs": 0, "complete": False},
+    }
+
+
 def _snapshot(game, bot, seed, scenario, round_number, reason, ticks, elapsed,
               states, events, collisions, exception=None, profile="custom",
               event_counts=None, effects=None, boss_before=None, portal_before=None):
@@ -526,7 +604,29 @@ def run_simulation(rounds: int = 3, steps: int = 120, step_seconds: float = 1.0,
     totals = Counter()
     for run in serialized: totals.update(run["event_counts"])
     action_counts = Counter(action for run in serialized for action in run["bot_actions"])
+    skip_reason = None
+    if control.cancelled:
+        skip_reason = "Simulation abgebrochen"
+    elif not valid_runs:
+        skip_reason = "Kein Szenario vollständig ausgeführt"
+    rule_checks = run_rule_checks(names, first_seed, game_factory=Game,
+                                  clock_factory=SimulatedClock, skip_reason=skip_reason)
+    check_counts = _check_counts(rule_checks, reasons["exception"])
+    complete = bool(planned) and valid_runs == planned and not control.cancelled
+    if control.cancelled:
+        status, outcome_reason = "cancelled", "Simulation abgebrochen"
+    elif check_counts["technical_exceptions"]:
+        status, outcome_reason = "exception", "Technische Ausnahmen aufgetreten"
+    elif reasons["timeout"]:
+        status, outcome_reason = "timeout", "Maximale Simulationszeit überschritten"
+    elif check_counts["rule_checks_failed"]:
+        status, outcome_reason = "rule_failed", "Spielregelprüfungen fehlgeschlagen"
+    elif not complete:
+        status, outcome_reason = "incomplete", "Szenarien unvollständig"
+    else:
+        status, outcome_reason = "completed", "Ausgewählte Szenarien abgeschlossen"
     return {
+        "metadata": _report_metadata(),
         "configuration": {"rounds_per_scenario": rounds, "rounds": rounds, "steps": steps,
                           "tick_seconds": TICK_SECONDS, "fast_forward_factor": step_seconds,
                           "step_seconds": step_seconds, "base_seed": first_seed,
@@ -534,6 +634,7 @@ def run_simulation(rounds: int = 3, steps: int = 120, step_seconds: float = 1.0,
                           "profile_seconds": SIMULATION_PROFILES.get(profile_name),
                           "perception_radius": perception_radius},
         "summary": {"total_runs": len(serialized), "successful_runs": successful,
+                    **check_counts,
                     "planned_runs": planned, "executed_runs": len(serialized),
                     "successful_time_limit_runs": successful,
                     "expected_game_overs": reasons["expected_game_over"],
@@ -556,27 +657,50 @@ def run_simulation(rounds: int = 3, steps: int = 120, step_seconds: float = 1.0,
                     "portal_statistics": {"starts": totals["portal_starts"], "ends": totals["portal_ends"]},
                     "effect_statistics": dict(Counter(effect for run in serialized for effect in run["effects_triggered"]))},
         "seeds": [run["seed"] for run in serialized], "runs": serialized,
+        "rule_checks": rule_checks,
+        "outcome": {"status": status, "reason": outcome_reason},
+        "abort_reason": outcome_reason if status in ("cancelled", "timeout") else None,
         "failure_groups": groups,
         "completion": {"planned_runs": planned, "completed_runs": valid_runs,
-                       "executed_runs": len(serialized),
-                       "complete": len(serialized) == planned and not failures and
-                                   all(run["simulation_ticks"] > 0 and run["bot_actions"] for run in serialized)},
+                       "executed_runs": len(serialized), "complete": complete},
     }
 
 
 def format_text_report(report: dict) -> str:
     summary = report.get("summary", {})
+    metadata = report.get("metadata", {})
+    outcome = report.get("outcome", {})
+    scenarios = report["configuration"].get("scenarios", [])
+    technical = summary.get("technical_exceptions",
+                            sum(len(group) for group in report["failure_groups"].values()))
     lines = ["Dark Snake – Bot-Batch-Simulationsbericht",
+             f"Erstellt: {metadata.get('created_at') or 'unbekannt'}",
+             f"Quell-Commit: {metadata.get('source_commit') or 'unbekannt'}",
+             f"Szenarien: {', '.join(scenarios) or 'unbekannt'}",
+             f"Ergebnis: {outcome.get('reason', 'unbekannt')}",
              f"Läufe: {len(report['runs'])}",
-             f"Fehler: {sum(len(group) for group in report['failure_groups'].values())}",
+             f"Technische Ausnahmen: {technical}",
+             f"Spielregelprüfungen bestanden: {summary.get('rule_checks_passed', 0)}",
+             f"Spielregelprüfungen fehlgeschlagen: {summary.get('rule_checks_failed', 0)}",
+             f"Spielregelprüfungen nicht ausgeführt: {summary.get('rule_checks_not_run', 0)}",
              f"Basis-Seed: {report['configuration']['base_seed']}",
              f"Vollständig: {report.get('completion', {}).get('completed_runs', 0)}/{report.get('completion', {}).get('planned_runs', len(report['runs']))}",
+             f"Reale Dauer: {summary.get('duration_seconds', 0):.3f} s",
              f"Virtuelle Spielzeit: {summary.get('virtual_game_time', 0):.3f} s",
              f"Zeitlimit überlebt: {summary.get('successful_time_limit_runs', 0)}",
              f"Erwartete Game Overs: {summary.get('expected_game_overs', 0)}",
              f"Natürliche Game Overs: {summary.get('natural_game_overs', 0)}",
              f"Timeouts: {summary.get('timeouts', 0)}",
-             f"Abbrüche: {summary.get('cancelled', 0)}"]
+             f"Abgebrochene Läufe: {summary.get('cancelled', 0)}"]
+    if report.get("abort_reason"):
+        lines.append(f"Abbruchgrund: {report['abort_reason']}")
+    check_labels = {"passed": "bestanden", "failed": "fehlgeschlagen",
+                    "not_run": "nicht ausgeführt", "exception": "technische Ausnahme"}
+    for check in report.get("rule_checks", []):
+        lines.append(f"{check['label']} ({check['id']}, Seed={check['seed']}): "
+                     f"{check_labels[check['status']]} – {check['detail']}")
+        if check.get("stacktrace"):
+            lines.append(check["stacktrace"].rstrip())
     for run in report["runs"]:
         # Die erste Zeile bleibt mit alten Berichten/Analysewerkzeugen kompatibel.
         lines.append("Seed={seed} Szenario={scenario} Spielzeit={game_time:.3f} "
@@ -591,26 +715,10 @@ def format_text_report(report: dict) -> str:
     return "\n".join(lines) + "\n"
 
 
-def unique_report_paths(directory: Path, scenario: str, seed: int, now=None):
-    """Reserviert nichts, liefert aber ein gemeinsames, noch freies TXT/JSON-Paar."""
-    stamp = (now or datetime.now()).strftime("%Y-%m-%d_%H-%M-%S")
-    slug = "all" if scenario in ("all", "ALL", "alle") else scenario.lower().replace("_", "-")
-    stem = f"simulation-report-{slug}-{stamp}-seed-{seed}"
-    suffix = 0
-    while True:
-        numbered = stem if suffix == 0 else f"{stem}-{suffix}"
-        paths = (directory / f"{numbered}.txt", directory / f"{numbered}.json")
-        if not any(path.exists() for path in paths): return paths
-        suffix += 1
-
-
-def save_report(report: dict, directory: Path, scenario="all"):
-    directory.mkdir(parents=True, exist_ok=True)
-    txt, json_path = unique_report_paths(directory, scenario,
-                                         report["configuration"]["base_seed"])
-    txt.write_text(format_text_report(report), encoding="utf-8")
-    json_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
-    return txt, json_path
+def save_report(report: dict, directory: Path | None = None, scenario="all"):
+    return save_reports(format_text_report(report), json.dumps(report, ensure_ascii=False, indent=2),
+                        scenario=scenario, seed=report["configuration"]["base_seed"],
+                        directory=directory)
 
 
 def main(argv=None) -> int:
@@ -619,12 +727,30 @@ def main(argv=None) -> int:
     parser.add_argument("--speed", "--step-seconds", dest="speed", type=float, default=1.0)
     parser.add_argument("--profile", choices=SIMULATION_PROFILES, default="normal")
     parser.add_argument("--seed", type=int); parser.add_argument("--scenario", action="append", choices=SCENARIOS)
-    parser.add_argument("--output", type=Path, default=Path.cwd())
+    parser.add_argument("--output", type=Path, help="Berichtsordner überschreiben")
     args = parser.parse_args(argv)
-    report = run_simulation(args.rounds, args.steps, args.speed, args.seed, args.scenario,
-                            profile=args.profile)
-    save_report(report, args.output, "all" if not args.scenario or len(args.scenario) > 1 else args.scenario[0])
-    return 1 if report["failure_groups"] else 0
+    if not 1 <= args.rounds <= 99:
+        parser.error("--rounds muss zwischen 1 und 99 liegen")
+    started = time.monotonic()
+    seed = random.SystemRandom().randrange(2**32) if args.seed is None else args.seed
+    planned = args.rounds * len(args.scenario or SCENARIOS)
+    try:
+        report = run_simulation(args.rounds, args.steps, args.speed, seed, args.scenario,
+                                profile=args.profile)
+    except KeyboardInterrupt:
+        report = failed_simulation_report("Per Tastatur abgebrochen", args.scenario, seed,
+                                          reason="cancelled", planned_runs=planned,
+                                          duration_seconds=time.monotonic() - started)
+    except Exception as exc:
+        report = failed_simulation_report(exc, args.scenario, seed, planned_runs=planned,
+                                          duration_seconds=time.monotonic() - started)
+    scenario = args.scenario[0] if args.scenario and len(args.scenario) == 1 else "all"
+    try:
+        save_report(report, args.output, scenario)
+    except OSError as exc:
+        print(f"Bericht konnte nicht gespeichert werden: {exc}", file=sys.stderr)
+        return 1
+    return int(report["outcome"]["status"] != "completed")
 
 
 if __name__ == "__main__": raise SystemExit(main())

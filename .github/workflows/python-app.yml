@@ -46,7 +46,8 @@ jobs:
           PYTHONHASHSEED: '0'
         run: |
           $env:SOURCE_DATE_EPOCH = git log -1 --format=%ct
-          python -m PyInstaller --onefile --windowed --version-file scripts/windows_version_info.txt --hidden-import developer_simulator --add-data "Dark_Snake/assets;assets" --add-data "Dark_Snake/modules;modules" Dark_Snake/main.py
+          Set-Content -LiteralPath build-commit.txt -Value $env:GITHUB_SHA -Encoding ascii
+          python -m PyInstaller --onefile --windowed --version-file scripts/windows_version_info.txt --hidden-import developer_simulator --add-data "Dark_Snake/assets;assets" --add-data "Dark_Snake/modules;modules" --add-data "build-commit.txt;." Dark_Snake/main.py
 
       - name: Verify EXE identity fields
         run: |
