@@ -144,6 +144,14 @@ Der Bericht trennt bestandene, fehlgeschlagene und nicht ausgeführte Spielregel
 2. Nach Abschluss den letzten Bericht und den angezeigten Pfad prüfen. **Berichtsordner öffnen** wählen und das gleichnamige TXT/JSON-Paar im Explorer prüfen.
 3. Einen zweiten Batch ausführen und beide Paare prüfen. Einen laufenden Batch abbrechen und den Abbruchgrund im Bericht prüfen.
 
+## Level Studio 1.1 – Bestandsaufnahme
+
+Auf `main` bei `2feda6b` öffnet F2 den vorhandenen Rastereditor. Er bietet 495 Tile-Grafiken, Favoriten, Füllwerkzeuge sowie Rückgängig und Wiederholen. Die Dateiauswahl besteht aus Speichern und Laden einer einzigen `custom_level.json`. Das bestehende Format ist ein Raster mit Kachelnamen oder `null`.
+
+- Speichern überschreibt dieselbe Datei sofort. Laden prüft das Raster, fragt bei Änderungen aber nicht nach und vermischt die Historie zweier Karten. F2 und Tab schließen den Editor ohne Schutz.
+- **Sim Start** speichert die Karte und übergibt dieselbe Liste als Hintergrund an Classic. **Sim Stop** setzt nur ein Flag. Im Editor läuft kein Spieltest. Ein späterer Classic-Start lädt die Datei automatisch.
+- Die Tile-Auswahl ändert sich beim Zeichnen anhand gehaltener Maustasten. Ein Klick außerhalb der sichtbaren Palette kann eine verdeckte Kachel auswählen. Die Scrollgrenze lässt am Ende viel Leerraum. Rechtsklick malt auf der Karte, und die Randfüllung hat keinen eigenen Undo-Schritt. Transparente Flächen werden beim Zeichnen nicht vollständig erneuert.
+
 ## Vorgeschlagene nächste Phase
 
 1. Audio und Ebenen unter Windows 11 mit echten Ausgabegeräten prüfen.
