@@ -1812,7 +1812,7 @@ class Game:
                 self.level_editor.handle_event(event)
                 continue
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                if self.game_state not in (GameState.GAME, GameState.BOSS_FIGHT):
+                if self.game_state not in (GameState.GAME, GameState.BOSS_FIGHT, GameState.SIMULATION):
                     self.set_state(self.intro_state())
             if self.game_state == GameState.SETTINGS:
                 self.options_menu.handle_event(event)
