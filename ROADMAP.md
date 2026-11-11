@@ -39,8 +39,10 @@
 - ✅ Classic-Kampfregeln, Boss-Schaden und Selbstkollision überarbeitet.
 - ✅ Input 2.0 und erste Performance-Messungen vorhanden.
 - ✅ Frost-Prototyp programmiert und automatisiert getestet.
-- 🔧 Frost aus PR #117 korrekt in den Hauptbranch `main` übernehmen.
-- 🔧 Frost unter Windows tatsächlich im Spiel testen.
+- ✅ Frost aus PR #117 über PR #119 in den Hauptbranch `main` übernommen (11.11.2026).
+- ✅ Erste Windows-Spielprobe: blaue Frostzone sichtbar, Ablauf nach ungefähr 3 Sekunden bestätigt.
+- ✅ PR #119: 223 Headless-Tests, 30 Smoke-Simulationen, Windows-CI und CodeQL grün.
+- ⬜ Erweiterte manuelle Frost-Spielprobe (Standardgegner, Bolbu, Überlappung, 2P) bleibt offen.
 - 🔧 Vorhandene Boss- und Kampfmechaniken überprüfen.
 - 🔧 Entwickler-Simulator und Testberichte verbessern.
 - 🔧 Grafik- und Ressourcenverwaltung untersuchen.
@@ -342,10 +344,66 @@
 
 ---
 
+## 13 · TITELMENÜ 2.0 – GOTHIC ARCADE
+
+**Ziel:** Das neue DARK-Snake-Titelmotiv wird zum hochwertigen, gut bedienbaren Hauptmenü (Flipper-/Gothic-Design).
+
+- ⬜ Neues Titelbild als Hintergrund verwenden, sobald die Datei im Repository vorliegt.
+- ⬜ Grafik und interaktive Buttons strikt trennen (keine fest eingebrannten Schaltflächen).
+- ⬜ Große, deutlich sichtbare Hauptaktionen **1 Spieler** und **2 Spieler**.
+- ⬜ Weitere Aktionen wie Optionen, Steuerung, Simulation und Zurück/Beenden sinnvoll auf dem Motiv verteilen.
+- ⬜ Einheitliche verzierte Gothic-Rahmen, ausreichend Kontrast und gut lesbare Beschriftungen.
+- ⬜ Maus-Hover, Tastatur-/Controller-Fokus und gedrückten Zustand sichtbar unterscheiden.
+- ⬜ Kurzes Aufleuchten beim Aktivieren; Eingaben nicht mehrfach auslösen.
+- ⬜ Neue Menüoberfläche weiterhin mit Input 2.0, Maus und Controllern nutzbar halten.
+- ⬜ Menü erst nach echter Spielprobe übernehmen; bestehende Menünavigation erhalten.
+
+---
+
+## 14 · GO IN GAME – ÜBERGANGS- UND LEVEL-STARTBILDSCHIRM
+
+**Ziel:** Eine bewusst gestaltete Tür zwischen Menü, Level, Bosskampf und Spielwelt.
+
+- ⬜ Separaten Übergangszustand mit frei wählbarem Themenbild und optionaler Animation schaffen.
+- ⬜ Levelname, kurze Einleitung, Hinweise oder Bossinformationen anzeigen.
+- ⬜ Während des Übergangs Spielbewegung, Schaden und aktive Kampfzeit sicher anhalten.
+- ⬜ Auf Spielerfreigabe warten (z. B. **Spiel starten / Weiter**), inklusive Tastatur und Controller.
+- ⬜ Übergang für Spielstart und Levelwechsel wiederverwenden; Bossintro optional später.
+- ⬜ Benötigte Assets und Leveldaten möglichst vor Spielbeginn vorbereiten; Ladefortschritt nur bei real messbarem Fortschritt anzeigen.
+- ⬜ Keine blockierende Dauerschleife und kein eingefrorenes Fenster; UI bleibt bedienbar.
+- ⬜ Themenbilder und Infotexte später über Leveldaten zuordnen, ohne Codeänderung pro Welt.
+
+---
+
+## 15 · GRAFIKWERKSTATT, ASSET-BIBLIOTHEK UND INTEGRATION
+
+**Ziel:** Das grafische Erbe systematisch prüfen und neue Spielgrafiken unabhängig vom Codex-Budget vorbereiten.
+
+- ✅ Grafikbestand aus GitHub erfasst: 907 PNG-Dateien, darunter 55 AoE-Grafiken, 495 Tiles und Animationsframes (Stand 11.11.2026).
+- ✅ Externe HTML-Grafikbibliothek V2 zur Sichtung und Code-Referenzprüfung vorbereitet (noch kein Spielmodul).
+- ⬜ Grafikstatus sorgfältig unterscheiden: **direkte Codeverknüpfung**, **dynamisch geladen**, **Archiv/Vorlage**, **Verwendung nicht nachgewiesen**.
+- ⬜ Eine Code-Referenz nicht automatisch mit einer tatsächlich sichtbaren Laufzeitverwendung verwechseln.
+- ⬜ Vorhandene AoE-Einzelbilder kontrollieren; neue Frost-, Feuer-, Gift-, Sporen- und Myzelgrafiken optional vorbereiten.
+- ⬜ Projektilvarianten für Spieler 1 und 2 entwerfen; spätere Zuordnung erst durch Codeintegration.
+- ⬜ Boss001/Boss002/Boss003, FlameExplosion und Bolbu als **Animationsframes**, nicht als Einzelbosse zählen.
+- ⬜ Alte Kopf- und Körperdesigns sichten, Originalgrößen erhalten und Lesbarkeit im 30-Pixel-Spielraster testen.
+- ⬜ Vorhandene zusätzliche Heads/Bodies nach Tests über die Skin-Auswahl verfügbar machen.
+- 💡 Freischaltbare Schlangenköpfe/Körper und charakterbezogene Sounds für Treffer, Levelwechsel und Game Over.
+- ✅ `titel2.png` ist bereits als Fenster-Icon eingebunden; EXE-Dateiicon gesondert prüfen.
+- ⬜ Neue, unfertige PNG-Dateien zunächst in `GamePICs/Incoming/` nach Projektilen, Bossen, Gegnern, AoE, Heads, Bodies, Hintergründen und Animationen ablegen.
+- ⬜ Neue Grafiken über `Add file → Upload files` auf GitHub einreichen; aktive Assets erst nach Prüfung gezielt ersetzen.
+- ⬜ Klare, sprechende Dateinamen vergeben und Kategorie, Verwendungszweck, Original-/Zielgröße und gegebenenfalls Frames dokumentieren.
+- ⬜ Originalgrafiken erhalten; Skalierungen durch das Spiel beziehungsweise Build-Werkzeug vorbereiten.
+- ⬜ Transparenz, Zuschnitt und Spielgrößen kontrollieren, bevor Assets live eingebaut werden.
+- ⬜ Codex kann vorbereitete Bilder aus `GamePICs/Incoming/` erst nach explizitem Integrationsauftrag den passenden Ressourcen und Mechaniken zuordnen.
+- 💡 Später optional HTML-Drop-in und PNG-/Paketexport; **vorerst unnötig**, da GitHub-Upload einfacher ist.
+
+---
+
 # 🗺️ ENTWICKLUNGSREIHENFOLGE
 
 **PHASE 1 – AKTUELLE ARBEIT**
-Frost abschließen, Simulator untersuchen, Testberichte verbessern, Grafiksystem prüfen.
+Frost auf main bestätigt; als Nächstes Simulator-Qualität, auffindbare Berichte, gezielte Windows-Spielprobe und Grafikprüfung.
 
 **PHASE 2 – EFFECT & WEAPON SYSTEM 2.0**
 Gemeinsame Effektarchitektur, Frost, Feuer, Gift, Sporen, Spezialmunition.
@@ -364,6 +422,12 @@ Entwürfe, Level-Bibliothek, JSON, Grafikpakete, Export und Import.
 
 **PHASE 7 – ADVENTURE & MYCELIUM AGE**
 Eigene Welten, Pilzgegner, Bossarenen, neue Spielmechaniken.
+
+**PARALLELE DESIGNARBEIT – OHNE SPIELCODE**
+Grafikbibliothek sichten, Heads/Bodies/Projektile/AoE überarbeiten und als `GamePICs/Incoming/` für spätere Integration vorbereiten.
+
+**GEPLANTE UI-ERGÄNZUNGEN – IN KLEINEN PRs**
+Titelmenü 2.0 (Gothic Arcade) und GO IN GAME als wiederverwendbaren Übergangsbildschirm entwickeln, sobald Bilder und technische Grundlagen bereitstehen.
 
 *Die Phasen sind eine vorläufige Reihenfolge. Gemeinsame technische Grundlagen können früher vorbereitet werden.*
 
@@ -396,4 +460,4 @@ Das langfristige Ziel ist ein modularer Spielebaukasten, in dem kreative Ideen z
 
 *Gemeinsame Entwicklungs- und Ideentafel von Demus & Irian.*
 
-**Version der Ideenliste: 1.0 – jederzeit erweiterbar.**
+**Version der Ideenliste: 1.1 – jederzeit erweiterbar.**
