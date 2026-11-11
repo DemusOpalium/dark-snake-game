@@ -93,8 +93,8 @@ class BolbuEnemy(NormalEnemy):
     # ------------------------------------------------------------
     # KI  – Bewegungs‑Update + Angriffs‑/Würfel‑Mechanik
     # ------------------------------------------------------------
-    def update(self, player_x=None, player_y=None):
-        super().update(player_x, player_y)
+    def update(self, player_x=None, player_y=None, *, movement_factor=1.0):
+        super().update(player_x, player_y, movement_factor=movement_factor)
 
         now = time.time()
 

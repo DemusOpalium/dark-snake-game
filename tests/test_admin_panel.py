@@ -105,7 +105,7 @@ def test_admin_menu_draws_title_labels_and_tooltip():
     panel.active = True
     panel.buttons[5].is_hovered = True
     panel.draw(game.screen)
-    assert len(panel.buttons) == 10
+    assert len(panel.buttons) == 11
     assert all(panel.panel_rect.contains(button.rect) for button in panel.buttons)
     assert panel.ACTIONS[5][1] == "Bolbu-Item"
     assert "Einsammeln" in panel.ACTIONS[5][2]
