@@ -256,4 +256,3 @@ class WorldTree:
         target = self.library.worlds.get(self.target_world)
         status = self.message or f"Zielwelt · {target.name if target else FREE_LABEL}"
         self._text(screen, status, (self.design.x, self.panel.bottom - 33), self.panel.width - 150, ACCENT)
-

@@ -196,16 +196,19 @@
 
 ---
 
-## 07 · LEVEL STUDIO 1.0
+## 07 · WORLD STUDIO 2.0
 
 **Ziel:** Ein vollständiger Level-Baukasten direkt innerhalb von DARK Snake.
 
 - ✅ Einfacher LevelEditor bereits vorhanden.
 - ✅ Grafik-Kacheln auswählen und platzieren möglich.
-- ✅ Undo/Redo sowie JSON-Speicherung vorhanden (derzeit ein einziges `custom_level.json`).
-- ⬜ **Kleine vorgezogene Etappe:** vorhandenen F2-Editor stabilisieren und benannte Level-Entwürfe getrennt speichern/laden können, damit Demus ohne Codex weitere Welten gestalten kann.
-- ⬜ Alte `custom_level.json` kompatibel halten und Classic-Spielstart nicht unbeabsichtigt mit einem Entwurf überschreiben.
-- ⬜ Vorhandene `Sim Start`/`Sim Stop`-Funktion prüfen: derzeit in erster Linie Hintergrundübernahme, noch kein unabhängiger echter Spieltest.
+- ✅ Undo/Redo, benannte JSON-Entwürfe, Schutz bei ungespeicherten Änderungen und Altformat `custom_level.json` aus #121.
+- ✅ Visuelle Kartenvorschau und ausdrückliche Classic-Hintergrundwahl aus #121.
+- ✅ **Phase A.** Themenwelten, Level-Anzeigenamen, stabile Zuordnungen und eine getrennte, frei sortierbare Spielreihenfolge.
+- ✅ **Phase A.** Aufklappbare Themen für 495 Tiles mit Suche, Vorschaubildern, Favoriten und manuell korrigierbaren Katalogeinträgen.
+- ⬜ **Phase B.** Multi-Tiles, frei definierbare Grafikgrößen und Stamp Builder mit Undo/Redo.
+- ⬜ **Phase C.** Eigenständige Kollisionsebene für WALL/BARRIER, sichere Spawns und isolierte Kollisions-Spieltests.
+- ⬜ **Phase D.** Effektfelder, Trigger, Fallen, Ereignisketten und GO-IN-GAME-Übergänge.
 - ⬜ Bestehenden Editor grundlegend erweitern.
 - ⬜ Eigenen großen Editor-Bildschirm entwickeln.
 - ⬜ Level Studio über die Entwicklerkonsole öffnen.
@@ -274,7 +277,7 @@
 
 ### Level-Bibliothek
 
-- ⬜ Übersicht aller erstellten Levels.
+- ✅ Übersicht gespeicherter Entwürfe in Themenwelten.
 - ⬜ Vorschaubilder anzeigen.
 - ⬜ Status: Entwurf / Fertig.
 - ⬜ Level bearbeiten, testen, kopieren und exportieren.
@@ -420,8 +423,8 @@ Vier Slots pro Spieler, Item-Icons, frei belegbare Aktivierungstasten.
 **PHASE 4 – BOSSFIGHT 2.0**
 Seelenschrein, individuelle Bosstypen, feste AoE-Profile, Kampfphasen.
 
-**PHASE 5 – LEVEL STUDIO 1.0**
-Großer World Editor, Grafiken, Wände, Kollisionssystem, Level-Test.
+**PHASE 5 – WORLD STUDIO 2.0**
+Phase A liefert Welt- und Tile-Bibliothek. Die Folgeaufträge bauen darauf auf. Phase B ergänzt Multi-Tiles und Stempel. Phase C führt getrennte Kollisionsdaten und sichere Spawns ein. Phase D erweitert Karten um Ereignisse und Effekte.
 
 **PHASE 6 – LEVEL-VERWALTUNG**
 Entwürfe, Level-Bibliothek, JSON, Grafikpakete, Export und Import.

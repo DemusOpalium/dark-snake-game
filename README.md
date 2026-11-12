@@ -94,6 +94,10 @@ Rückgängig/Wiederholen und eine visuelle Kartenvorschau. Gespeicherte Karten
 lassen sich für die nächste Classic-Runde als Hintergrund auswählen.
 [Anleitung zur Werkstatt](DEVELOPMENT_NOTES.md#level-studio-11--entwürfe-bearbeiten)
 
+Über **Welten** lassen sich Entwürfe Themenwelten zuordnen und in eine eigene
+Spielreihenfolge bringen. Die **Tile-Bibliothek** bietet aufklappbare Themen,
+Vorschaubilder und eine Suche. [Anleitung zu World Studio 2.0](DEVELOPMENT_NOTES.md#world-studio-20--phase-a)
+
 ---
 
 ## 🌄 Screenshots
