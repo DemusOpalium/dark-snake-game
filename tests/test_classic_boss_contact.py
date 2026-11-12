@@ -62,6 +62,7 @@ def test_boss_body_hurts_single_player_and_boss_can_still_attack(monkeypatch):
 
     assert game.snake[0] == (5, 5)
     assert game.player_health == 90
+    assert boss.health == 100
     assert game.lives == 3
     boss.update.assert_called_once_with(clock.now)
     assert any(shot.get("from_boss") for shot in game.projectiles)
@@ -70,7 +71,7 @@ def test_boss_body_hurts_single_player_and_boss_can_still_attack(monkeypatch):
 @pytest.mark.parametrize("p1_y, p1_health", [(2, 100), (5, 90)])
 def test_boss_body_hurts_second_player_even_if_first_is_outside(monkeypatch, p1_y, p1_health):
     game, clock = make_round(monkeypatch, 2)
-    add_boss(game, clock)
+    boss = add_boss(game, clock)
     game.snake1 = [(4, p1_y)]
     game.snake2 = [(4, 6)]
 
@@ -78,12 +79,13 @@ def test_boss_body_hurts_second_player_even_if_first_is_outside(monkeypatch, p1_
 
     assert game.snake2[0] == (5, 6)
     assert (game.player_health_p1, game.player_health_p2) == (p1_health, 90)
+    assert boss.health == 100
     assert game.lives == 3
 
 
 def test_boss_body_cooldown_lasts_one_second_per_player(monkeypatch):
     game, clock = make_round(monkeypatch, 2)
-    add_boss(game, clock)
+    boss = add_boss(game, clock)
     game.snake1 = [(5, 5)]
     game.snake2 = [(4, 6)]
     frame_without_turn(game, clock)
@@ -104,6 +106,7 @@ def test_boss_body_cooldown_lasts_one_second_per_player(monkeypatch):
     clock.now += 0.5
     frame_without_turn(game, clock)
     assert (game.player_health_p1, game.player_health_p2) == (80, 80)
+    assert boss.health == 100
 
 
 @pytest.mark.parametrize("protection", ["boss_spawn", "player_respawn"])
