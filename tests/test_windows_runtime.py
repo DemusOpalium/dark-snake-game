@@ -14,7 +14,7 @@ pygame.display.set_mode((1, 1))
 from modules import resources
 from modules.enums import GameState
 from modules.game import Game
-from modules.level_editor import MAP_TOP, TOOLBAR_W
+from modules import level_editor as layout
 
 
 def test_editor_saves_loads_and_draws_from_other_working_directory(tmp_path, monkeypatch):
@@ -31,22 +31,26 @@ def test_editor_saves_loads_and_draws_from_other_working_directory(tmp_path, mon
     pygame.event.post(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_F2))
     game.handle_events()
     assert editor.active
-    editor._paint(TOOLBAR_W + 1, MAP_TOP + 1)
+    editor.new_map("Auswärts")
+    pos = (layout.TOOLBAR_W + 1, layout.MAP_TOP + 1)
+    pygame.event.post(pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=pos))
+    pygame.event.post(pygame.event.Event(pygame.MOUSEBUTTONUP, button=1, pos=pos))
+    game.handle_events()
     assert editor.map[0][0] == editor.current_tile
     editor.undo()
     assert editor.map[0][0] is None
     editor.redo()
     assert editor.map[0][0] == editor.current_tile
     assert editor.save_map()
-    assert (profile / "custom_level.json").is_file()
+    assert (profile / "levels" / "Auswärts.json").is_file()
     editor.draw(game.screen)
 
     reopened = Game()
-    reopened.level_editor.load_map()
+    reopened.level_editor.load_map("Auswärts")
     assert reopened.level_editor.map == editor.map
     reopened.start_game(1)
     assert reopened.game_state == GameState.GAME
-    assert reopened.level_map == editor.map
+    assert not reopened.level_map
     reopened.draw_game()
 
 

@@ -88,3 +88,11 @@ def custom_level_path(*, for_write: bool = False) -> str:
     if for_write or saved.is_file():
         return str(saved)
     return asset_path("levels", "custom_level.json")
+
+
+def level_drafts_directory() -> Path:
+    """Keep named drafts in persistent user data, independent of Classic's map."""
+    directory = (DATA_DIR / "levels").resolve()
+    if is_temporary_bundle_path(directory):
+        raise OSError("Levelentwürfe können nicht im temporären Spielordner gespeichert werden.")
+    return directory

@@ -37,7 +37,7 @@ from modules.ui import Button, Slider, CheckBox, Dropdown
 from modules.aoe_zones import AoEZone, DamageZone, HealZone, DebuffZone, FollowZone, GrowingBossAOEZone  # [KS_TAG: BOSS_AOE]
 from modules.controls import ControlsMenu
 from modules.input_manager import InputManager
-from modules.resources import asset_path, custom_level_path, user_data_path
+from modules.resources import asset_path, user_data_path
 from modules.customization import CustomizationMenu
 from modules.enemies import NormalEnemy
 from modules.bolbu_enemy import BolbuEnemy
@@ -495,6 +495,9 @@ class Game:
         self.last_auto_shoot2 = time.time()
         self.default_background_surface = (pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT))
                                            if headless else self._build_default_background())
+        self.classic_level_name = None
+        self._classic_level_map = None
+        self.level_map = None
         self.level_background_surface = self.default_background_surface.copy()
         self.background = self.level_background_surface
         self.menu_bg = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT))
@@ -664,19 +667,14 @@ class Game:
             self.snake = [(GRID_WIDTH // 2, GRID_HEIGHT // 2)]
         self._reset_snake_interpolation()
         self.spawn_food()
-        level_path = custom_level_path() if not self.headless else None
-        if level_path and os.path.exists(level_path):
-            try:
-                self.level_map = self.level_editor.read_map()
-                self.build_background_from_map()
-                self.background = self.level_background_surface
-                print("[INFO] Benutzerdefinierte Map als Hintergrund geladen.")
-            except Exception as e:
-                print(f"[WARN] Level konnte nicht geladen werden: {e}")
-        else:
-            print("[INFO] Kein Editor-Level vorhanden. Standardhintergrund wird verwendet.")
-
+        self.level_map = [row.copy() for row in self._classic_level_map] if self._classic_level_map else None
+        self.background = self.build_background_from_map()
         self.set_state(GameState.GAME)
+
+    def choose_classic_background(self, name, level_map):
+        """Remember an explicit background selection for the next Classic start."""
+        self.classic_level_name = name
+        self._classic_level_map = [row.copy() for row in level_map] if level_map is not None else None
 
     def confirm_back_to_main(self):
         overlay = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.SRCALPHA)
@@ -806,6 +804,7 @@ class Game:
         self.boss_fight_active = False
         self.lives = 0
         self.player_health = self.player_health_p1 = self.player_health_p2 = 0
+        self.level_map = None
         if hasattr(self, "default_background_surface"):
             self.level_background_surface = self.default_background_surface.copy()
             self.background = self.level_background_surface
@@ -1779,37 +1778,49 @@ class Game:
             self._reset_snake_interpolation()
             self.respawn_invincible_until = time.time() + 3
 
+    def _handle_level_editor_event(self, event):
+        editor = self.level_editor
+        key = event.key if event.type == pygame.KEYDOWN else None
+        if editor.active:
+            if event.type == pygame.QUIT:
+                editor.request_close(sys.exit)
+            elif key == pygame.K_F2:
+                editor.toggle()
+            elif key == pygame.K_TAB and not editor.dialog_open:
+                editor.request_close(self.admin_panel.toggle)
+            else:
+                editor.handle_event(event)
+            return True
+        if key == pygame.K_F2 and self.game_state != GameState.CONTROLS:
+            self.admin_panel.close()
+            editor.toggle()
+            return True
+        return False
+
     def handle_events(self):
         events = pygame.event.get()
         read_ns = self.metrics.stamp()
         for event in events:
             if event.type == pygame.QUIT:
-                sys.exit()
+                if not self._handle_level_editor_event(event):
+                    sys.exit()
+                continue
             if self.game_state == GameState.CONTROLS:
                 self.controls_menu.handle_event(event)
                 continue
             actions = self.input.actions_for(event, player_count=self.player_count)
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_TAB:
-                self.level_editor.active = False
-                self.admin_panel.toggle()
+            if self._handle_level_editor_event(event):
                 continue
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_F2:
-                self.admin_panel.close()
-                self.level_editor.toggle()
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_TAB:
+                self.admin_panel.toggle()
                 continue
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 if self.admin_panel.active:
                     self.admin_panel.close()
                     continue
-                if self.level_editor.active:
-                    self.level_editor.toggle()
-                    continue
             # An open developer tool owns all input; gameplay never sees it.
             if self.admin_panel.active:
                 self.admin_panel.handle_event(event)
-                continue
-            if self.level_editor.active:
-                self.level_editor.handle_event(event)
                 continue
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 if self.game_state not in (GameState.GAME, GameState.BOSS_FIGHT, GameState.SIMULATION):
@@ -2268,12 +2279,11 @@ class Game:
         back_btn = Button(WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT - 80, 200, 60, "ZURÜCK", color=PURPLE, action=lambda: self.confirm_back_to_main())
         back_btn.draw(self.screen)
         for event in pygame.event.get():
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_F2:
-                self.level_editor.toggle()
+            if self._handle_level_editor_event(event):
+                continue
             if event.type == pygame.KEYDOWN and event.key == pygame.K_TAB:
                 self.admin_panel.toggle()
             self.admin_panel.handle_event(event)
-            self.level_editor.handle_event(event)
             if event.type == pygame.QUIT:
                 sys.exit()
             elif event.type == pygame.MOUSEBUTTONDOWN:
@@ -2317,26 +2327,18 @@ class Game:
         return surf
 
     def build_background_from_map(self):
-        """
-        Wandelt die Level-Karte in eine Hintergrund-Oberfläche um.
-        Wird vom LevelEditor beim Simulieren verwendet.
-        """
-        from modules.graphics import get_tile  # Zentrale Tile-Zugriffs-Funktion
-        if not hasattr(self, "level_map") or not self.level_map:
-            self.level_background_surface = self.default_background_surface.copy()
-            print("[DEBUG] Keine Level-Karte gesetzt – Standardhintergrund aufgebaut.")
-            return self.level_background_surface
+        """Build the current round's background over the standard backdrop."""
+        from modules.graphics import get_tile
 
-        surf = pygame.Surface((GRID_WIDTH * GRID_SIZE, GRID_HEIGHT * GRID_SIZE), pygame.SRCALPHA)
-        for y, row in enumerate(self.level_map):
+        surf = self.default_background_surface.copy()
+        for y, row in enumerate(getattr(self, "level_map", None) or ()):
             for x, tile in enumerate(row):
                 if tile:
                     img = get_tile(tile)
                     if img:
                         surf.blit(img, (x * GRID_SIZE, y * GRID_SIZE))
         self.level_background_surface = surf
-        print("[DEBUG] Hintergrund aus Level-Karte aufgebaut.")
-        return self.level_background_surface
+        return surf
     # [KS_TAG: BOSS_FLAME_PROJECTILE]
     def boss_shoots_flame(self):
         from modules.boss_projectiles import BossFlameProjectile
