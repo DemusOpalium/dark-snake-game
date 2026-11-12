@@ -61,6 +61,108 @@ def cell(col, row):
             layout.MAP_TOP + row * layout.CELL_SIZE + layout.CELL_SIZE // 2)
 
 
+def world_action(game, tree, label):
+    rect, = [rect for rect, name, _ in tree._controls() if name == label]
+    click(game, rect.center)
+
+
+def world_row(tree, area, item_id):
+    rect, = [rect for rect, kind, entry, _ in tree._rows(area)
+             if kind == "level" and entry == item_id]
+    return rect
+
+
+def test_world_studio_organizes_drafts_and_reloads_order(studio):
+    game, editor, profile = studio
+    key(game, pygame.K_F2)
+    for index, name in enumerate(("Anfang", "Arena")):
+        assert editor.new_map(name)
+        click(game, cell(index, 0))
+        assert editor.save_map()
+    originals = {path.name: path.read_bytes() for path in (profile / "levels").glob("*.json")}
+
+    button(game, editor, "Welten")
+    tree = editor.world_tree
+    game.draw()
+    start_id = tree.library.level_for_draft("Anfang").id
+    arena_id = tree.library.level_for_draft("Arena").id
+    world_action(game, tree, "Welt neu")
+    text(game, "Galaxie")
+    key(game, pygame.K_RETURN)
+    world_id = tree.target_world
+    world_action(game, tree, "Welt umbenennen")
+    text(game, "Sternenwelt")
+    key(game, pygame.K_RETURN)
+    assert tree.library.worlds[world_id].name == "Sternenwelt"
+
+    click(game, world_row(tree, tree.design, start_id).midleft)
+    world_action(game, tree, "Zuordnen")
+    world_action(game, tree, "Level umbenennen")
+    text(game, "Sternentor")
+    key(game, pygame.K_RETURN)
+    world_action(game, tree, "Zur Reihenfolge")
+    click(game, world_row(tree, tree.design, arena_id).midleft)
+    world_action(game, tree, "Zur Reihenfolge")
+    world_action(game, tree, "Nach oben")
+    assert tree.library.game_order == (arena_id, start_id)
+
+    source = world_row(tree, tree.order, arena_id)
+    target = world_row(tree, tree.order, start_id)
+    send(game, pygame.event.Event(pygame.MOUSEBUTTONDOWN, pos=source.midleft, button=1),
+         pygame.event.Event(pygame.MOUSEBUTTONUP, pos=target.midleft, button=1))
+    assert tree.library.game_order == (start_id, arena_id)
+
+    restarted = Game()
+    key(restarted, pygame.K_F2)
+    button(restarted, restarted.level_editor, "Welten")
+    reopened = restarted.level_editor.world_tree
+    assert reopened.library.game_order == (start_id, arena_id)
+    assert reopened.library.levels[start_id].name == "Sternentor"
+    assert reopened.library.levels[start_id].world_id == world_id
+    click(restarted, reopened._open_rect(world_row(reopened, reopened.order, start_id)).center)
+    assert restarted.level_editor.name == "Anfang"
+    assert restarted.level_editor._display_name() == "Sternentor"
+    assert restarted.level_editor.map[0][0]
+    assert restarted.classic_level_name is None
+
+    button(restarted, restarted.level_editor, "Welten")
+    world_action(restarted, reopened, "Entfernen")
+    assert reopened.library.game_order == (arena_id,)
+    world_action(restarted, reopened, "Entfernen")
+    assert reopened.message == "Dieses Level steht nicht in der Reihenfolge."
+    assert {path.name: path.read_bytes() for path in (profile / "levels").glob("*.json")} == originals
+
+
+def test_world_tree_open_respects_draft_discard_guard(studio):
+    game, editor, _ = studio
+    key(game, pygame.K_F2)
+    assert editor.new_map("Gespeichert")
+    assert editor.save_map()
+    assert editor.new_map("In Arbeit")
+    click(game, cell(1, 0))
+    button(game, editor, "Welten")
+    tree = editor.world_tree
+    level = tree.library.level_for_draft("Gespeichert")
+    row = world_row(tree, tree.design, level.id)
+    click(game, tree._open_rect(row).center)
+    assert editor.dirty and editor.dialog_open
+    key(game, pygame.K_ESCAPE)
+    assert editor.name == "In Arbeit" and editor.map[0][1]
+
+
+def test_tile_library_search_selects_original_key_for_painting(studio):
+    game, editor, _ = studio
+    key(game, pygame.K_F2)
+    tile = next(key for key in editor.tiles if key.startswith("frosthauch_"))
+    button(game, editor, "Tile-Bibliothek")
+    text(game, f"{tile}.png")
+    game.draw()
+    key(game, pygame.K_RETURN)
+    assert editor.current_tile == tile and not editor.dialog_open
+    click(game, cell(2, 2))
+    assert editor.map[2][2] == tile
+
+
 def legacy_file(profile, tile):
     legacy = profile / "custom_level.json"
     legacy.parent.mkdir(parents=True, exist_ok=True)
