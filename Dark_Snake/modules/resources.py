@@ -96,3 +96,16 @@ def level_drafts_directory() -> Path:
     if is_temporary_bundle_path(directory):
         raise OSError("Levelentwürfe können nicht im temporären Spielordner gespeichert werden.")
     return directory
+
+
+def tile_catalog_override_path() -> Path:
+    """Optional user assignments kept beside, rather than among, level files."""
+    return DATA_DIR / "tile_catalog.json"
+
+
+def world_library_path() -> Path:
+    """The World Tree index belongs beside the profile's draft directory."""
+    path = DATA_DIR / "world-library.json"
+    if is_temporary_bundle_path(path):
+        raise OSError("Die Weltbibliothek kann nicht im temporären Spielordner gespeichert werden.")
+    return path
