@@ -18,7 +18,7 @@ Die erste offizielle Windows-Version ist in Vorbereitung. Sobald sie verfügbar 
 
 <!-- Nach Veröffentlichung von v1.0.0 und Prüfung des Windows-ZIP-Assets die Überschrift in „🎮 Jetzt kostenlos spielen!“ ändern, den Statusabsatz durch [**⬇️ DOWNLOAD – Neueste Windows-Version**](https://github.com/DemusOpalium/dark-snake-game/releases/latest) ersetzen und „nach der Veröffentlichung“ entfernen. -->
 
-*Eine düstere Snake-Reinkarnation mit Bossfights, Portalen, Effekten, Items und integriertem Leveleditor mit 500+ Tiles.*
+*Eine düstere Snake-Reinkarnation mit Bossfights, Portalen, Effekten, Items und integriertem Level-Editor mit 495 Kacheln.*
 
 ---
 
@@ -78,7 +78,7 @@ Die erste offizielle Windows-Version ist in Vorbereitung. Sobald sie verfügbar 
 | 🔥 FireProjectile  | Spieler-Feuerball mit Explosionseffekt bei Aufprall                 |
 | 🌌 AOE-Zonen       | Damage / Heal / Slow / Buff-Aura / Hintergrundbild                  |
 | 🐉 Boss-System     | Flammenangriffe, Spezialeffekte, Animation, AoE                     |
-| 🎨 Editor          | 500+ Tiles, Favoriten, Drag2Draw, Simulation (F2)                   |
+| 🎨 Editor          | 495 Kacheln, Favoriten, benannte Entwürfe und Vorschau (F2)          |
 | 🛠️ Adminpanel     | Spawn von Items, Feinden, AOE-Zonen, Effekte (TAB)                  |
 | 👥 2-Spieler-Modus | Geteilte Healthbars, getrennte Steuerung & Designs                  |
 | 🎵 Musikplayer     | Eigene Musikdateien auswählbar im Optionen-Menü (dauerhaft loopbar) |
@@ -88,10 +88,11 @@ Die erste offizielle Windows-Version ist in Vorbereitung. Sobald sie verfügbar 
 
 ## 🔧 LevelEditor Highlights
 
-* 🌠 **500+ Tiles** im dunklen Stil (Galaxie, Altar, Hanf, Lava, Frost, Venom u.v.m.)
-* 🔄 Favoriten, Undo/Redo, Karten speichern und sofort starten
-* ☑️ Mitgelieferte Beispiele in `assets/levels/`
-* ⚖️ Aufrufbar im Spiel per Taste **F2** – nahtlos zwischen Menü und Simulation
+**F2** öffnet die Werkstatt. Entwürfe liegen als eigene JSON-Dateien in
+`~/.dark-snake/levels/`. Der Editor bietet 495 Kacheln, Favoriten,
+Rückgängig/Wiederholen und eine visuelle Kartenvorschau. Gespeicherte Karten
+lassen sich für die nächste Classic-Runde als Hintergrund auswählen.
+[Anleitung zur Werkstatt](DEVELOPMENT_NOTES.md#level-studio-11--entwürfe-bearbeiten)
 
 ---
 

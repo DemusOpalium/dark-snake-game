@@ -152,6 +152,16 @@ Auf `main` bei `2feda6b` öffnet F2 den vorhandenen Rastereditor. Er bietet 495 
 - **Sim Start** speichert die Karte und übergibt dieselbe Liste als Hintergrund an Classic. **Sim Stop** setzt nur ein Flag. Im Editor läuft kein Spieltest. Ein späterer Classic-Start lädt die Datei automatisch.
 - Die Tile-Auswahl ändert sich beim Zeichnen anhand gehaltener Maustasten. Ein Klick außerhalb der sichtbaren Palette kann eine verdeckte Kachel auswählen. Die Scrollgrenze lässt am Ende viel Leerraum. Rechtsklick malt auf der Karte, und die Randfüllung hat keinen eigenen Undo-Schritt. Transparente Flächen werden beim Zeichnen nicht vollständig erneuert.
 
+## Level Studio 1.1 – Entwürfe bearbeiten
+
+1. **F2** öffnet die Werkstatt. Über **Neu** einen eindeutigen Namen wie `Pilzwelt_01` vergeben. Gespeicherte Entwürfe lassen sich über **Öffnen** auswählen. **Speichern** schreibt ausschließlich den aktuellen benannten Entwurf. **Strg+N**, **Strg+O** und **Strg+S** führen dieselben Befehle aus.
+2. Mit dem Mausrad über der linken Palette scrollen. Eine Kachel links anklicken, auf der Karte mit Links platzieren oder über Felder ziehen. Rechts auf der Karte löscht. Rand, Mittelfeld und Mausstriche lassen sich rückgängig machen und wiederholen.
+3. Ein Stern beim Namen kennzeichnet ungespeicherte Änderungen. Vor dem Verwerfen beim Laden, Anlegen oder Schließen fragt der Editor nach. Ein fehlgeschlagener Ladevorgang lässt den bisherigen Entwurf und seine Historie im Editor.
+4. **Vorschau starten** zeigt den aktuellen Hintergrundentwurf. **Esc** oder **Vorschau beenden** führt zurück zur Bearbeitung. Der Spieltest mit eigener Runde ist ein späterer Schritt.
+5. **Für Classic wählen** übernimmt die gespeicherte Fassung als Hintergrund für kommende Runden in dieser Sitzung. Nach weiteren Änderungen die Karte speichern und erneut auswählen. **Classic-Standard** wählt wieder den Standardhintergrund. Nach einem Programmneustart beginnt Classic mit dem Standardhintergrund.
+
+Die Entwürfe liegen unter `~/.dark-snake/levels/`, unter Windows im Benutzerordner unter `.dark-snake\levels`. Die bisherige `custom_level.json` lässt sich im Editor laden. Zum Weiterbearbeiten und Speichern erhält sie einen eigenen Entwurfsnamen. Die Originaldatei bleibt erhalten.
+
 ## Vorgeschlagene nächste Phase
 
 1. Audio und Ebenen unter Windows 11 mit echten Ausgabegeräten prüfen.
