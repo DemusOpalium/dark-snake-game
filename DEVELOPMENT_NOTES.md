@@ -162,6 +162,46 @@ Auf `main` bei `2feda6b` öffnet F2 den vorhandenen Rastereditor. Er bietet 495 
 
 Die Entwürfe liegen unter `~/.dark-snake/levels/`, unter Windows im Benutzerordner unter `.dark-snake\levels`. Die bisherige `custom_level.json` lässt sich im Editor laden. Zum Weiterbearbeiten und Speichern erhält sie einen eigenen Entwurfsnamen. Die Originaldatei bleibt erhalten.
 
+## World Studio 2.0 – Phase A
+
+### Welten und Spielreihenfolge
+
+1. Mit **F2** den Editor öffnen und über **Welten** in die Entwurfsbibliothek wechseln. Gespeicherte Karten erscheinen zunächst unter **Freie Level**. Eine Themenzeile klappt die Gruppe auf oder zu. Mit **Öffnen** in der Levelzeile geht es in die Karte. Bei ungespeicherten Änderungen greift die Verwerfungsabfrage.
+2. Mit **Welt neu** eine Themenwelt anlegen. Zum Verschieben zuerst das Level markieren, dann die Zielwelt anklicken und **Zuordnen** wählen. **Freie Level** löst die Zuordnung. **Welt umbenennen** und **Level umbenennen** ändern die Anzeigenamen.
+3. Ein markiertes Level über **Zur Reihenfolge** aufnehmen. Rechts die Reihenfolge per Ziehen oder mit **Nach oben** und **Nach unten** ändern. **Entfernen** streicht den Eintrag aus der Reihenfolge. Der Entwurf bleibt in der Bibliothek.
+
+Der Index `~/.dark-snake/world-library.json` hat Formatversion 1 und speichert stabile Welt- und Level-IDs. Karten behalten Dateinamen und Inhalt beim Umbenennen in der Bibliothek. Entwürfe unter `~/.dark-snake/levels/` und das Altformat `custom_level.json` bleiben lesbar. Das Altformat lässt sich nach dem Öffnen als benannter Entwurf für die Weltbibliothek speichern. Die Spielreihenfolge wird für den späteren Adventure-Modus gepflegt. Für Classic gilt weiterhin die bewusste Auswahl im Editor.
+
+### Tile-Bibliothek
+
+**Tile-Bibliothek** öffnet die Kategorien. Dort lassen sich Themen und Untergruppen auf- und zuklappen. Die Suche akzeptiert Dateinamen, Themen und Untergruppen. Linksklick übernimmt die Kachel zum Malen. Rechtsklick fügt sie zu den Favoriten hinzu oder entfernt sie. Die Schnellpalette links bleibt für direktes Malen verfügbar.
+
+Die 495 vorhandenen PNGs wurden anhand ihrer Präfixe zugeordnet. Gebündelte Ausnahmen stehen in `Dark_Snake/assets/graphics/tile_catalog.json`. Für eigene Korrekturen die Datei `~/.dark-snake/tile_catalog.json` anlegen und die Bibliothek erneut öffnen.
+
+```json
+{
+  "version": 1,
+  "overrides": {
+    "bone_corner_tl.png": {"category": "frost", "group": "single"}
+  }
+}
+```
+
+Die Kategorie-IDs sind `bones`, `frost`, `galaxy`, `dungeon`, `nature`, `poison`, `fire`, `gothic` und `other`. Unbekannte Präfixe erscheinen unter **Sonstige**. `multi`, `walls` und `stamps` sind bereits als Anzeigegruppen neben `single` vorgesehen. In Phase A setzen alle Einträge einzelne Grafikkacheln. Die Katalogzuordnung hat keine Spielwirkung.
+
+### Classic-Regeln und Randwechsel
+
+Der Bosskörperkontakt zieht im bestehenden Trefferpfad Spieler-HP ab. Regressionen prüfen P1, P2 und gleichzeitigen Kontakt und halten die Boss-HP dabei fest. Der Kopf erhält keinen eigenen Kontaktangriff.
+
+Bei vier Randrichtungen und beiden Köpfen bleibt der Rastertakt gleich. Bei einer kontrollierten Folge mit 60 Bildern pro Sekunde und Geschwindigkeit 8 lagen die Züge vor, beim und nach dem Wechsel jeweils acht Frames auseinander, also 133,3 ms. Die Regression verwendet zusätzlich einen 64-Hz-Takt mit gleichmäßigen 125 ms pro Zug und prüft die tatsächlich gerenderten Pixel, einschließlich des folgenden Körpersegments. Die Interpolation setzt den Kopf beim Randwechsel direkt ans Ziel und hält ihn dort bis zum nächsten Rasterzug. Mit einem deckenden Test-Körpersprite kann der Kopf im ersten Bild des Folgezuges kurz überdeckt sein. Ein zusätzlicher logischer Stillstand wurde nicht beobachtet. Die Spiellogik wurde für Phase A beibehalten. Schwankungen auf einzelnen Rechnern waren nicht Teil der kontrollierten Messung.
+
+### Geplanter Aufbau für Phase B, C und D
+
+- **B.** Ein großes Bild bekommt eine Rastergröße und einen Ankerpunkt. Ein Stempel bekommt ein rechteckiges Raster aus bestehenden Grafik-IDs. Die Platzierung und Undo/Redo sollen jeweils das gesamte Objekt bearbeiten. Das ursprüngliche Bild bleibt erhalten.
+- **C.** Für Karten ein versioniertes Dokument mit Abmessungen und getrennten Ebenen für Grafik, Kollision, Effekte und Ereignisse vorsehen. Bisherige Raster werden beim Lesen als reine Grafikebene interpretiert. Zuerst `WALL` und `BARRIER` umsetzen. Eine Grafikplatzierung schreibt nur ihre Ebene. Ein kombinierter Befehl schreibt zusätzlich eine ausdrückliche Kollisionsmaske. Grafik und Kollision lassen sich getrennt oder gemeinsam löschen. Undo speichert die betroffenen Ebenen als einen Schritt.
+- **C.** Fest gesetzte Spawns anhand von Grenzen, Kollision, Belegung und Ausweichraum validieren. Beim Boss die gesamte Grundfläche prüfen. Bei einer ungültigen festen Position eine geeignete freie Position suchen oder den Spawn mit Begründung auslassen. Die bestehende Zufallsauswahl bleibt für gültige freie Flächen verwendbar.
+- **D.** Effektfelder und Trigger erhalten definierte Typen und geprüfte Parameter. 90 Prozent Slow lässt 10 Prozent des Bewegungstempos übrig. Schaden bekommt ein Intervall pro Ziel. Ereignisse verwenden zugelassene Aktionen aus Daten. Später folgt ein eigener Spieltest mit isoliertem Zustand, danach eine Rückkehr zum Entwurf.
+
 ## Vorgeschlagene nächste Phase
 
 1. Audio und Ebenen unter Windows 11 mit echten Ausgabegeräten prüfen.

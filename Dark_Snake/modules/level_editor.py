@@ -62,6 +62,8 @@ class LevelEditor:
         self.preview_active = False
         self._preview_background = None
         self._dialog = None
+        self.tile_library = None
+        self.world_tree = None
         self.font = pygame.font.SysFont("Arial", 16)
         self.info = ""
         self.buttons = self._make_buttons()
@@ -92,6 +94,10 @@ class LevelEditor:
             for column, (label, action) in enumerate(controls):
                 rect = pygame.Rect(10 + column * (width + 4), 10 + row * (BTN_H + 4), width, BTN_H)
                 buttons.append((label, rect, action))
+        buttons.extend((
+            ("Welten", pygame.Rect(WINDOW_WIDTH - 304, 10, 140, BTN_H), self.open_world_tree),
+            ("Tile-Bibliothek", pygame.Rect(WINDOW_WIDTH - 154, 10, 140, BTN_H), self.open_tile_library),
+        ))
         return buttons
 
     def toggle(self):
@@ -237,12 +243,63 @@ class LevelEditor:
         """Read the legacy single-file map without changing the editor."""
         return read_legacy_map()
 
+    def _display_name(self):
+        if self.world_tree and self.world_tree.library and self._saved_name:
+            level = self.world_tree.library.level_for_draft(self._saved_name)
+            if level:
+                return level.name
+        return self.name
+
+    def open_world_tree(self):
+        from modules.world_tree import WorldTree
+
+        if self.world_tree is None:
+            self.world_tree = WorldTree(pygame.Rect(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT), self.font,
+                                        self._open_world_draft, self._world_name_dialog, self._dismiss_dialog)
+        try:
+            self.world_tree.open(self._saved_name)
+        except (OSError, ValueError) as error:
+            self.info = f"Weltbibliothek konnte nicht geladen werden. {error}"
+            return
+        self._stroke_button = None
+        self._show_world_tree()
+
+    def _show_world_tree(self):
+        self._dialog = {"kind": "world"}
+
+    def _open_world_draft(self, name):
+        self._dismiss_dialog()
+        self.load_map(name)
+
+    def _world_name_dialog(self, title, name, submit):
+        def accept(value):
+            self._show_world_tree()
+            submit(value)
+
+        self._name_dialog(title, name, accept, validate=str.strip, cancel=self._show_world_tree)
+
+    def open_tile_library(self):
+        from modules.tile_library import TileLibrary
+
+        if self.tile_library is None:
+            self.tile_library = TileLibrary(self.tiles, self.favorites,
+                                            pygame.Rect(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT),
+                                            self.font, self._select_tile, max_favorites=MAX_FAV)
+        self.tile_library.open()
+        self._stroke_button = None
+        self._dialog = {"kind": "tiles"}
+
+    def _select_tile(self, key):
+        self.current_tile = key
+        self.info = f"{key}.png ausgewählt"
+
     def select_for_classic(self):
         if self.dirty or not (self._saved_name or self._legacy):
             self.info = "Bitte zuerst einen Entwurf speichern oder eine gespeicherte Karte öffnen."
             return
-        self.game.choose_classic_background(self.name, self.map)
-        self.info = f"{self.name} für den nächsten Classic-Start gewählt"
+        name = self._display_name()
+        self.game.choose_classic_background(name, self.map)
+        self.info = f"{name} für den nächsten Classic-Start gewählt"
 
     def select_classic_default(self):
         self.game.choose_classic_background(None, None)
@@ -385,15 +442,24 @@ class LevelEditor:
             self.map[0][:] = self.map[-1][:] = [self.current_tile] * GRID_WIDTH
             self.info = "Rand gesetzt"
 
-    def _name_dialog(self, title, text, submit):
+    def _name_dialog(self, title, text, submit, *, validate=None, cancel=None):
         self._stroke_button = None
-        self._dialog = {"kind": "name", "title": title, "text": text, "select_all": True, "submit": submit}
+        self._dialog = {"kind": "name", "title": title, "text": text, "select_all": True, "submit": submit,
+                        "validate": validate or self._available_name, "cancel": cancel}
         pygame.key.start_text_input()
 
     def _dismiss_dialog(self):
         if self._dialog["kind"] == "name":
             pygame.key.stop_text_input()
+        elif self._dialog["kind"] == "tiles":
+            self.tile_library.close()
         self._dialog = None
+
+    def _cancel_dialog(self):
+        cancel = self._dialog.get("cancel")
+        self._dismiss_dialog()
+        if cancel is not None:
+            cancel()
 
     def _dialog_panel(self):
         height = 310 if self._dialog["kind"] == "open" else 174
@@ -423,8 +489,12 @@ class LevelEditor:
     def _handle_dialog(self, event):
         dialog = self._dialog
         kind = dialog["kind"]
+        if kind == "tiles":
+            if self.tile_library.handle_event(event):
+                self._dismiss_dialog()
+            return
         if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-            self._dismiss_dialog()
+            self._cancel_dialog()
             return
         if kind == "name":
             self._handle_name(event)
@@ -432,6 +502,8 @@ class LevelEditor:
             self._handle_discard(event)
         elif kind == "open":
             self._handle_open(event)
+        elif kind == "world":
+            self.world_tree.handle_event(event)
 
     def _handle_name(self, event):
         dialog = self._dialog
@@ -448,7 +520,7 @@ class LevelEditor:
               or event.type == pygame.MOUSEBUTTONDOWN and event.button == 1
               and self._discard_buttons(self._dialog_panel())[1].collidepoint(event.pos)):
             try:
-                name = self._available_name(dialog["text"])
+                name = dialog["validate"](dialog["text"])
             except (OSError, ValueError) as error:
                 dialog["error"] = str(error)
                 return
@@ -456,7 +528,7 @@ class LevelEditor:
             dialog["submit"](name)
         elif (event.type == pygame.MOUSEBUTTONDOWN and event.button == 1
               and self._discard_buttons(self._dialog_panel())[0].collidepoint(event.pos)):
-            self._dismiss_dialog()
+            self._cancel_dialog()
 
     def _handle_discard(self, event):
         action = self._dialog["action"]
@@ -513,15 +585,18 @@ class LevelEditor:
         if not self.active:
             return
         screen.fill(COLOR_BG)
-        for label, rect, _ in self.buttons:
-            if not self.preview_active or label == "Vorschau beenden":
-                self._draw_button(screen, label, rect)
+        if self.dialog_open and self._dialog["kind"] == "tiles":
+            self.tile_library.draw(screen, self.current_tile)
+            return
         if not self.preview_active:
             self._draw_tiles(screen)
             classic = getattr(self.game, "classic_level_name", None) or "Standard"
             self._draw_text(screen, f"Nächster Classic-Start · {classic}", (TOOLBAR_W, 78))
+        for label, rect, _ in self.buttons:
+            if not self.preview_active or label == "Vorschau beenden":
+                self._draw_button(screen, label, rect)
 
-        title = self.name or "Neuer Entwurf"
+        title = self._display_name() or "Neuer Entwurf"
         if self._legacy:
             title += " (Altformat)"
         elif self._saved_name is None:
@@ -536,7 +611,10 @@ class LevelEditor:
         self._draw_text(screen, hint, (TOOLBAR_W, WINDOW_HEIGHT - 39))
         self._draw_text(screen, self.info, (TOOLBAR_W, WINDOW_HEIGHT - 20), COLOR_SELECT)
         if self.dialog_open:
-            self._draw_dialog(screen)
+            if self._dialog["kind"] == "world":
+                self.world_tree.draw(screen)
+            else:
+                self._draw_dialog(screen)
 
     def _draw_tiles(self, screen):
         pygame.draw.rect(screen, COLOR_FAV, (TOOLBAR_W, 0, WINDOW_WIDTH - TOOLBAR_W, FAV_ROW_H))

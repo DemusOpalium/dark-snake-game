@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "overrides": {
+    "tile_bone_border_variant4": {"category": "bones"},
+    "tile_burned_lava": {"category": "fire"},
+    "tile_cracked_mud": {"category": "nature"},
+    "tile_dungeon_floor": {"category": "dungeon"},
+    "tile_mossy_stone": {"category": "dungeon"},
+    "tile_pale_marble": {"category": "gothic"},
+    "tile_rune_red_variant5": {"category": "dungeon"},
+    "tile_sand_waves": {"category": "nature"},
+    "tile_swamp_water": {"category": "nature"},
+    "tile_worn_wood": {"category": "dungeon"}
+  }
+}

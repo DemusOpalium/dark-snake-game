@@ -155,6 +155,74 @@ def test_head_and_body_snap_on_actual_wrap(
     assert_positions([body_position], [tuple(axis * grid_size for axis in destination)])
 
 
+@pytest.mark.parametrize("players,player", [(1, 1), (2, 1), (2, 2)])
+@pytest.mark.parametrize("direction", [Direction.LEFT, Direction.RIGHT, Direction.UP, Direction.DOWN])
+def test_wrap_uses_regular_grid_ticks_and_draws_at_the_destination(monkeypatch, players, player, direction):
+    # A 125 ms grid interval and 64 Hz frame clock give exact binary timestamps.
+    start_time = 100.0
+    clock = SimpleNamespace(now=start_time)
+    monkeypatch.setattr(game_module.time, "time", lambda: clock.now)
+    monkeypatch.setattr(game_module.time, "monotonic", lambda: clock.now)
+    monkeypatch.setattr(game_module.random, "random", lambda: 1.0)
+    game = Game(headless=True)
+    game.start_game(players)
+    game.speed = 8
+    game.items.clear()
+    game.background.fill((15, 23, 35))
+
+    dx, dy = direction.value
+    edge = (
+        GRID_WIDTH - 1 if dx > 0 else 0 if dx < 0 else 4,
+        GRID_HEIGHT - 1 if dy > 0 else 0 if dy < 0 else 6,
+    )
+    before_edge = (edge[0] - dx, edge[1] - dy)
+    destination = ((edge[0] + dx) % GRID_WIDTH, (edge[1] + dy) % GRID_HEIGHT)
+    next_cell = (destination[0] + dx, destination[1] + dy)
+    snake = [before_edge, (edge[0] - 2 * dx, edge[1] - 2 * dy)]
+    suffix = str(player) if players == 2 else ""
+    setattr(game, f"snake{suffix}", snake)
+    setattr(game, f"snake_direction{suffix}", direction)
+    setattr(game, f"next_direction{suffix}", direction)
+    if players == 2:
+        other = 3 - player
+        companion = [(12, 12), (11, 12)]
+        setattr(game, f"snake{other}", companion)
+    game._reset_snake_interpolation()
+
+    head_color = (51, 217, 133)
+    head = pygame.Surface((GRID_SIZE, GRID_SIZE))
+    head.fill(head_color)
+    other_sprite = pygame.Surface((GRID_SIZE, GRID_SIZE))
+    other_sprite.fill((147, 74, 203))
+    game.settings[f"custom_head_p{player}"] = "wrap-head"
+    monkeypatch.setattr(game.options_menu, "get_skin_image",
+                        lambda _, name: head if name == "wrap-head" else other_sprite)
+    arrival_rect = pygame.Rect(destination[0] * GRID_SIZE, destination[1] * GRID_SIZE,
+                               GRID_SIZE, GRID_SIZE)
+
+    steps = []
+    previous_head = before_edge
+    for frame in range(1, 29):
+        clock.now = start_time + frame / 64
+        game.update()
+        if snake[0] != previous_head:
+            steps.append((frame, snake[0], snake[1]))
+            previous_head = snake[0]
+        if 16 <= frame < 24:
+            game.draw_game(include_hud=False)
+            mask = pygame.mask.from_threshold(game.screen, head_color, (1, 1, 1, 255))
+            assert mask.get_bounding_rects() == [arrival_rect]
+        if players == 2:
+            assert companion[0] == (12 + frame // 8, 12)
+
+    assert steps == [(8, edge, before_edge), (16, destination, edge),
+                     (24, next_cell, destination)]
+    assert_positions(game.get_snake_render_positions(player, now=clock.now), [
+        ((destination[0] + dx / 2) * GRID_SIZE, (destination[1] + dy / 2) * GRID_SIZE),
+        (destination[0] * GRID_SIZE, destination[1] * GRID_SIZE),
+    ])
+
+
 @pytest.mark.parametrize("players", [1, 2])
 def test_portal_resets_interpolation_even_for_an_adjacent_teleport(monkeypatch, players):
     game = interpolation_game(players)
