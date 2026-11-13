@@ -84,8 +84,9 @@ def test_first_save_never_clobbers_a_concurrent_save(profile, monkeypatch):
     assert [path.name for path in (profile / "levels").iterdir()] == ["Gleichzeitig.json"]
 
 
-def test_failed_replace_keeps_prior_file_and_cleans_up(profile, monkeypatch):
-    level_drafts.write_draft("Level_001", level_with("old"))
+@pytest.mark.parametrize("collision", [None, {(2, 3): "BARRIER"}])
+def test_failed_replace_keeps_prior_file_and_cleans_up(profile, monkeypatch, collision):
+    level_drafts.write_draft("Level_001", level_with("old"), collision=collision)
     path = profile / "levels" / "Level_001.json"
     original = path.read_bytes()
 
@@ -95,7 +96,7 @@ def test_failed_replace_keeps_prior_file_and_cleans_up(profile, monkeypatch):
 
     monkeypatch.setattr(Path, "replace", denied_replace)
     with pytest.raises(PermissionError):
-        level_drafts.write_draft("Level_001", level_with("new"), replace=True)
+        level_drafts.write_draft("Level_001", level_with("new"), collision=collision, replace=True)
 
     assert path.read_bytes() == original
     assert list(path.parent.iterdir()) == [path]
@@ -142,7 +143,87 @@ def test_legacy_grid_is_readable_and_remains_unchanged(profile):
     assert level_drafts.read_legacy_map() == old_map
     assert level_drafts.list_drafts() == []
     level_drafts.write_draft("Alte Karte", old_map)
+    assert level_drafts.read_level("Alte Karte") == (old_map, {})
     assert path.read_bytes() == old_bytes
+
+
+def test_versioned_draft_round_trips_graphics_and_both_collision_types(profile):
+    graphics = level_with("Wandgrafik")
+    collision = {(GRID_WIDTH - 1, GRID_HEIGHT - 1): "BARRIER", (0, 0): "WALL"}
+
+    level_drafts.write_draft("Mauer", graphics, collision=collision)
+
+    assert level_drafts.read_level("Mauer") == (graphics, collision)
+    assert level_drafts.read_draft("Mauer") == graphics
+    path = profile / "levels" / "Mauer.json"
+    assert json.loads(path.read_text(encoding="utf-8")) == {
+        "version": 1,
+        "graphics": graphics,
+        "collision": [
+            {"x": 0, "y": 0, "type": "WALL"},
+            {"x": GRID_WIDTH - 1, "y": GRID_HEIGHT - 1, "type": "BARRIER"},
+        ],
+    }
+
+
+def test_graphics_only_save_keeps_collision_until_explicitly_removed(profile):
+    collision = {(0, 0): "WALL"}
+    level_drafts.write_draft("Mauer", level_with("Wandgrafik"), collision=collision)
+    decorated = level_with("Dekoration")
+
+    level_drafts.write_draft("Mauer", decorated, replace=True)
+    assert level_drafts.read_level("Mauer") == (decorated, collision)
+
+    level_drafts.write_draft("Mauer", decorated, collision={}, replace=True)
+    assert level_drafts.read_level("Mauer") == (decorated, {})
+    path = profile / "levels" / "Mauer.json"
+    assert json.loads(path.read_text(encoding="utf-8"))["version"] == 1
+
+
+@pytest.mark.parametrize("changes", [
+    {"version": 2},
+    {"version": True},
+    {"graphics": [[]]},
+    {"collision": {}},
+    {"collision": [{"x": True, "y": 0, "type": "WALL"}]},
+    {"collision": [{"x": GRID_WIDTH, "y": 0, "type": "WALL"}]},
+    {"collision": [{"x": 0, "y": -1, "type": "BARRIER"}]},
+    {"collision": [{"x": 0, "y": 0, "type": "DAMAGE"}]},
+    {"collision": [{"x": 0, "y": 0, "type": "WALL"},
+                   {"x": 0, "y": 0, "type": "BARRIER"}]},
+    {"effect": []},
+])
+def test_invalid_versioned_level_is_rejected_without_writing(profile, changes):
+    directory = profile / "levels"
+    directory.mkdir(parents=True)
+    path = directory / "Kaputt.json"
+    invalid = {"version": 1, "graphics": level_with(), "collision": []} | changes
+    path.write_text(json.dumps(invalid), encoding="utf-8")
+    original = path.read_bytes()
+
+    with pytest.raises(ValueError):
+        level_drafts.read_level("Kaputt")
+    with pytest.raises(ValueError):
+        level_drafts.write_draft("Kaputt", level_with("Dekoration"), replace=True)
+    with pytest.raises(ValueError):
+        level_drafts.write_draft("Kaputt", level_with("Dekoration"), collision={}, replace=True)
+    assert path.read_bytes() == original
+
+
+@pytest.mark.parametrize("invalid", [
+    {(False, 0): "WALL"}, {(0, GRID_HEIGHT): "BARRIER"},
+    {(1, 1): "SLOW"}, {(1,): "WALL"}, ["WALL"],
+])
+def test_invalid_collision_cannot_replace_saved_level(profile, invalid):
+    original = level_with("Wandgrafik")
+    collision = {(0, 0): "WALL"}
+    level_drafts.write_draft("Mauer", original, collision=collision)
+    path = profile / "levels" / "Mauer.json"
+    before = path.read_bytes()
+
+    with pytest.raises(ValueError):
+        level_drafts.write_draft("Mauer", level_with("Dekoration"), collision=invalid, replace=True)
+    assert path.read_bytes() == before
 
 
 def test_drafts_are_never_written_inside_pyinstaller_bundle(tmp_path, monkeypatch):

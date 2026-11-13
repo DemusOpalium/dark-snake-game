@@ -195,12 +195,23 @@ Der Bosskörperkontakt zieht im bestehenden Trefferpfad Spieler-HP ab. Regressio
 
 Bei vier Randrichtungen und beiden Köpfen bleibt der Rastertakt gleich. Bei einer kontrollierten Folge mit 60 Bildern pro Sekunde und Geschwindigkeit 8 lagen die Züge vor, beim und nach dem Wechsel jeweils acht Frames auseinander, also 133,3 ms. Die Regression verwendet zusätzlich einen 64-Hz-Takt mit gleichmäßigen 125 ms pro Zug und prüft die tatsächlich gerenderten Pixel, einschließlich des folgenden Körpersegments. Die Interpolation setzt den Kopf beim Randwechsel direkt ans Ziel und hält ihn dort bis zum nächsten Rasterzug. Mit einem deckenden Test-Körpersprite kann der Kopf im ersten Bild des Folgezuges kurz überdeckt sein. Ein zusätzlicher logischer Stillstand wurde nicht beobachtet. Die Spiellogik wurde für Phase A beibehalten. Schwankungen auf einzelnen Rechnern waren nicht Teil der kontrollierten Messung.
 
-### Geplanter Aufbau für Phase B, C und D
+### Entwurf für den späteren Aufbau aus Phase A
 
 - **B.** Ein großes Bild bekommt eine Rastergröße und einen Ankerpunkt. Ein Stempel bekommt ein rechteckiges Raster aus bestehenden Grafik-IDs. Die Platzierung und Undo/Redo sollen jeweils das gesamte Objekt bearbeiten. Das ursprüngliche Bild bleibt erhalten.
 - **C.** Für Karten ein versioniertes Dokument mit Abmessungen und getrennten Ebenen für Grafik, Kollision, Effekte und Ereignisse vorsehen. Bisherige Raster werden beim Lesen als reine Grafikebene interpretiert. Zuerst `WALL` und `BARRIER` umsetzen. Eine Grafikplatzierung schreibt nur ihre Ebene. Ein kombinierter Befehl schreibt zusätzlich eine ausdrückliche Kollisionsmaske. Grafik und Kollision lassen sich getrennt oder gemeinsam löschen. Undo speichert die betroffenen Ebenen als einen Schritt.
 - **C.** Fest gesetzte Spawns anhand von Grenzen, Kollision, Belegung und Ausweichraum validieren. Beim Boss die gesamte Grundfläche prüfen. Bei einer ungültigen festen Position eine geeignete freie Position suchen oder den Spawn mit Begründung auslassen. Die bestehende Zufallsauswahl bleibt für gültige freie Flächen verwendbar.
 - **D.** Effektfelder und Trigger erhalten definierte Typen und geprüfte Parameter. 90 Prozent Slow lässt 10 Prozent des Bewegungstempos übrig. Schaden bekommt ein Intervall pro Ziel. Ereignisse verwenden zugelassene Aktionen aus Daten. Später folgt ein eigener Spieltest mit isoliertem Zustand, danach eine Rückkehr zum Entwurf.
+
+## World Studio – Wände malen und testen
+
+1. Mit **F2** einen Entwurf öffnen. Oben **Nur Grafik**, **Grafik + Kollision** oder **Nur Kollision** und bei Bedarf **WALL** oder **BARRIER** wählen. Linksklick malt die gewählten Ebenen. Rechtsklick löscht die Ebenen des aktuellen Werkzeugs. Im Modus **Nur Grafik** bleibt eine übermalte oder freigeräumte Wand erhalten.
+2. **Kollision ein/aus** steuert die sichtbaren Umrisse. Orange zeigt WALL, Blau zeigt BARRIER. Das Umschalten ändert nur die Anzeige. Undo/Redo nimmt einen zusammenhängenden Mausstrich auf den bearbeiteten Ebenen gemeinsam zurück.
+3. **Test 1P** oder **Test 2P** startet den Wandtest mit dem aktuellen Entwurf im Speicher. Die Schlangen beginnen auf freien Feldern mit einem freien Nachbarfeld. Die normale Belegung für Richtungen gilt, standardmäßig WASD für P1 und Pfeiltasten für P2. Vor WALL und BARRIER bleibt die Schlange auf ihrer Zelle und kann in eine freie Richtung abbiegen.
+4. Mit **Esc**, **F2** oder **Test beenden** zur Bearbeitung zurückkehren. Der Test verwendet kurze Testschlangen für Rasterbewegung und Kollision. Entwurfsänderungen und Undo/Redo bleiben im Editor. **Speichern** schreibt die Karte ausdrücklich auf die Festplatte.
+
+Formatversion 1 speichert Grafik und Kollision als getrennte Felder. Die Kollisionsliste enthält Koordinaten mit dem Typ WALL oder BARRIER. Ältere JSON-Raster öffnen sich als Grafikkarten mit leerer Kollisionsebene. **Für Classic wählen** übernimmt weiterhin den grafischen Hintergrund. WALL und BARRIER wirken im isolierten Editor-Test.
+
+Die korrigierte Reihenfolge nach #122 beginnt mit diesem Kollisionseditor. Damage und Slow folgen in PR 2, Multi-Tiles und Stamp Builder in PR 3 und das Druckplatten- und Trigger-System in PR 4. Die Palette erhält bei Bedarf einen eigenen Bedienungs-PR.
 
 ## Vorgeschlagene nächste Phase
 
