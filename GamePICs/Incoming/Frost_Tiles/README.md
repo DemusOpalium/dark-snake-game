@@ -1,6 +1,6 @@
 # FrostAge / Frost World — Asset-Eingang
 
-**Status: Quellgrafiken, noch NICHT in den Laufzeit-Loader integriert.**
+**Status.** Die 175 Originalgrafiken bilden die Quelle des FrostAge-Laufzeitkatalogs. Im F2-Editor sind sie als Grafikobjekte auswählbar.
 
 Dieser Ordner ist der Import-Stagingbereich für das von Demus vorbereitete FrostTiles-Paket vom 13.11.2026. Vorhandene PNG-Dateien unverändert erhalten; keine automatische 30×30-Konvertierung im Repository.
 
@@ -20,15 +20,13 @@ Dieser Ordner ist der Import-Stagingbereich für das von Demus vorbereitete Fros
 | `Dach` | 8 | 8 | 0 |
 | **Summe** | **126** | **58** | **68** |
 
-Die Ordnerbezeichnungen sind zunächst nur Autor-Angaben, **keine** technisch validierten Raster-Footprints. Prüfen: Die gelieferten fünf `10x1`-PNG sind im Original hochformatig (ca. 295×1110 px), die fünf `1x10`-PNG querformatig (ca. 2000×220 px). Auch die `2x1`-PNG sind überwiegend hochformatig. **Nicht stillschweigend drehen oder stauchen.** Vor Verwendung Rasterausrichtung mit Demus klären bzw. anhand der tatsächlichen Grafiken im Editor bestätigen.
+Zusätzlich liegen hier 11 AoE-Grafiken, 12 Menübuttons, 8 Gegner, 5 Items und 13 Projektile. Die Ordner `10x1`, `1x10` und `2x1` sind nach der tatsächlichen Ausrichtung als 1×10, 10×1 und 1×2 im Katalog erfasst. Der Editor zeichnet die Bilder proportional.
 
-## Codex-Import
+## Laufzeitkatalog
 
-- Das aktuell bestehende `Dark_Snake/modules/graphics.py` liest nur direkte Dateien aus `assets/graphics/tiles/` und skaliert sie auf ein Rasterfeld (zurzeit 30×30 px). **Die PNGs hier nicht einfach direkt in diesen Ordner kopieren.**
-- Künftiger Multi-Tile-Loader: Bilder unverändert als Original speichern, im Spiel mit separat spezifiziertem Raster-Footprint proportional bzw. per transparentem Canvas zeichnen, keine Verzerrung.
-- `Dach` ist als späterer **Roof / Foreground**-Layer gedacht: über Spieler, Gegner und Bosse, aber unter dem HUD; weiche lokale Transparenz um die Schlange folgt in eigenem PR.
-- Grafik/Kollision/Effekt/Objekt/Foreground voneinander unabhängig halten; alte benannte JSON-Level weiter unterstützen.
-- Diese Upload-Arbeit ist **nur Quellgrafikverwaltung**, keine Änderung an Spielmechanik, Renderpipeline oder Tests.
+- `python scripts/frostage_catalog.py --write` erzeugt den Katalog und identische Laufzeitdateien unter `Dark_Snake/assets/graphics/frostage/`. `--check` prüft den Bestand, die Bildmetadaten und die unveränderten Bytes.
+- Der Katalog unterscheidet Ground, Walls, Objects, Roof, AoE, Enemies, Projectiles, Items und Menu. Diese Zuordnungen steuern die Bibliothek. Gameplay-Profile und die Vordergrundebene folgen in eigenen PRs.
+- Die Laufzeitkopien belegen rund 72,2 MiB vor dem Verpacken. Die Windows-CI prüft die Prüfsummen der tatsächlich in der EXE enthaltenen PNGs.
 
 ## Herkunft
 

@@ -230,6 +230,19 @@ Formatversion 2 speichert Grafik, Kollision und Effekte getrennt. Ältere Grafik
 6. **Druckplatten und Trigger.** Ein isolierter Spieltest prüft die Druckplatte, das Warnsignal, den Timer und eine zeitlich begrenzte Schadenszone. Leveldateien beschreiben feste Ereignistypen.
 7. **Editor-Bedienung bei Bedarf.** Tile-Gruppen und Favoriten links sowie Auswahl und Sichtbarkeit der Ebenen näher an die Arbeitsfläche rücken.
 
+## FrostAge – Grafikobjekte im Editor
+
+1. **F2 → Tile-Bibliothek** öffnen und nach **FrostAge**, einer Kategorie oder dem Originaldateinamen suchen. Die Bibliothek zeigt das Motiv und die Rastergröße an.
+2. Eine Grafik wählen und den Mauszeiger aufs Raster setzen. Die Vorschau zeigt die Fläche des Objekts. Linksklick platziert das Motiv als ein Objekt. Über **Objektgröße** die Rastergröße für die nächste Platzierung wählen, etwa `6x6`. Das Seitenverhältnis bleibt beim Skalieren erhalten.
+3. Über **Objekt verschieben** ein platziertes Objekt anklicken und an einer freien Stelle ablegen. Ein Rechtsklick mit dem Grafikwerkzeug löscht das ganze Objekt, auch wenn du es an einer anderen Zelle als dem Anker triffst. Platzierung, Verschieben und Löschen lassen sich rückgängig machen. Außerhalb des Rasters oder über einem anderen Objekt wird die Platzierung abgelehnt.
+4. **Speichern** und **Öffnen** prüfen. Über **Test 1P** und **Test 2P** erscheint die aktuelle Anordnung im isolierten Leveltest. Die Objekte sind Dekoration. Wände und Effekte werden weiterhin mit ihren eigenen Werkzeugen gesetzt. Im ausdrücklich kombinierten Grafik-/Kollisionsmodus betrifft die Kollisionsänderung nur das angeklickte Rasterfeld.
+
+Leveldateien in Version 3 speichern Grafikobjekte separat von Hintergrundkacheln, Kollision und Effekten. Jeder Eintrag enthält die Grafik-ID, die Ankerkoordinate und die Rastergröße. Bisherige Grafik-, Kollisions- und Effektkarten bleiben lesbar.
+
+Alle 175 Quellen bleiben unter `GamePICs/Incoming/Frost_Tiles/` erhalten. Der Katalog ordnet ihnen stabile IDs und Laufzeitpfade zu. Er erfasst Pixelmaße, Alpha, tatsächliche Ausrichtung, Rastergröße und SHA-256. Alle PNGs besitzen einen Alphakanal, 107 enthalten nicht vollständig deckende Pixel. Die Ordner `10x1` und `2x1` enthalten Hochformate, `1x10` Querformate. Die Metadaten verwenden 1×10, 1×2 beziehungsweise 10×1. Ähnliche AoE- und Projektilvarianten wurden als Einzelbilder erfasst, da sich aus den Quellen keine verlässliche Framefolge ableiten lässt.
+
+PR A stellt die Grafiken als dekorative Objekte bereit. Dachwirkung, Licht, Gegner-, Projektil- und Itemprofile, aktive Menübuttons und der Stamp Builder folgen in den in der Roadmap aufgeführten Etappen.
+
 ## Vorgeschlagene nächste Phase
 
 1. Audio und Ebenen unter Windows 11 mit echten Ausgabegeräten prüfen.

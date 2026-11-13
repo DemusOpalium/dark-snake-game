@@ -39,6 +39,7 @@ jobs:
           SDL_AUDIODRIVER: dummy
         run: |
           python -m compileall -q Dark_Snake tests
+          python scripts/frostage_catalog.py --check
           python -m pytest -q
 
       - name: Build EXE with PyInstaller
@@ -48,6 +49,9 @@ jobs:
           $env:SOURCE_DATE_EPOCH = git log -1 --format=%ct
           Set-Content -LiteralPath build-commit.txt -Value $env:GITHUB_SHA -Encoding ascii
           python -m PyInstaller --onefile --windowed --version-file scripts/windows_version_info.txt --hidden-import developer_simulator --add-data "Dark_Snake/assets;assets" --add-data "Dark_Snake/modules;modules" --add-data "build-commit.txt;." Dark_Snake/main.py
+
+      - name: Verify packaged FrostAge assets
+        run: python scripts/check_frostage_exe.py dist/main.exe
 
       - name: Verify EXE identity fields
         run: |
