@@ -1,212 +1,77 @@
 <p align="center">
-  <img src="Dark_Snake/assets/graphics/titel1.png" alt="DARK Snake – Titelgrafik des Spiels" width="220">
+  <img src="Dark_Snake/assets/graphics/titel1.png" alt="DARK SNAKE game logo" width="240">
 </p>
 
-# 🐍 DARK SNAKE
-
-### 🎮 Windows-Download
-
-Die erste offizielle Windows-Version ist in Vorbereitung. Sobald sie verfügbar ist, findest du die Windows-ZIP auf der [GitHub-Release-Seite](https://github.com/DemusOpalium/dark-snake-game/releases).
-
-- ✅ Kostenlos
-- ✅ Für Windows 11
-- ✅ Keine Python-Installation erforderlich
-
-**Installation nach der Veröffentlichung:** Windows-ZIP aus dem Release herunterladen, vollständig entpacken und die DARK-Snake-EXE starten.
-
-[Windows-Build, SHA-256 und Hinweise zu Firefox](WINDOWS_BUILD.md)
-
-<!-- Nach Veröffentlichung von v1.0.0 und Prüfung des Windows-ZIP-Assets die Überschrift in „🎮 Jetzt kostenlos spielen!“ ändern, den Statusabsatz durch [**⬇️ DOWNLOAD – Neueste Windows-Version**](https://github.com/DemusOpalium/dark-snake-game/releases/latest) ersetzen und „nach der Veröffentlichung“ entfernen. -->
-
-*Eine düstere Snake-Reinkarnation mit Bossfights, Portalen, Effekten, Items und integriertem Level-Editor mit 495 Kacheln.*
-
----
-
-## ✨ Ein visueller Einstieg in das Spiel
+<h1 align="center">🐍 DARK SNAKE</h1>
 
 <p align="center">
-  <img src="https://github.com/DemusOpalium/dark-snake-game/blob/main/GamePICs/SpielebeneEDETIERT.png" alt="Spielfeld Editiert" width="600">
-</p>
-
-*Beispiel-Level mit vollständig belegtem Editorfeld – erzeugt mit dem neuen integrierten LevelEditor.*
-
-<p align="center">
-  <img src="https://github.com/DemusOpalium/dark-snake-game/blob/main/GamePICs/LvLEDITOR.png" alt="Level Editor" width="600">
+  <strong>Classic Snake meets gothic arcade chaos.</strong><br>
+  Boss fights · Co-op for two · Portals · Elemental effects · World Studio
 </p>
 
 <p align="center">
-  <img src="https://github.com/DemusOpalium/dark-snake-game/blob/main/GamePICs/output(1).png" alt="Modulstruktur-Diagramm" width="800">
+  <strong>English</strong> · <a href="README.de.md">Deutsch 🇩🇪</a> ·
+  <a href="https://github.com/DemusOpalium/dark-snake-game/discussions">Community & feedback</a> ·
+  <a href="ROADMAP.md">Roadmap</a>
 </p>
 
----
+> 🚧 **Active hobby project / alpha.** Made by DemusOpalium with AI-assisted development, curiosity and a love of games. Free to explore and test; not a finished commercial release.
 
-## 🔹 Was ist *Dark Snake*?
-
-**Dark Snake** ist ein modular entwickeltes Indie-Snake-Spiel mit einzigartigem Grafikstil, Bossfights, automatischem Feuerschuss, Spezialprojektilen, AOE-Zonen, individuell gestaltbaren Snake-Designs – und einem vollständig integrierten, visuell gestalteten LevelEditor.
-
-> **Hinweis von DemusOpalium:** Das Projekt entstand als Herzblutarbeit trotz MS-Erkrankung. Diese README wurde mit Hilfe von GPT4.5 erstellt, um das Projekt bestmöglich für Spieler und Entwickler zu dokumentieren.
-
----
-
-## 🔺 Update-History & aktuelle Highlights (Alpha 2)
-
-* ✅ Neuer Bossschuss: **BossFlameProjectile** (visuell & explosiv)
-* ✅ AdminPanel-Update: **Bolbu-Spawns**, **AOE-Zonen**, **Sofort-Debug-Actions**
-* ✅ Editor mit über **500 Tiles** aus `assets/graphics/tiles`
-* ✅ Voll funktionaler 2-Spieler-Modus
-* ✅ Hintergrundmusik-System (einfach mp3/wav einwerfen)
-
----
-
-## 🔸 Inhaltsverzeichnis
-
-* [Features im Überblick](#features-im-überblick)
-* [LevelEditor Highlights](#leveleditor-highlights)
-* [Screenshots](#screenshots)
-* [Steuerung](#steuerung)
-* [Installation & Start](#installation--start)
-* [Modulstruktur & Doku](#modulstruktur--doku)
-* [Download, Lizenz & Kontakt](#download-lizenz--kontakt)
-
----
-
-## 🌟 Features im Überblick
-
-| Feature            | Beschreibung                                                        |
-| ------------------ | ------------------------------------------------------------------- |
-| 🧠 KI-Gegner       | Gegner mit Spawnverhalten, Health, Projektile                       |
-| 🔥 FireProjectile  | Spieler-Feuerball mit Explosionseffekt bei Aufprall                 |
-| 🌌 AOE-Zonen       | Damage / Heal / Slow / Buff-Aura / Hintergrundbild                  |
-| 🐉 Boss-System     | Flammenangriffe, Spezialeffekte, Animation, AoE                     |
-| 🎨 Editor          | 495 Kacheln, Favoriten, benannte Entwürfe und Vorschau (F2)          |
-| 🛠️ Adminpanel     | Spawn von Items, Feinden, AOE-Zonen, Effekte (TAB)                  |
-| 👥 2-Spieler-Modus | Geteilte Healthbars, getrennte Steuerung & Designs                  |
-| 🎵 Musikplayer     | Eigene Musikdateien auswählbar im Optionen-Menü (dauerhaft loopbar) |
-| 🎭 Anpassung       | Spieler-Kopf- und Körpergrafiken über Inventarsystem auswählbar     |
-
----
-
-## 🔧 LevelEditor Highlights
-
-**F2** öffnet die Werkstatt. Entwürfe liegen als eigene JSON-Dateien in
-`~/.dark-snake/levels/`. Der Editor bietet 495 Kacheln, Favoriten,
-Rückgängig/Wiederholen und eine visuelle Kartenvorschau. Gespeicherte Karten
-lassen sich für die nächste Classic-Runde als Hintergrund auswählen.
-[Anleitung zur Werkstatt](DEVELOPMENT_NOTES.md#level-studio-11--entwürfe-bearbeiten)
-
-Über **Welten** lassen sich Entwürfe Themenwelten zuordnen und in eine eigene
-Spielreihenfolge bringen. Die **Tile-Bibliothek** bietet aufklappbare Themen,
-Vorschaubilder und eine Suche. [Anleitung zu World Studio 2.0](DEVELOPMENT_NOTES.md#world-studio-20--phase-a)
-
-In der Kollisionsebene kannst du WALL und BARRIER malen. **Test 1P** und
-**Test 2P** prüfen die Wände direkt am aktuellen Entwurf.
-[Anleitung zum Wandtest](DEVELOPMENT_NOTES.md#world-studio--wände-malen-und-testen)
-
----
-
-## 🌄 Screenshots
-
-### Spielszene mit AOE-Zonen und Items
+## 🎮 See the game
 
 <p align="center">
-  <img src="https://github.com/DemusOpalium/dark-snake-game/blob/main/GamePICs/AOE-Zonen.png" alt="AOE Zonen" width="600">
+  <img src="GamePICs/Spiel%2BAdminPanel-open22.4.2025.png" alt="DARK SNAKE gameplay with the developer admin panel open (earlier build)" width="740">
 </p>
+<p align="center"><em>Actual game screenshot from an earlier build, with the developer panel open.</em></p>
 
-### Optionen / Snake-Designs
+**What can you play?** A fast-moving Snake arcade game with boss encounters, enemies, projectiles, portals, items and two-player controls. Customize your snake and use your own background music.
 
 <p align="center">
-  <img src="GamePICs/Options.png" width="300">
-  <img src="GamePICs/SnakeBodies.png" width="300">
+  <img src="GamePICs/LvLEDITOR.png" alt="The integrated DARK SNAKE level editor (earlier screenshot)" width="640">
 </p>
+<p align="center"><em>World Studio: design and save your own maps. The editor is being expanded.</em></p>
 
-### AdminPanel & Effekte
+## ❄️ World Studio & FrostAge
 
-<p align="center">
-  <img src="https://github.com/DemusOpalium/dark-snake-game/blob/main/GamePICs/Spiel%2BAdminPanel-open22.4.2025.png" width="300">
-  <img src="GamePICs/Boss-Game-Over.png" width="300">
-</p>
+**Already available:** Press **F2** to use the level editor, browse **495 classic tiles**, save named JSON drafts, organize themed worlds and test **WALL/BARRIER**, **Damage** and **Slow** fields in isolated one- or two-player tests.
 
-### Musik- und Hintergrundoptionen
+**Important:** The regular Classic mode currently uses selected maps as **backgrounds only**. Custom wall collisions and effect fields work in the **editor playtest**, not yet in normal Classic gameplay.
 
-<p align="center">
-  <img src="GamePICs/Backround-Settings.png" width="300">
-  <img src="GamePICs/Musicmp3-wave-backroundmusic.png" width="300">
-</p>
+**Coming next:** Multi-size tiles and stamps, a clearer editor UI, foreground roofs with see-through areas, flickering lights, triggers and fully playable custom levels.
 
-### Portal, Boss, Leaderboard
+🎨 **126 new FrostAge PNG assets** are already stored in [the source asset folder](GamePICs/Incoming/Frost_Tiles/). They are **not yet integrated into the in-game tile loader**.
 
-<p align="center">
-  <img src="GamePICs/LeaderBoard.png" width="300">
-  <img src="GamePICs/TwoPlayerModus.png" width="300">
-</p>
+## ⬇️ Try it on Windows
 
----
+A stable, downloadable Windows release is **not published yet**. The project builds Windows test versions through [GitHub Actions](https://github.com/DemusOpalium/dark-snake-game/actions/workflows/python-app.yml); a GitHub sign-in may be required to download an artifact. These test builds are not signed releases.
 
-## ⌨ Steuerung
+After downloading the Windows build artifact, extract the archive and the game ZIP completely before launching the EXE. See [Windows build and safety notes](WINDOWS_BUILD.md).
 
-| Taste           | Funktion                              |
-| --------------- | ------------------------------------- |
-| **WASD**        | Bewegung Spieler 1                    |
-| **Pfeile**      | Bewegung Spieler 2                    |
-| **Space / +**   | Feuerball Spieler 1/2                 |
-| **TAB**         | Admin-Panel öffnen                    |
-| **F2**          | Editor starten                        |
-| **Ü**           | Spezial-Hintergrund-Effekt aktivieren |
-| **R/T/Z/U/I/O** | AOE-Zonen auslösen (Debug/Test)       |
-| **ESC**         | Zurück ins Hauptmenü                  |
-
----
-
-## 📁 Installation & Start
+**Run from source** (Python / pygame):
 
 ```bash
 python -m pip install -r requirements.txt
 python Dark_Snake/main.py
 ```
 
-Der Startbefehl funktioniert aus dem Hauptordner des Repositorys. Audio ist optional;
-ohne Audiogerät läuft das Spiel stumm weiter. Windows-Builds entstehen über den
-Workflow **Build Windows EXE**. Technische Details stehen in `PROJECT_STATE.md`.
+## ⌨️ Controls at a glance
 
-### Headless-Entwicklersimulation
+| Action | Default key |
+| --- | --- |
+| Player 1 / Player 2 movement | WASD / Arrow keys |
+| Fire | Space (P1), + (P2) |
+| Level editor | F2 |
+| Developer panel | Tab |
+| Back / pause navigation | Esc |
 
-Mehrere beschleunigte Runden aller festen Gameplay-Szenarien lassen sich ohne
-Fenster, Audioausgabe oder Echtzeit-Wartezeiten ausführen:
+Key bindings and other options can be customized in-game. For details, see [controls](CONTROLS.md).
 
-```bash
-python Dark_Snake/developer_simulator.py --rounds 5 --seed 12345
-```
+## 🤝 Join the project
 
-Nach jedem Batch entstehen ein TXT- und ein JSON-Bericht mit Zeitstempel und Seed.
-Bei der entpackten Windows-Version liegt der Ordner **Entwicklerberichte** neben
-der EXE, sofern er beschreibbar ist. Andernfalls und beim Start aus dem Quellcode
-liegen die Berichte unter `~/.dark-snake/Entwicklerberichte`. Mit
-`--output PFAD` lässt sich für einen Konsolenlauf ein anderer Ordner angeben.
-Im Spiel zeigt die Entwickler-Simulation den letzten Bericht und öffnet den
-tatsächlichen Ablageort über **Berichtsordner öffnen**.
+Have a bug report, a map idea, or simply want to try DARK SNAKE? We'd love to hear what works and what doesn't.
 
-Ein Exit-Code ungleich null meldet einen Spielfehler, eine technische Ausnahme,
-eine Zeitüberschreitung, einen Abbruch oder einen Fehler beim Speichern. Der
-Bericht weist nicht ausgeführte Spielregelprüfungen einzeln aus.
+**[💬 Discussions](https://github.com/DemusOpalium/dark-snake-game/discussions)** · **[🐛 Issues](https://github.com/DemusOpalium/dark-snake-game/issues)** · **[🛣️ Roadmap](ROADMAP.md)**
 
----
+For development details: [World Studio notes](DEVELOPMENT_NOTES.md) · [Game gallery](GALLERY.md) · [Windows build guide](WINDOWS_BUILD.md).
 
-## 📚 Modulstruktur & Doku
-
-* **Modulstruktur –** [DEV\_STRUCTURE.md](DEV_STRUCTURE.md)
-* **Screenshots & Galerie –** [GALLERY.md](GALLERY.md)
-* **Steuerung im Detail –** [CONTROLS.md](CONTROLS.md)
-* **GPT Prompt-Guide –** [PROMPT\_GUIDE.md](PROMPT_GUIDE.md)
-* **Roadmap & ToDo-Liste –** [ROADMAP.md](ROADMAP.md)
-
----
-
-## 📤 Download, Lizenz & Kontakt
-
-* Projektlizenz: **MIT License**
-* Repo: [github.com/DemusOpalium/dark-snake-game](https://github.com/DemusOpalium/dark-snake-game)
-* Spielversionen: [GitHub-Releases](https://github.com/DemusOpalium/dark-snake-game/releases)
-* Quellcode für Entwickler: ZIP-Download oder Klonen via Git
-
-> Entwickelt mit ❤️, Python, GPT4.5 und unermüdlichem Willen.
-> Dieses Projekt ist mehr als ein Spiel: Es ist ein sichtbarer Beweis für kreative Kraft trotz Krankheit, Einschränkung und Widerstand.
+**License:** [MIT](LICENSE). Built with Python, pygame and human–AI collaboration. 🐍
