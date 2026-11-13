@@ -31,7 +31,7 @@ Upcoming ideas include bridges you can pass underneath, icy caverns with glowing
 
 ## ⬇️ Try the Windows alpha
 
-A stable signed public release is **not yet available**. Test builds and ZIP packages are produced by [GitHub Actions](https://github.com/DemusOpalium/dark-snake-game/actions/workflows/python-app.yml). You may need to sign in to GitHub to download them. **Extract both the downloaded archive and the packaged game ZIP completely** before launching the EXE. See the [Windows guide](WINDOWS_BUILD.md).
+The **[FrostAge Alpha pre-release (13 November 2026)](https://github.com/DemusOpalium/dark-snake-game/releases/tag/frostage-alpha-2026-11-13)** is available directly on GitHub Releases. Download `DARK-Snake-v1.0.0-Windows-x64.zip`, extract it completely and launch `DARK-Snake.exe`. The accompanying `.sha256` file lets you verify the download. **The EXE is unsigned**, and Windows or browsers may display warnings. A stable, signed release is **not yet available**. Further test builds appear in [GitHub Actions](https://github.com/DemusOpalium/dark-snake-game/actions/workflows/python-app.yml). See the [Windows guide](WINDOWS_BUILD.md).
 
 Run from Python source instead:
 
