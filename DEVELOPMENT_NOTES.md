@@ -241,7 +241,16 @@ Leveldateien in Version 3 speichern Grafikobjekte separat von Hintergrundkacheln
 
 Alle 175 Quellen bleiben unter `GamePICs/Incoming/Frost_Tiles/` erhalten. Der Katalog ordnet ihnen stabile IDs und Laufzeitpfade zu. Er erfasst Pixelmaße, Alpha, tatsächliche Ausrichtung, Rastergröße und SHA-256. Alle PNGs besitzen einen Alphakanal, 107 enthalten nicht vollständig deckende Pixel. Die Ordner `10x1` und `2x1` enthalten Hochformate, `1x10` Querformate. Die Metadaten verwenden 1×10, 1×2 beziehungsweise 10×1. Ähnliche AoE- und Projektilvarianten wurden als Einzelbilder erfasst, da sich aus den Quellen keine verlässliche Framefolge ableiten lässt.
 
-PR A stellt die Grafiken als dekorative Objekte bereit. Dachwirkung, Licht, Gegner-, Projektil- und Itemprofile, aktive Menübuttons und der Stamp Builder folgen in den in der Roadmap aufgeführten Etappen.
+PR #142 hat die Multi-Tiles als dekorative Objekte eingeführt. Das FrostAge-Hauptmenü verwendet die zwölf Menügrafiken als Schaltflächen. Bereits platzierte Menügrafiken in älteren Entwürfen bleiben als Grafikobjekte lesbar. Dachwirkung, Licht, Gegner-, Projektil- und Itemprofile und der Stamp Builder folgen in den in der Roadmap aufgeführten Etappen.
+
+## FrostAge-Hauptmenü unter Windows prüfen
+
+1. Die Windows-ZIP entpacken und `DARK-Snake.exe` starten. Hintergrund, Seitenränder und die zwölf FrostAge-Bilder prüfen. Mit der Maus über aktive Schaltflächen fahren. Mit Pfeiltasten oder Steuerkreuz den Fokus wechseln und mit Enter oder der zugewiesenen Bestätigungstaste auswählen.
+2. **Single Player** und **Multiplayer** getrennt starten. Ein paar Felder fahren, mit P oder der zugewiesenen Pausentaste pausieren und **Hauptmenü** wählen. **Continue** muss dieselbe laufende Runde mit dem bisherigen Spielstand aufnehmen. Das gilt auch mitten im Bosskampf. Nach einem frischen Programmstart oder einem Game Over ist **Continue** ausgegraut. Esc schließt das Pausenmenü und kehrt zur Runde zurück.
+3. **Options**, **Highscore**, **Steuerung** und **Entwickler-Simulation** öffnen und jeweils zurückgehen. **Level Studio** öffnet denselben Editor wie F2. In der Tile-Bibliothek nach `frostage_menu_single_player` suchen. Die Menügrafik ist dort nicht mehr auswählbar.
+4. **Workshop**, **Boss Rush**, **Inventory**, **Statistics** und **Credits** tragen den Hinweis **Nicht verfügbar**. Ein Klick bleibt ohne Aktion. **Quit** schließt das Spiel.
+
+**Continue** hält die Runde im Arbeitsspeicher und folgt den bestehenden Pausenregeln für laufende Effekte. Während eine Runde im Hauptmenü zur Fortsetzung bereitsteht, lässt sich das AdminPanel dort nicht per Tab öffnen. Nach der Fortsetzung ist es wieder erreichbar.
 
 ## Vorgeschlagene nächste Phase
 
