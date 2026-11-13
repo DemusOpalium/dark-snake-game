@@ -22,6 +22,8 @@ from modules.game import Game
 from modules import level_editor as layout
 from modules import level_drafts
 from modules.effect_settings import EFFECT_COLORS
+from modules.frostage_assets import frostage_assets
+from modules.graphic_objects import GraphicObject
 from modules.level_effects import CellEffects, DamageField, SlowField
 from modules.level_playtest import COLLISION_COLORS
 
@@ -109,7 +111,7 @@ def test_effect_settings_paint_and_save_both_independent_effects(studio):
     assert editor.effects == {spot: both}
     assert editor.save_map()
     saved = json.loads((profile / "levels" / "Effektlabor.json").read_text(encoding="utf-8"))
-    assert saved["version"] == 2
+    assert saved["version"] == 3 and saved["objects"] == []
     reopened = Game()
     key(reopened, pygame.K_F2)
     assert reopened.level_editor.load_map("Effektlabor")
@@ -226,7 +228,7 @@ def test_collision_tools_keep_graphics_and_walls_independent(studio):
     assert editor.save_map()
     assert not editor.dirty
     saved = json.loads((profile / "levels" / "Wandlabor.json").read_text(encoding="utf-8"))
-    assert saved["version"] == 2
+    assert saved["version"] == 3 and saved["objects"] == []
     assert saved["effects"] == []
     assert level_drafts.read_level("Wandlabor") == (editor.map, editor.collisions)
     assert saved["graphics"][3][5] is None
@@ -463,6 +465,95 @@ def test_tile_library_search_selects_original_key_for_painting(studio):
     assert editor.current_tile == tile and not editor.dialog_open
     click(game, cell(2, 2))
     assert editor.map[2][2] == tile
+
+
+def test_frostage_objects_are_selected_and_edited_as_whole_footprints(studio):
+    game, editor, _ = studio
+    key(game, pygame.K_F2)
+    asset = frostage_assets()["frostage_10x1_001"]
+    assert asset.cells == (1, 10)
+    button(game, editor, "Tile-Bibliothek")
+    assert len(editor.tile_library._entries) == len(editor.tiles) + 175
+    text(game, asset.name)
+    entry, = [row for row in editor.tile_library._rows if row.kind == "tile"]
+    assert entry.target == asset.id and entry.label.endswith("1×10")
+    key(game, pygame.K_RETURN)
+    assert not editor.dialog_open
+    assert editor.current_tile == asset.id
+
+    anchor = (5, 4)
+    inside = (5, 9)
+    button(game, editor, "Nur Kollision")
+    click(game, cell(*inside))
+    button(game, editor, "Schaden")
+    click(game, cell(*inside))
+    collision_before = editor.collisions.copy()
+    effects_before = editor.effects.copy()
+    button(game, editor, "Nur Grafik")
+
+    # Rendering the cursor preview may not change the stored draft.
+    send(game, pygame.event.Event(pygame.MOUSEMOTION, pos=cell(*anchor), rel=(0, 0), buttons=(0, 0, 0)))
+    game.draw()
+    assert not editor.objects
+    top_left = (layout.MAP_RECT.left + anchor[0] * layout.CELL_SIZE,
+                layout.MAP_RECT.top + anchor[1] * layout.CELL_SIZE)
+    assert game.screen.get_at(top_left)[:3] == layout.COLOR_SELECT
+
+    item = GraphicObject(asset.id, 1, 10)
+    click(game, cell(*anchor))
+    assert editor.objects == {anchor: item}
+    button(game, editor, "Grafik + Kollision")
+    click(game, cell(6, GRID_HEIGHT - 1))
+    assert editor.objects == {anchor: item}
+    assert editor.collisions == collision_before
+    button(game, editor, "Nur Grafik")
+
+    button(game, editor, "Objekt verschieben")
+    click(game, cell(*inside))
+    click(game, cell(8, 10))
+    moved = (8, 5)
+    assert editor.objects == {moved: item}
+    key(game, pygame.K_z, pygame.KMOD_CTRL)
+    assert editor.objects == {anchor: item}
+    key(game, pygame.K_y, pygame.KMOD_CTRL)
+    assert editor.objects == {moved: item}
+
+    click(game, cell(8, 13), button=3)
+    assert not editor.objects
+    assert editor.collisions == collision_before and editor.effects == effects_before
+    key(game, pygame.K_z, pygame.KMOD_CTRL)
+    assert editor.save_map()
+    assert level_drafts.read_level_document(editor.name)[-1] == {moved: item}
+    assert editor.load_map(editor.name)
+    assert editor.objects == {moved: item} and not editor.dirty
+
+
+def test_frostage_custom_footprint_renders_in_both_playtests(studio):
+    game, editor, _ = studio
+    key(game, pygame.K_F2)
+    asset = frostage_assets()["frostage_1x10_001"]
+    button(game, editor, "Tile-Bibliothek")
+    text(game, asset.name)
+    key(game, pygame.K_RETURN)
+    button(game, editor, "Objektgröße")
+    text(game, "6x2")
+    key(game, pygame.K_RETURN)
+    assert not editor.dialog_open
+    anchor = (3, 3)
+    click(game, cell(*anchor))
+    assert editor.objects == {anchor: GraphicObject(asset.id, 6, 2)}
+
+    point = (layout.MAP_RECT.left + (anchor[0] + 3) * layout.CELL_SIZE,
+             layout.MAP_RECT.top + (anchor[1] + 1) * layout.CELL_SIZE)
+    for player_count in (1, 2):
+        button(game, editor, f"Test {player_count}P")
+        assert editor.playtest.player_count == player_count
+        game.draw()
+        assert game.screen.get_at(point) != editor._preview_background.get_at(
+            (point[0] - layout.MAP_RECT.left, point[1] - layout.MAP_RECT.top))
+        key(game, pygame.K_ESCAPE)
+        assert editor.playtest is None
+    assert editor.objects == {anchor: GraphicObject(asset.id, 6, 2)}
 
 
 def legacy_file(profile, tile):

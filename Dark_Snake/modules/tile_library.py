@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 import pygame
 
+from modules.frostage_assets import load_frostage_image
 from modules.tile_catalog import GROUPS, THEMES, TileEntry, load_tile_catalog
 
 
@@ -16,6 +17,11 @@ TEXT_COLOR = (248, 244, 255)
 MUTED_COLOR = (184, 177, 202)
 ACCENT_COLOR = (200, 164, 255)
 FAVORITES = "favorites"
+FROST_CATEGORIES = {
+    "ground": "Boden", "walls": "Wände", "objects": "Objekte", "roof": "Dächer",
+    "aoe": "AoE", "enemies": "Gegner", "projectiles": "Projektile",
+    "items": "Items", "menu": "Menügrafiken",
+}
 
 
 @dataclass(frozen=True)
@@ -27,8 +33,13 @@ class _Row:
 
 
 class TileLibrary:
-    def __init__(self, tiles, favorites, bounds, font, select_tile, *, max_favorites=8):
+    def __init__(self, tiles, favorites, bounds, font, select_tile, *, max_favorites=8,
+                 frost_assets=None):
         self.tiles = tiles
+        self.frost_assets = frost_assets or {}
+        self._themes = {key: label for key, (label, _) in THEMES.items()}
+        self._themes.update({f"frostage_{key}": f"FrostAge · {label}"
+                             for key, label in FROST_CATEGORIES.items()})
         self.favorites = favorites
         self.font = font
         self.select_tile = select_tile
@@ -55,6 +66,11 @@ class TileLibrary:
 
     def open(self):
         self._entries, self._warnings = load_tile_catalog(self.tiles)
+        self._entries += tuple(
+            TileEntry(asset.id, f"frostage_{asset.category}",
+                      "single" if asset.cells == (1, 1) else "multi")
+            for asset in self.frost_assets.values()
+        )
         self._refresh_rows()
         pygame.key.start_text_input()
 
@@ -64,7 +80,7 @@ class TileLibrary:
     def _refresh_rows(self):
         terms = self._query.casefold().split()
         self._matches = tuple(entry for entry in self._entries if self._matches_terms(entry, terms))
-        by_category = {category: [] for category in THEMES}
+        by_category = {category: [] for category in self._themes}
         for entry in self._matches:
             by_category[entry.category].append(entry)
 
@@ -72,7 +88,7 @@ class TileLibrary:
         favorites = [entry for entry in self._matches if entry.key in self.favorites]
         categories = [(FAVORITES, "Favoriten", favorites)]
         categories.extend((category, label, by_category[category])
-                          for category, (label, _) in THEMES.items())
+                          for category, label in self._themes.items())
         for category, label, entries in categories:
             if not entries and (terms or category != FAVORITES):
                 continue
@@ -91,13 +107,19 @@ class TileLibrary:
             self._rows.append(_Row("hint", "Keine Kacheln gefunden.", ""))
         self._scroll_by(0)
 
-    @staticmethod
-    def _matches_terms(entry, terms):
+    def _matches_terms(self, entry, terms):
         if not terms:
             return True
-        label, _ = THEMES[entry.category]
-        searchable = f"{entry.key}.png {entry.category} {label} {entry.group} {GROUPS[entry.group]}".casefold()
+        searchable = (f"{self._tile_label(entry)} {entry.key} {entry.category} "
+                      f"{self._themes[entry.category]} {entry.group} {GROUPS[entry.group]}").casefold()
         return all(term in searchable for term in terms)
+
+    def _tile_label(self, entry):
+        asset = self.frost_assets.get(entry.key)
+        if asset is None:
+            return f"{entry.key}.png"
+        width, height = asset.cells
+        return f"{asset.name} · {width}×{height}"
 
     def _add_group_rows(self, category, entries, searching):
         closed_groups = self._search_closed_groups if searching else self._closed_groups
@@ -113,7 +135,7 @@ class TileLibrary:
                 self._add_tile_rows(members, 32)
 
     def _add_tile_rows(self, entries, indent):
-        self._rows.extend(_Row("tile", f"{entry.key}.png", entry.key, indent) for entry in entries)
+        self._rows.extend(_Row("tile", self._tile_label(entry), entry.key, indent) for entry in entries)
 
     def _set_query(self, query):
         self._query = query[:100]
@@ -234,16 +256,25 @@ class TileLibrary:
         if row.kind in ("category", "group"):
             pygame.draw.rect(screen, ROW_COLOR, rect.inflate(-2, -2))
         if row.kind == "tile":
-            image = self.tiles.get(row.target)
-            if image is not None:
-                if row.target not in self._thumbnails:
-                    self._thumbnails[row.target] = pygame.transform.scale(
-                        image, (THUMBNAIL_SIZE, THUMBNAIL_SIZE)
-                    )
-                screen.blit(self._thumbnails[row.target], (x, rect.top + 4))
+            thumb_rect = pygame.Rect(x, rect.top + 4, THUMBNAIL_SIZE, THUMBNAIL_SIZE)
+            if row.target not in self._thumbnails:
+                self._thumbnails[row.target] = self._make_thumbnail(row.target, thumb_rect)
+            thumbnail = self._thumbnails[row.target]
+            if thumbnail is not None:
+                screen.blit(thumbnail, thumbnail.get_rect(center=thumb_rect.center))
             if row.target == current_tile:
                 pygame.draw.rect(screen, ACCENT_COLOR, rect.inflate(-2, -2), width=1)
             x += THUMBNAIL_SIZE + 9
         self._text(screen, row.label, (x, rect.top + 8),
                    color=MUTED_COLOR if row.kind == "hint" else TEXT_COLOR,
                    max_width=rect.right - x - 8)
+
+    def _make_thumbnail(self, key, bounds):
+        if key in self.frost_assets:
+            image = load_frostage_image(key)
+            if image is not None:
+                width, height = image.get_rect().fit(bounds).size
+                return pygame.transform.smoothscale(image, (max(1, width), max(1, height)))
+        elif (image := self.tiles.get(key)) is not None:
+            return pygame.transform.scale(image, bounds.size)
+        return None

@@ -6,9 +6,12 @@ import pygame
 
 from config import GRID_HEIGHT, GRID_SIZE, GRID_WIDTH, WINDOW_HEIGHT, WINDOW_WIDTH
 from modules.effect_settings import EFFECT_COLORS, EffectSettings, draw_effect_overlay
+from modules.frostage_assets import frostage_assets, load_frostage_image
+from modules.graphic_objects import (GraphicObject, can_place_graphic_object, draw_graphic_object,
+                                     draw_graphic_objects, object_anchor_at, place_graphic_object)
 from modules.graphics import TILE_IMAGES
 from modules.level_drafts import (COLLISION_TYPES, legacy_map_exists, list_drafts,
-                                  normalize_draft_name, read_legacy_map, read_level_layers,
+                                  normalize_draft_name, read_legacy_map, read_level_document,
                                   suggest_draft_name, write_draft)
 from modules.level_effects import CellEffects, DamageField, SlowField
 from modules.level_playtest import COLLISION_COLORS, LevelPlaytest, draw_collision_overlay
@@ -60,12 +63,20 @@ class LevelEditor:
         self.game = game
         self.active = False
         self.tiles = dict(sorted(TILE_IMAGES.items()))
+        self.frost_assets = frostage_assets()
         self._tile_keys = tuple(self.tiles)
         self._scaled_tiles = {}
+        self._frost_favorite_thumbnails = {}
         self.current_tile = next(iter(self.tiles), None)
+        self._object_brush = None
+        self._moving_objects = False
+        self._move_anchor = None
+        self._move_offset = (0, 0)
+        self._hover_cell = None
         self.map = _empty_map()
         self.collisions = {}
         self.effects = {}
+        self.objects = {}
         self._saved_layers = self._snapshot()
         self.placement_mode = "graphics"
         self.collision_type = "WALL"
@@ -95,7 +106,7 @@ class LevelEditor:
 
     @property
     def dirty(self):
-        return (self.map, self.collisions, self.effects) != self._saved_layers
+        return (self.map, self.collisions, self.effects, self.objects) != self._saved_layers
 
     @property
     def dialog_open(self):
@@ -125,6 +136,8 @@ class LevelEditor:
         buttons.extend((
             ("Welten", pygame.Rect(WINDOW_WIDTH - 304, 10, 140, BTN_H), self.open_world_tree),
             ("Tile-Bibliothek", pygame.Rect(WINDOW_WIDTH - 154, 10, 140, BTN_H), self.open_tile_library),
+            ("Objekt verschieben", pygame.Rect(WINDOW_WIDTH - 304, 71, 140, BTN_H), self._toggle_object_move),
+            ("Objektgröße", pygame.Rect(WINDOW_WIDTH - 154, 71, 140, BTN_H), self._open_object_size),
         ))
         x = TOOLBAR_W
         collision_toolbar_y = MAP_TOP - 2 * (BTN_H + 4)
@@ -151,6 +164,7 @@ class LevelEditor:
 
     def _set_placement_mode(self, mode):
         self._stroke_button = None
+        self._stop_object_move()
         self.placement_mode = mode
 
     def _set_collision_type(self, kind):
@@ -191,13 +205,16 @@ class LevelEditor:
 
         def close():
             if self.dirty:
-                saved_map, saved_collisions, saved_effects = self._saved_layers
+                saved_map, saved_collisions, saved_effects, saved_objects = self._saved_layers
                 self.map = _copy_map(saved_map)
                 self.collisions = saved_collisions.copy()
                 self.effects = saved_effects.copy()
+                self.objects = saved_objects.copy()
                 self.undo_stack.clear()
                 self.redo_stack.clear()
             self.stop_sim()
+            self._stop_object_move()
+            self._hover_cell = None
             self._stroke_button = None
             self.active = False
             if on_close is not None:
@@ -253,7 +270,7 @@ class LevelEditor:
     def _save_named_map(self, name, *, replace=False):
         try:
             saved_name = write_draft(name, self.map, collision=self.collisions,
-                                     effects=self.effects, replace=replace)
+                                     effects=self.effects, objects=self.objects, replace=replace)
         except FileExistsError as error:
             self.info = str(error)
             if not replace:
@@ -289,31 +306,35 @@ class LevelEditor:
         except ValueError as error:
             self.info = f"Level konnte nicht geladen werden. {error}"
             return False
-        return self._load_document(name, lambda: read_level_layers(name), saved_name=name)
+        return self._load_document(name, lambda: read_level_document(name), saved_name=name)
 
     def load_legacy_map(self):
-        return self._load_document("custom_level.json", lambda: (read_legacy_map(), {}, {}), legacy=True)
+        return self._load_document("custom_level.json", lambda: (read_legacy_map(), {}, {}, {}), legacy=True)
 
     def _load_document(self, name, read, *, saved_name=None, legacy=False):
         def load():
             try:
-                level_map, collisions, effects = read()
+                level_map, collisions, effects, objects = read()
             except (OSError, ValueError) as error:
                 self.info = f"Level konnte nicht geladen werden. {error}"
                 return False
-            self._set_document(name, level_map, collisions=collisions, effects=effects,
+            self._set_document(name, level_map, collisions=collisions, effects=effects, objects=objects,
                                saved_name=saved_name, legacy=legacy)
             self.info = f"{name} geladen"
             return True
 
         return self._after_discard_confirmation(load)
 
-    def _set_document(self, name, level_map, *, collisions=None, effects=None, saved_name=None, legacy=False):
+    def _set_document(self, name, level_map, *, collisions=None, effects=None, objects=None,
+                      saved_name=None, legacy=False):
         self._stroke_button = None
+        self._stop_object_move()
+        self._hover_cell = None
         self.name = name
         self.map = level_map
         self.collisions = {} if collisions is None else collisions
         self.effects = {} if effects is None else effects
+        self.objects = {} if objects is None else objects
         self._saved_layers = self._snapshot()
         self._saved_name = saved_name
         self._legacy = legacy
@@ -365,14 +386,76 @@ class LevelEditor:
         if self.tile_library is None:
             self.tile_library = TileLibrary(self.tiles, self.favorites,
                                             pygame.Rect(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT),
-                                            self.font, self._select_tile, max_favorites=MAX_FAV)
+                                            self.font, self._select_tile, max_favorites=MAX_FAV,
+                                            frost_assets=self.frost_assets)
         self.tile_library.open()
         self._stroke_button = None
         self._dialog = {"kind": "tiles"}
 
     def _select_tile(self, key):
         self.current_tile = key
-        self.info = f"{key}.png ausgewählt"
+        self._object_brush = None
+        self._stop_object_move()
+        asset = self.frost_assets.get(key)
+        if asset is None:
+            self.info = f"{key}.png ausgewählt"
+            return
+        self._object_brush = GraphicObject(key, *asset.cells)
+        self._set_placement_mode("graphics")
+        self.info = f"{asset.name} · {asset.cells[0]}×{asset.cells[1]} ausgewählt"
+
+    def _open_object_size(self):
+        item = self._object_brush
+        if item is None:
+            self.info = "Zuerst eine FrostAge-Grafik aus der Bibliothek auswählen."
+            return
+
+        def validate(value):
+            try:
+                width, height = map(int, value.lower().replace("×", "x").split("x"))
+            except ValueError as error:
+                raise ValueError("Bitte eine Rastergröße wie 4x4 eingeben.") from error
+            return GraphicObject(item.asset_id, width, height)
+
+        def apply_size(updated):
+            self._object_brush = updated
+            self.info = f"Objektgröße {updated.width}×{updated.height}"
+
+        self._name_dialog("Objektgröße im Raster, z. B. 4x4", f"{item.width}x{item.height}",
+                          apply_size, validate=validate)
+
+    def _stop_object_move(self):
+        self._moving_objects = False
+        self._move_anchor = None
+
+    def _toggle_object_move(self):
+        if self._moving_objects:
+            self._stop_object_move()
+            self.info = "Verschieben beendet"
+        else:
+            self._stroke_button = None
+            self._moving_objects = True
+            self.info = "Ein platziertes Grafikobjekt anklicken."
+
+    def _move_object_at(self, cell):
+        if self._move_anchor is None:
+            anchor = object_anchor_at(self.objects, cell)
+            if anchor is not None:
+                self._move_anchor = anchor
+                self._move_offset = cell[0] - anchor[0], cell[1] - anchor[1]
+                self.info = "Zielposition anklicken · Esc bricht ab"
+            return
+        old = self._move_anchor
+        target = cell[0] - self._move_offset[0], cell[1] - self._move_offset[1]
+        item = self.objects[old]
+        if not can_place_graphic_object(self.objects, target, item, moving=old):
+            self.info = "Ziel liegt außerhalb der Karte oder über einem anderen Objekt."
+            return
+        if target != old:
+            self._store_undo()
+            place_graphic_object(self.objects, target, item, moving=old)
+            self.info = "Grafikobjekt verschoben"
+        self._move_anchor = None
 
     def select_for_classic(self):
         if self.dirty or not (self._saved_name or self._legacy):
@@ -388,6 +471,7 @@ class LevelEditor:
 
     def start_sim(self):
         self.preview_active = True
+        self._stop_object_move()
         self._preview_background = pygame.transform.scale(self.game.default_background_surface, MAP_RECT.size)
         self._stroke_button = None
         self.buttons = self._make_buttons()
@@ -406,6 +490,7 @@ class LevelEditor:
             self.info = str(error)
             return
         self.playtest = session
+        self._stop_object_move()
         self._preview_background = pygame.transform.scale(self.game.default_background_surface, MAP_RECT.size)
         self._stroke_button = None
         self.buttons = self._make_buttons()
@@ -435,10 +520,13 @@ class LevelEditor:
             self._handle_click(event.pos, event.button)
         elif event.type == pygame.MOUSEBUTTONUP and event.button == self._stroke_button:
             self._stroke_button = None
-        elif event.type == pygame.WINDOWFOCUSLOST:
+        elif event.type in (pygame.WINDOWFOCUSLOST, pygame.WINDOWLEAVE):
             self._stroke_button = None
-        elif event.type == pygame.MOUSEMOTION and self._stroke_button:
-            self._paint(*event.pos)
+            self._hover_cell = None
+        elif event.type == pygame.MOUSEMOTION:
+            self._hover_cell = self._map_cell(event.pos)
+            if self._stroke_button:
+                self._paint(*event.pos)
         elif event.type == pygame.MOUSEWHEEL and not self.preview_active:
             if PALETTE_RECT.collidepoint(getattr(event, "pos", pygame.mouse.get_pos())):
                 rows = (len(self._tile_keys) + PALETTE_COLUMNS - 1) // PALETTE_COLUMNS
@@ -450,6 +538,9 @@ class LevelEditor:
         if event.key == pygame.K_ESCAPE:
             if self.preview_active:
                 self.stop_sim()
+            elif self._moving_objects:
+                self._stop_object_move()
+                self.info = "Verschieben beendet"
             else:
                 self.request_close()
         elif not self.preview_active and getattr(event, "mod", 0) & pygame.KMOD_CTRL:
@@ -472,7 +563,7 @@ class LevelEditor:
             for key, rect in self._visible_tiles():
                 if rect.collidepoint(pos):
                     if button == 1:
-                        self.current_tile = key
+                        self._select_tile(key)
                     elif key not in self.favorites and len(self.favorites) < MAX_FAV:
                         self.favorites.append(key)
                         self.info = f"{key} zu Favoriten hinzugefügt"
@@ -480,9 +571,14 @@ class LevelEditor:
         elif button == 1 and pos[1] < FAV_ROW_H:
             for index, key in enumerate(self.favorites):
                 if self._favorite_rect(index).collidepoint(pos):
-                    self.current_tile = key
+                    self._select_tile(key)
                     return
-        if MAP_RECT.collidepoint(pos):
+        if (cell := self._map_cell(pos)) is not None:
+            self._hover_cell = cell
+            if self._moving_objects:
+                if button == 1:
+                    self._move_object_at(cell)
+                return
             self._stroke_button = button
             self._stroke_changed = False
             self._paint(*pos)
@@ -501,16 +597,38 @@ class LevelEditor:
     def _favorite_rect(self, index):
         return pygame.Rect(TOOLBAR_W + 10 + index * (GRID_SIZE + 6), 10, GRID_SIZE, GRID_SIZE)
 
+    @staticmethod
+    def _map_cell(position):
+        if MAP_RECT.collidepoint(position):
+            x, y = position
+            return (x - MAP_RECT.x) // CELL_SIZE, (y - MAP_RECT.y) // CELL_SIZE
+        return None
+
+    def _selected_object(self):
+        if self._object_brush and self._object_brush.asset_id == self.current_tile:
+            return self._object_brush
+        return None
+
     def _paint(self, mx, my):
-        if not MAP_RECT.collidepoint(mx, my):
+        cell = self._map_cell((mx, my))
+        if cell is None:
             return
-        gx = (mx - MAP_RECT.x) // CELL_SIZE
-        gy = (my - MAP_RECT.y) // CELL_SIZE
+        gx, gy = cell
         erase = self._stroke_button == 3
-        cell = (gx, gy)
         if self.placement_mode in ("damage", "slow"):
             self._paint_effect(cell, erase)
             return
+        if self.placement_mode != "collision":
+            if erase and (anchor := object_anchor_at(self.objects, cell)) is not None:
+                self._begin_stroke_change()
+                del self.objects[anchor]
+                if self.placement_mode == "combined":
+                    self.collisions.pop(cell, None)
+                self.info = "Ganzes Grafikobjekt entfernt"
+                return
+            if not erase and (item := self._selected_object()) is not None:
+                self._paint_object(cell, item)
+                return
         tile = None if erase else self.current_tile
         collision = None if erase else self.collision_type
         change_graphics = (self.placement_mode != "collision" and (erase or tile is not None)
@@ -532,6 +650,20 @@ class LevelEditor:
             self.info = "Kollision gelöscht" if erase else f"{collision} gesetzt"
         else:
             self.info = "Kachel entfernt" if erase else f"{tile} gesetzt"
+
+    def _paint_object(self, cell, item):
+        if self._stroke_changed and self._stroke_button is not None:
+            return
+        if not can_place_graphic_object(self.objects, cell, item):
+            self.info = "Grafikobjekt passt hier nicht."
+            return
+        self._begin_stroke_change()
+        place_graphic_object(self.objects, cell, item)
+        if self.placement_mode == "combined":
+            self.collisions[cell] = self.collision_type
+            self.info = "Grafikobjekt gesetzt · Kollision nur am Ankerfeld"
+        else:
+            self.info = f"Grafikobjekt {item.width}×{item.height} gesetzt"
 
     def _paint_effect(self, cell, erase):
         existing = self.effects.get(cell, CellEffects())
@@ -556,7 +688,7 @@ class LevelEditor:
             self._stroke_changed = True
 
     def _snapshot(self):
-        return _copy_map(self.map), self.collisions.copy(), self.effects.copy()
+        return _copy_map(self.map), self.collisions.copy(), self.effects.copy(), self.objects.copy()
 
     def _store_undo(self):
         self.undo_stack.append(self._snapshot())
@@ -564,19 +696,24 @@ class LevelEditor:
 
     def undo(self):
         self._stroke_button = None
+        self._stop_object_move()
         if self.undo_stack:
-            self.redo_stack.append((self.map, self.collisions, self.effects))
-            self.map, self.collisions, self.effects = self.undo_stack.pop()
+            self.redo_stack.append((self.map, self.collisions, self.effects, self.objects))
+            self.map, self.collisions, self.effects, self.objects = self.undo_stack.pop()
             self.info = "Bearbeitung rückgängig gemacht"
 
     def redo(self):
         self._stroke_button = None
+        self._stop_object_move()
         if self.redo_stack:
-            self.undo_stack.append((self.map, self.collisions, self.effects))
-            self.map, self.collisions, self.effects = self.redo_stack.pop()
+            self.undo_stack.append((self.map, self.collisions, self.effects, self.objects))
+            self.map, self.collisions, self.effects, self.objects = self.redo_stack.pop()
             self.info = "Bearbeitung wiederholt"
 
     def fill_middle(self):
+        if self._selected_object() is not None:
+            self.info = "Mittelfeld ist für einzelne Kacheln verfügbar."
+            return
         if self.current_tile is not None:
             self._store_undo()
             for row in self.map[1:-1]:
@@ -584,6 +721,9 @@ class LevelEditor:
             self.info = "Mittelfeld gefüllt"
 
     def set_border(self):
+        if self._selected_object() is not None:
+            self.info = "Rand ist für einzelne Kacheln verfügbar."
+            return
         if self.current_tile is not None:
             self._store_undo()
             for row in self.map:
@@ -752,6 +892,8 @@ class LevelEditor:
             return COLOR_SELECT
         if label == "Effekte ein/aus" and self.show_effects:
             return COLOR_SELECT
+        if label == "Objekt verschieben" and self._moving_objects:
+            return COLOR_SELECT
         if (self.placement_mode, label) in EFFECT_TOOLS:
             return EFFECT_COLORS[self.placement_mode]
         if any(mode == self.placement_mode and label == name for mode, name, _, _ in PLACEMENT_TOOLS):
@@ -773,7 +915,8 @@ class LevelEditor:
         if not self.preview_active and self.playtest is None:
             self._draw_tiles(screen)
             classic = getattr(self.game, "classic_level_name", None) or "Standard"
-            self._draw_text(screen, f"Nächster Classic-Start · {classic}", (TOOLBAR_W, 78))
+            self._draw_text(screen, f"Nächster Classic-Start · {classic}", (TOOLBAR_W, 78),
+                            max_width=WINDOW_WIDTH - TOOLBAR_W - 314)
         for label, rect, action in self.buttons:
             if self._button_available(action):
                 self._draw_button(screen, label, rect, self._tool_outline(label))
@@ -811,6 +954,12 @@ class LevelEditor:
                 hint = f"Links {damage.amount} HP je {damage.interval:g} s{duration} · Rechts löscht Schaden"
             elif self.placement_mode == "slow":
                 hint = f"Links Slow {self.slow_brush.percent} % · Rechts löscht Slow"
+            elif self._moving_objects:
+                hint = "Grafikobjekt und Ziel anklicken · Esc bricht ab"
+            elif self.placement_mode != "collision" and (item := self._selected_object()) is not None:
+                hint = f"Objekt {item.width}×{item.height} · Links setzt · Rechts entfernt das ganze Objekt"
+                if self.placement_mode == "combined":
+                    hint += " · Kollision nur im Klickfeld"
         self._draw_text(screen, hint, (TOOLBAR_W, WINDOW_HEIGHT - 39))
         if self.playtest is None:
             self._draw_text(screen, self.info, (TOOLBAR_W, WINDOW_HEIGHT - 20), COLOR_SELECT)
@@ -826,14 +975,26 @@ class LevelEditor:
         pygame.draw.rect(screen, COLOR_FAV, (TOOLBAR_W, 0, WINDOW_WIDTH - TOOLBAR_W, FAV_ROW_H))
         for index, key in enumerate(self.favorites):
             rect = self._favorite_rect(index)
-            screen.blit(self.tiles[key], rect)
+            image = self.tiles.get(key)
+            if image is None and key in self.frost_assets:
+                if key not in self._frost_favorite_thumbnails:
+                    original = load_frostage_image(key)
+                    if original is not None:
+                        size = original.get_rect().fit(rect).size
+                        self._frost_favorite_thumbnails[key] = pygame.transform.smoothscale(
+                            original, tuple(max(1, side) for side in size))
+                image = self._frost_favorite_thumbnails.get(key)
+            if image is not None:
+                screen.blit(image, image.get_rect(center=rect.center))
             if key == self.current_tile:
                 pygame.draw.rect(screen, COLOR_SELECT, rect, 2)
 
         self._draw_text(screen, "Kacheln", (10, SCROLL_TOP - 39))
         old_clip = screen.get_clip()
         screen.set_clip(pygame.Rect(10, SCROLL_TOP - 20, TOOLBAR_W - 18, 20))
-        self._draw_text(screen, self.current_tile or "–", (10, SCROLL_TOP - 20), COLOR_SELECT)
+        asset = self.frost_assets.get(self.current_tile)
+        selection = asset.name if asset else self.current_tile or "–"
+        self._draw_text(screen, selection, (10, SCROLL_TOP - 20), COLOR_SELECT)
         screen.set_clip(old_clip)
         pygame.draw.rect(screen, COLOR_BTN, PALETTE_RECT)
         pygame.draw.rect(screen, COLOR_FRAME, PALETTE_RECT, 2)
@@ -856,6 +1017,7 @@ class LevelEditor:
                         self._scaled_tiles[key] = pygame.transform.scale(self.tiles[key], (CELL_SIZE, CELL_SIZE))
                     screen.blit(self._scaled_tiles[key], (MAP_RECT.x + x * CELL_SIZE,
                                                           MAP_RECT.y + y * CELL_SIZE))
+        draw_graphic_objects(screen, MAP_RECT, self.objects)
         if not self.preview_active and self.playtest is None:
             for x in range(0, MAP_RECT.width, CELL_SIZE):
                 pygame.draw.line(screen, COLOR_GRID, (MAP_RECT.x + x, MAP_RECT.y),
@@ -868,6 +1030,32 @@ class LevelEditor:
             draw_collision_overlay(screen, MAP_RECT, self.collisions)
         if self.show_effects and not self.preview_active:
             draw_effect_overlay(screen, MAP_RECT, CELL_SIZE, self.effects)
+        if not self.preview_active and self.playtest is None and not self.dialog_open:
+            self._draw_object_preview(screen)
+
+    def _draw_object_preview(self, screen):
+        anchor = self._hover_cell
+        if anchor is None:
+            return
+        moving = self._move_anchor
+        if moving is not None:
+            anchor = anchor[0] - self._move_offset[0], anchor[1] - self._move_offset[1]
+            item = self.objects[moving]
+        elif self._moving_objects or self.placement_mode not in ("graphics", "combined"):
+            return
+        else:
+            item = self._selected_object()
+        if item is None:
+            return
+        rect = pygame.Rect(MAP_RECT.x + anchor[0] * CELL_SIZE, MAP_RECT.y + anchor[1] * CELL_SIZE,
+                           item.width * CELL_SIZE, item.height * CELL_SIZE)
+        fits = can_place_graphic_object(self.objects, anchor, item, moving=moving)
+        if fits:
+            draw_graphic_object(screen, MAP_RECT, anchor, item, preview=True)
+        old_clip = screen.get_clip()
+        screen.set_clip(MAP_RECT.clip(old_clip))
+        pygame.draw.rect(screen, COLOR_SELECT if fits else (244, 104, 127), rect, 2)
+        screen.set_clip(old_clip)
 
     def _draw_dialog(self, screen):
         dialog = self._dialog
