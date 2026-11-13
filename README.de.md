@@ -31,7 +31,7 @@ Geplant sind unter anderem Brücken zum Unterqueren, Höhlen, leuchtende Frostkr
 
 ## ⬇️ Windows-Alpha ausprobieren
 
-Ein stabiles, signiertes öffentliches Release gibt es **noch nicht**. Windows-Testversionen samt ZIP entstehen über [GitHub Actions](https://github.com/DemusOpalium/dark-snake-game/actions/workflows/python-app.yml). Für den Download kann eine GitHub-Anmeldung nötig sein. **Das heruntergeladene Archiv und die enthaltene Spiel-ZIP vollständig entpacken**, erst dann die EXE starten. Siehe [Windows-Anleitung](WINDOWS_BUILD.md).
+Die **[FrostAge Alpha-Vorabversion vom 13. November 2026](https://github.com/DemusOpalium/dark-snake-game/releases/tag/frostage-alpha-2026-11-13)** steht unter GitHub Releases direkt zum Herunterladen bereit. `DARK-Snake-v1.0.0-Windows-x64.zip` herunterladen, vollständig entpacken und `DARK-Snake.exe` starten. Mit der zugehörigen `.sha256`-Datei lässt sich der Download prüfen. **Die EXE ist nicht digital signiert**; Windows oder der Browser können Warnungen anzeigen. Ein stabiles, signiertes Release gibt es **noch nicht**. Weitere Test-Builds entstehen über [GitHub Actions](https://github.com/DemusOpalium/dark-snake-game/actions/workflows/python-app.yml). Siehe [Windows-Anleitung](WINDOWS_BUILD.md).
 
 Alternativ aus dem Python-Quellcode:
 
