@@ -1,11 +1,15 @@
 """Tile-based editor for independent level drafts."""
 
+import time
+
 import pygame
 
 from config import GRID_HEIGHT, GRID_SIZE, GRID_WIDTH, WINDOW_HEIGHT, WINDOW_WIDTH
 from modules.graphics import TILE_IMAGES
-from modules.level_drafts import (legacy_map_exists, list_drafts, normalize_draft_name,
-                                  read_draft, read_legacy_map, suggest_draft_name, write_draft)
+from modules.level_drafts import (COLLISION_TYPES, legacy_map_exists, list_drafts,
+                                  normalize_draft_name, read_legacy_map, read_level,
+                                  suggest_draft_name, write_draft)
+from modules.level_playtest import COLLISION_COLORS, LevelPlaytest, draw_collision_overlay
 
 TOOLBAR_W = 200
 BTN_H = 28
@@ -13,7 +17,7 @@ ZOOM = 0.72
 FAV_ROW_H = 50
 SCROLL_TOP = 312
 TILE_ROW_H = WINDOW_HEIGHT - SCROLL_TOP - 12
-MAP_TOP = 104
+MAP_TOP = 136
 CELL_SIZE = max(1, min(int(GRID_SIZE * ZOOM), (WINDOW_WIDTH - TOOLBAR_W - 12) // GRID_WIDTH,
                        (WINDOW_HEIGHT - MAP_TOP - 42) // GRID_HEIGHT))
 MAP_RECT = pygame.Rect(TOOLBAR_W, MAP_TOP, GRID_WIDTH * CELL_SIZE, GRID_HEIGHT * CELL_SIZE)
@@ -30,6 +34,12 @@ COLOR_TEXT = (255, 255, 255)
 COLOR_SELECT = (255, 255, 0)
 COLOR_FRAME = (120, 0, 120)
 COLOR_GRID = (54, 54, 65)
+
+PLACEMENT_TOOLS = (
+    ("graphics", "Nur Grafik", 96, "Grafik"),
+    ("combined", "Grafik + Kollision", 142, "beide Ebenen"),
+    ("collision", "Nur Kollision", 114, "Kollision"),
+)
 
 
 def _empty_map():
@@ -49,7 +59,12 @@ class LevelEditor:
         self._scaled_tiles = {}
         self.current_tile = next(iter(self.tiles), None)
         self.map = _empty_map()
-        self._saved_map = _copy_map(self.map)
+        self.collisions = {}
+        self._saved_layers = self._snapshot()
+        self.placement_mode = "graphics"
+        self.collision_type = "WALL"
+        self.show_collisions = True
+        self.playtest = None
         self.name = ""
         self._saved_name = None
         self._legacy = False
@@ -70,7 +85,7 @@ class LevelEditor:
 
     @property
     def dirty(self):
-        return self.map != self._saved_map
+        return (self.map, self.collisions) != self._saved_layers
 
     @property
     def dialog_open(self):
@@ -79,6 +94,8 @@ class LevelEditor:
     def _make_buttons(self):
         preview = (("Vorschau beenden", self.stop_sim) if self.preview_active
                    else ("Vorschau starten", self.start_sim))
+        test_controls = (("Test beenden", self.stop_playtest),) if self.playtest is not None else (
+            ("Test 1P", lambda: self.start_playtest(1)), ("Test 2P", lambda: self.start_playtest(2)))
         rows = [
             (("Neu", self.new_map), ("Öffnen", self.load_map)),
             (("Speichern", self.save_map),),
@@ -87,6 +104,7 @@ class LevelEditor:
             (("Undo", self.undo), ("Redo", self.redo)),
             (("Für Classic wählen", self.select_for_classic),),
             (("Classic-Standard", self.select_classic_default),),
+            test_controls,
         ]
         buttons = []
         for row, controls in enumerate(rows):
@@ -98,7 +116,30 @@ class LevelEditor:
             ("Welten", pygame.Rect(WINDOW_WIDTH - 304, 10, 140, BTN_H), self.open_world_tree),
             ("Tile-Bibliothek", pygame.Rect(WINDOW_WIDTH - 154, 10, 140, BTN_H), self.open_tile_library),
         ))
+        x = TOOLBAR_W
+        for mode, label, width, _ in PLACEMENT_TOOLS:
+            buttons.append((label, pygame.Rect(x, MAP_TOP - BTN_H - 4, width, BTN_H),
+                            lambda mode=mode: self._set_placement_mode(mode)))
+            x += width + 4
+        for kind in COLLISION_TYPES:
+            buttons.append((kind, pygame.Rect(x, MAP_TOP - BTN_H - 4, 75, BTN_H),
+                            lambda kind=kind: self._set_collision_type(kind)))
+            x += 79
+        buttons.append(("Kollision ein/aus", pygame.Rect(x, MAP_TOP - BTN_H - 4, 138, BTN_H),
+                        self._toggle_collision_overlay))
         return buttons
+
+    def _set_placement_mode(self, mode):
+        self._stroke_button = None
+        self.placement_mode = mode
+
+    def _set_collision_type(self, kind):
+        self._stroke_button = None
+        self.collision_type = kind
+
+    def _toggle_collision_overlay(self):
+        self.show_collisions = not self.show_collisions
+        self.info = "Kollisionsansicht ein" if self.show_collisions else "Kollisionsansicht aus"
 
     def toggle(self):
         if self.active:
@@ -110,6 +151,8 @@ class LevelEditor:
             self.info = "Editor geöffnet"
 
     def request_close(self, on_close=None):
+        if self.playtest is not None:
+            self.stop_playtest()
         if self.dialog_open:
             if self._dialog["kind"] == "discard":
                 return False
@@ -117,7 +160,9 @@ class LevelEditor:
 
         def close():
             if self.dirty:
-                self.map = _copy_map(self._saved_map)
+                saved_map, saved_collisions = self._saved_layers
+                self.map = _copy_map(saved_map)
+                self.collisions = saved_collisions.copy()
                 self.undo_stack.clear()
                 self.redo_stack.clear()
             self.stop_sim()
@@ -175,7 +220,7 @@ class LevelEditor:
 
     def _save_named_map(self, name, *, replace=False):
         try:
-            saved_name = write_draft(name, self.map, replace=replace)
+            saved_name = write_draft(name, self.map, collision=self.collisions, replace=replace)
         except FileExistsError as error:
             self.info = str(error)
             if not replace:
@@ -186,7 +231,7 @@ class LevelEditor:
             self.info = f"Level konnte nicht gespeichert werden. {error}"
             return False
         self.name = self._saved_name = saved_name
-        self._saved_map = _copy_map(self.map)
+        self._saved_layers = self._snapshot()
         self._legacy = False
         self.info = f"{saved_name}.json gespeichert"
         return True
@@ -211,29 +256,30 @@ class LevelEditor:
         except ValueError as error:
             self.info = f"Level konnte nicht geladen werden. {error}"
             return False
-        return self._load_document(name, lambda: read_draft(name), saved_name=name)
+        return self._load_document(name, lambda: read_level(name), saved_name=name)
 
     def load_legacy_map(self):
-        return self._load_document("custom_level.json", read_legacy_map, legacy=True)
+        return self._load_document("custom_level.json", lambda: (read_legacy_map(), {}), legacy=True)
 
     def _load_document(self, name, read, *, saved_name=None, legacy=False):
         def load():
             try:
-                level_map = read()
+                level_map, collisions = read()
             except (OSError, ValueError) as error:
                 self.info = f"Level konnte nicht geladen werden. {error}"
                 return False
-            self._set_document(name, level_map, saved_name=saved_name, legacy=legacy)
+            self._set_document(name, level_map, collisions=collisions, saved_name=saved_name, legacy=legacy)
             self.info = f"{name} geladen"
             return True
 
         return self._after_discard_confirmation(load)
 
-    def _set_document(self, name, level_map, *, saved_name=None, legacy=False):
+    def _set_document(self, name, level_map, *, collisions=None, saved_name=None, legacy=False):
         self._stroke_button = None
         self.name = name
         self.map = level_map
-        self._saved_map = _copy_map(level_map)
+        self.collisions = {} if collisions is None else collisions
+        self._saved_layers = self._snapshot()
         self._saved_name = saved_name
         self._legacy = legacy
         self.undo_stack.clear()
@@ -318,10 +364,35 @@ class LevelEditor:
         self.buttons = self._make_buttons()
         self.info = "Vorschau beendet"
 
-    def handle_event(self, event):
+    def start_playtest(self, player_count):
+        try:
+            session = LevelPlaytest(self.collisions, player_count, started_at=time.monotonic())
+        except ValueError as error:
+            self.info = str(error)
+            return
+        self.playtest = session
+        self._preview_background = pygame.transform.scale(self.game.default_background_surface, MAP_RECT.size)
+        self._stroke_button = None
+        self.buttons = self._make_buttons()
+        self.info = "Wandtest gestartet"
+
+    def stop_playtest(self):
+        self.playtest = None
+        self._preview_background = None
+        self.buttons = self._make_buttons()
+        self.info = "Wandtest beendet · Entwurf unverändert"
+
+    def handle_event(self, event, actions=()):
         if not self.active:
             return
-        if self.dialog_open:
+        if self.playtest is not None:
+            if event.type == pygame.KEYDOWN and event.key in (pygame.K_ESCAPE, pygame.K_F2):
+                self.stop_playtest()
+            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                self._handle_click(event.pos, event.button)
+            else:
+                self.playtest.apply_actions(actions)
+        elif self.dialog_open:
             self._handle_dialog(event)
         elif event.type == pygame.KEYDOWN:
             self._handle_key(event)
@@ -357,10 +428,10 @@ class LevelEditor:
         if button == 1:
             for _, rect, action in self.buttons:
                 if rect.collidepoint(pos):
-                    if not self.preview_active or action == self.stop_sim:
+                    if self._button_available(action):
                         action()
                     return
-        if self.preview_active or button not in (1, 3):
+        if self.preview_active or self.playtest is not None or button not in (1, 3):
             return
         if PALETTE_RECT.collidepoint(pos):
             for key, rect in self._visible_tiles():
@@ -400,31 +471,51 @@ class LevelEditor:
             return
         gx = (mx - MAP_RECT.x) // CELL_SIZE
         gy = (my - MAP_RECT.y) // CELL_SIZE
-        tile = None if self._stroke_button == 3 else self.current_tile
-        if self.map[gy][gx] == tile or (tile is None and self._stroke_button != 3):
+        erase = self._stroke_button == 3
+        tile = None if erase else self.current_tile
+        collision = None if erase else self.collision_type
+        cell = (gx, gy)
+        change_graphics = (self.placement_mode != "collision" and (erase or tile is not None)
+                           and self.map[gy][gx] != tile)
+        change_collision = self.placement_mode != "graphics" and self.collisions.get(cell) != collision
+        if not (change_graphics or change_collision):
             return
         if self._stroke_button is None or not self._stroke_changed:
             self._store_undo()
             self._stroke_changed = True
-        self.map[gy][gx] = tile
-        self.info = "Kachel entfernt" if tile is None else f"{tile} gesetzt"
+        if change_graphics:
+            self.map[gy][gx] = tile
+        if change_collision:
+            if erase:
+                del self.collisions[cell]
+            else:
+                self.collisions[cell] = collision
+        if change_collision and change_graphics:
+            self.info = "Beide Ebenen gelöscht" if erase else f"Kachel und {collision} gesetzt"
+        elif change_collision:
+            self.info = "Kollision gelöscht" if erase else f"{collision} gesetzt"
+        else:
+            self.info = "Kachel entfernt" if erase else f"{tile} gesetzt"
+
+    def _snapshot(self):
+        return _copy_map(self.map), self.collisions.copy()
 
     def _store_undo(self):
-        self.undo_stack.append(_copy_map(self.map))
+        self.undo_stack.append(self._snapshot())
         self.redo_stack.clear()
 
     def undo(self):
         self._stroke_button = None
         if self.undo_stack:
-            self.redo_stack.append(self.map)
-            self.map = self.undo_stack.pop()
+            self.redo_stack.append((self.map, self.collisions))
+            self.map, self.collisions = self.undo_stack.pop()
             self.info = "Bearbeitung rückgängig gemacht"
 
     def redo(self):
         self._stroke_button = None
         if self.redo_stack:
-            self.undo_stack.append(self.map)
-            self.map = self.redo_stack.pop()
+            self.undo_stack.append((self.map, self.collisions))
+            self.map, self.collisions = self.redo_stack.pop()
             self.info = "Bearbeitung wiederholt"
 
     def fill_middle(self):
@@ -577,9 +668,25 @@ class LevelEditor:
             text = text.subsurface((0, 0, max_width, text.get_height()))
         screen.blit(text, pos)
 
-    def _draw_button(self, screen, label, rect):
+    def _draw_button(self, screen, label, rect, outline=None):
         pygame.draw.rect(screen, COLOR_BTN, rect)
+        if outline is not None:
+            pygame.draw.rect(screen, outline, rect, 2)
         self._draw_text(screen, label, (rect.x + 6, rect.y + 5))
+
+    def _button_available(self, action):
+        if self.playtest is not None:
+            return action in (self.stop_playtest, self._toggle_collision_overlay)
+        return not self.preview_active or action == self.stop_sim
+
+    def _tool_outline(self, label):
+        if label == self.collision_type:
+            return COLLISION_COLORS[label]
+        if label == "Kollision ein/aus" and self.show_collisions:
+            return COLOR_SELECT
+        if any(mode == self.placement_mode and label == name for mode, name, _, _ in PLACEMENT_TOOLS):
+            return COLOR_SELECT
+        return None
 
     def draw(self, screen):
         if not self.active:
@@ -588,13 +695,13 @@ class LevelEditor:
         if self.dialog_open and self._dialog["kind"] == "tiles":
             self.tile_library.draw(screen, self.current_tile)
             return
-        if not self.preview_active:
+        if not self.preview_active and self.playtest is None:
             self._draw_tiles(screen)
             classic = getattr(self.game, "classic_level_name", None) or "Standard"
             self._draw_text(screen, f"Nächster Classic-Start · {classic}", (TOOLBAR_W, 78))
-        for label, rect, _ in self.buttons:
-            if not self.preview_active or label == "Vorschau beenden":
-                self._draw_button(screen, label, rect)
+        for label, rect, action in self.buttons:
+            if self._button_available(action):
+                self._draw_button(screen, label, rect, self._tool_outline(label))
 
         title = self._display_name() or "Neuer Entwurf"
         if self._legacy:
@@ -606,8 +713,16 @@ class LevelEditor:
         self._draw_text(screen, title, (TOOLBAR_W, 54), COLOR_SELECT if self.dirty else COLOR_TEXT)
         self._draw_map(screen)
 
-        hint = ("Karten-Vorschau · Esc zurück"
-                if self.preview_active else "Links malen · Rechts löschen · Mausrad über Kacheln")
+        if self.playtest is not None:
+            self.playtest.draw(screen, MAP_RECT)
+            statuses = " · ".join(f"P{index}: {player.blocked or 'frei'}"
+                                  for index, player in enumerate(self.playtest.players, start=1))
+            hint = f"Wandtest · Esc/F2 zurück · {statuses}"
+        elif self.preview_active:
+            hint = "Karten-Vorschau · Esc zurück"
+        else:
+            erase = next(erase for mode, _, _, erase in PLACEMENT_TOOLS if mode == self.placement_mode)
+            hint = f"Links malen · Rechts löscht {erase} · Mausrad über Kacheln"
         self._draw_text(screen, hint, (TOOLBAR_W, WINDOW_HEIGHT - 39))
         self._draw_text(screen, self.info, (TOOLBAR_W, WINDOW_HEIGHT - 20), COLOR_SELECT)
         if self.dialog_open:
@@ -639,7 +754,7 @@ class LevelEditor:
         screen.set_clip(old_clip)
 
     def _draw_map(self, screen):
-        if self.preview_active:
+        if self._preview_background is not None:
             screen.blit(self._preview_background, MAP_RECT)
         else:
             pygame.draw.rect(screen, (35, 35, 44), MAP_RECT)
@@ -650,7 +765,7 @@ class LevelEditor:
                         self._scaled_tiles[key] = pygame.transform.scale(self.tiles[key], (CELL_SIZE, CELL_SIZE))
                     screen.blit(self._scaled_tiles[key], (MAP_RECT.x + x * CELL_SIZE,
                                                           MAP_RECT.y + y * CELL_SIZE))
-        if not self.preview_active:
+        if not self.preview_active and self.playtest is None:
             for x in range(0, MAP_RECT.width, CELL_SIZE):
                 pygame.draw.line(screen, COLOR_GRID, (MAP_RECT.x + x, MAP_RECT.y),
                                  (MAP_RECT.x + x, MAP_RECT.bottom - 1))
@@ -658,6 +773,8 @@ class LevelEditor:
                 pygame.draw.line(screen, COLOR_GRID, (MAP_RECT.x, MAP_RECT.y + y),
                                  (MAP_RECT.right - 1, MAP_RECT.y + y))
         pygame.draw.rect(screen, COLOR_FRAME, MAP_RECT, 2)
+        if self.show_collisions and not self.preview_active:
+            draw_collision_overlay(screen, MAP_RECT, self.collisions)
 
     def _draw_dialog(self, screen):
         dialog = self._dialog

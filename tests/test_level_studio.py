@@ -20,6 +20,8 @@ from modules import resources
 from modules.enums import GameState
 from modules.game import Game
 from modules import level_editor as layout
+from modules import level_drafts
+from modules.level_playtest import COLLISION_COLORS
 
 
 @pytest.fixture
@@ -59,6 +61,181 @@ def button(game, editor, label):
 def cell(col, row):
     return (layout.TOOLBAR_W + col * layout.CELL_SIZE + layout.CELL_SIZE // 2,
             layout.MAP_TOP + row * layout.CELL_SIZE + layout.CELL_SIZE // 2)
+
+
+def test_collision_tools_keep_graphics_and_walls_independent(studio):
+    game, editor, profile = studio
+    key(game, pygame.K_F2)
+    assert editor.new_map("Wandlabor")
+    first, second = list(editor.tiles)[:2]
+    editor.current_tile = first
+    spot = (4, 3)
+
+    button(game, editor, "Grafik + Kollision")
+    click(game, cell(*spot))
+    assert editor.map[3][4] == first and editor.collisions == {spot: "WALL"}
+    editor.current_tile = second
+    button(game, editor, "Nur Grafik")
+    click(game, cell(*spot))
+    assert editor.map[3][4] == second and editor.collisions == {spot: "WALL"}
+    click(game, cell(*spot), button=3)
+    assert editor.map[3][4] is None and editor.collisions == {spot: "WALL"}
+
+    key(game, pygame.K_z, pygame.KMOD_CTRL)
+    assert editor.map[3][4] == second and editor.collisions == {spot: "WALL"}
+    key(game, pygame.K_z, pygame.KMOD_CTRL)
+    assert editor.map[3][4] == first and editor.collisions == {spot: "WALL"}
+    key(game, pygame.K_z, pygame.KMOD_CTRL)
+    assert editor.map[3][4] is None and editor.collisions == {}
+    key(game, pygame.K_y, pygame.KMOD_CTRL)
+    assert editor.map[3][4] == first and editor.collisions == {spot: "WALL"}
+
+    button(game, editor, "Nur Kollision")
+    click(game, cell(*spot), button=3)
+    assert editor.collisions == {} and editor.map[3][4] == first
+    button(game, editor, "BARRIER")
+    click(game, cell(*spot))
+    assert editor.collisions == {spot: "BARRIER"} and editor.map[3][4] == first
+    button(game, editor, "WALL")
+    click(game, cell(5, 3))
+    assert editor.dirty
+    assert editor.save_map()
+    assert not editor.dirty
+    saved = json.loads((profile / "levels" / "Wandlabor.json").read_text(encoding="utf-8"))
+    assert saved["version"] == 1
+    assert level_drafts.read_level("Wandlabor") == (editor.map, editor.collisions)
+    assert saved["graphics"][3][5] is None
+
+    reopened = Game()
+    key(reopened, pygame.K_F2)
+    assert reopened.level_editor.load_map("Wandlabor")
+    assert reopened.level_editor.collisions == {spot: "BARRIER", (5, 3): "WALL"}
+    reopened.draw()
+    outline = (layout.TOOLBAR_W + 5 * layout.CELL_SIZE + 1, layout.MAP_TOP + 3 * layout.CELL_SIZE + 1)
+    assert reopened.screen.get_at(outline)[:3] == COLLISION_COLORS["WALL"]
+    button(reopened, reopened.level_editor, "Kollision ein/aus")
+    reopened.draw()
+    assert reopened.screen.get_at(outline)[:3] != COLLISION_COLORS["WALL"]
+    assert not reopened.level_editor.dirty
+
+
+def test_combined_wall_stroke_undo_redo_and_clear_affect_both_layers(studio):
+    game, editor, _ = studio
+    key(game, pygame.K_F2)
+    button(game, editor, "Grafik + Kollision")
+    start, end = cell(3, 5), cell(4, 5)
+    send(game, pygame.event.Event(pygame.MOUSEBUTTONDOWN, pos=start, button=1),
+         pygame.event.Event(pygame.MOUSEMOTION, pos=end, rel=(layout.CELL_SIZE, 0), buttons=(1, 0, 0)),
+         pygame.event.Event(pygame.MOUSEBUTTONUP, pos=end, button=1))
+    assert editor.map[5][3:5] == [editor.current_tile] * 2
+    assert editor.collisions == {(3, 5): "WALL", (4, 5): "WALL"}
+    key(game, pygame.K_z, pygame.KMOD_CTRL)
+    assert not editor.dirty and editor.map[5][3:5] == [None, None] and not editor.collisions
+    key(game, pygame.K_y, pygame.KMOD_CTRL)
+    assert editor.dirty and editor.collisions == {(3, 5): "WALL", (4, 5): "WALL"}
+    click(game, start, button=3)
+    assert editor.map[5][3:5] == [None, editor.current_tile] and editor.collisions == {(4, 5): "WALL"}
+
+
+def test_collision_only_edits_use_discard_guard_and_f2_exits_test_first(studio):
+    game, editor, profile = studio
+    key(game, pygame.K_F2)
+    assert editor.new_map("Wand")
+    assert editor.save_map()
+    original = (profile / "levels" / "Wand.json").read_bytes()
+    button(game, editor, "Nur Kollision")
+    click(game, cell(4, 3))
+    assert editor.dirty and all(tile is None for tile in editor.map[3])
+    button(game, editor, "Test 1P")
+    assert editor.playtest is not None
+    key(game, pygame.K_F2)
+    assert editor.active and editor.playtest is None and editor.dirty and not editor.dialog_open
+    key(game, pygame.K_F2)
+    assert editor.active and editor.dialog_open
+    key(game, pygame.K_v)
+    assert not editor.active and not editor.dirty and not editor.collisions
+    assert (profile / "levels" / "Wand.json").read_bytes() == original
+
+
+def test_saved_wall_is_playable_but_classic_background_keeps_original_movement(studio, monkeypatch):
+    game, editor, _ = studio
+    center = (GRID_WIDTH // 2, GRID_HEIGHT // 2)
+    wall = (center[0] + 2, center[1])
+    key(game, pygame.K_F2)
+    assert editor.new_map("Classic-Hintergrund")
+    button(game, editor, "Grafik + Kollision")
+    click(game, cell(*wall))
+    assert editor.save_map()
+    button(game, editor, "Für Classic wählen")
+    key(game, pygame.K_F2)
+    game.start_game(1)
+    assert game.level_map[wall[1]][wall[0]] == editor.current_tile
+
+    game.items.clear()
+    monkeypatch.setattr("modules.game.random.random", lambda: 1.0)
+    for _ in range(2):
+        game.last_update_time -= 1.0
+        game.update()
+    assert game.snake[0] == wall
+
+    key(game, pygame.K_F2)
+    assert editor.load_map("Classic-Hintergrund")
+    button(game, editor, "Test 1P")
+    session = editor.playtest
+    session.update(session._next_step + session.step_seconds)
+    assert session.players[0].cell == (center[0] + 1, center[1])
+    assert session.players[0].blocked == "WALL"
+
+
+@pytest.mark.parametrize("player_count", [1, 2])
+def test_editor_playtest_hits_walls_via_game_frames_and_returns_to_unsaved_draft(studio, monkeypatch,
+                                                                              player_count):
+    game, editor, profile = studio
+    game.start_game(1)
+    regular_round = (game.game_state, game.player_count, game.snake.copy(),
+                     game.score, game.lives, game.player_health, game.background)
+    key(game, pygame.K_F2)
+    center_x, center_y = GRID_WIDTH // 2, GRID_HEIGHT // 2
+    assert editor.new_map("Nur im Speicher")
+    button(game, editor, "Nur Kollision")
+    click(game, cell(center_x + 2, center_y))
+    if player_count == 2:
+        button(game, editor, "BARRIER")
+        click(game, cell(center_x + 2, center_y + 2))
+    before = deepcopy((editor.map, editor.collisions, editor.undo_stack))
+    profile_before = {path.relative_to(profile): path.read_bytes()
+                      for path in profile.rglob("*") if path.is_file()}
+
+    button(game, editor, f"Test {player_count}P")
+    session = editor.playtest
+    assert session.player_count == player_count and game.player_count == 1
+    clock = [session._next_step]
+    monkeypatch.setattr("modules.game.time.monotonic", lambda: clock[0])
+    rows = [center_y + index * 2 for index in range(player_count)]
+    assert [player.cell for player in session.players] == [(center_x, row) for row in rows]
+
+    game.run_frame()
+    assert [player.cell for player in session.players] == [(center_x + 1, row) for row in rows]
+    for _ in range(4):
+        clock[0] += session.step_seconds
+        game.run_frame()
+    assert [player.cell for player in session.players] == [(center_x + 1, row) for row in rows]
+    assert [player.blocked for player in session.players] == ["WALL", "BARRIER"][:player_count]
+
+    key(game, pygame.K_w)
+    if player_count == 2:
+        key(game, pygame.K_DOWN)
+    clock[0] += session.step_seconds
+    game.run_frame()
+    assert [player.cell for player in session.players] == [(center_x + 1, center_y - 1),
+                                                          (center_x + 1, center_y + 3)][:player_count]
+    key(game, pygame.K_ESCAPE)
+    assert editor.active and editor.playtest is None and editor.dirty
+    assert (editor.map, editor.collisions, editor.undo_stack) == before
+    assert (game.game_state, game.player_count, game.snake, game.score,
+            game.lives, game.player_health, game.background) == regular_round
+    assert {path.relative_to(profile): path.read_bytes()
+            for path in profile.rglob("*") if path.is_file()} == profile_before
 
 
 def world_action(game, tree, label):
@@ -312,6 +489,7 @@ def test_legacy_is_readable_and_standard_classic_does_not_load_it(studio):
     key(game, pygame.K_F2)
     editor.load_legacy_map()
     assert editor.map == expected and not editor.dirty
+    assert editor.collisions == {}
     assert not game.level_map and game.classic_level_name is None
     button(game, editor, "Für Classic wählen")
     assert game.classic_level_name is not None and not game.level_map
@@ -326,7 +504,7 @@ def test_legacy_is_readable_and_standard_classic_does_not_load_it(studio):
     assert editor.dialog_open
     text(game, "Alte_Karte")
     key(game, pygame.K_RETURN)
-    assert json.loads((profile / "levels" / "Alte_Karte.json").read_text(encoding="utf-8")) == editor.map
+    assert level_drafts.read_level("Alte_Karte") == (editor.map, {})
     assert legacy.read_bytes() == old_bytes
 
 

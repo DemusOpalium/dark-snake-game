@@ -1778,18 +1778,21 @@ class Game:
             self._reset_snake_interpolation()
             self.respawn_invincible_until = time.time() + 3
 
-    def _handle_level_editor_event(self, event):
+    def _handle_level_editor_event(self, event, actions=()):
         editor = self.level_editor
         key = event.key if event.type == pygame.KEYDOWN else None
         if editor.active:
             if event.type == pygame.QUIT:
                 editor.request_close(sys.exit)
             elif key == pygame.K_F2:
-                editor.toggle()
-            elif key == pygame.K_TAB and not editor.dialog_open:
+                if editor.playtest is not None:
+                    editor.stop_playtest()
+                else:
+                    editor.toggle()
+            elif key == pygame.K_TAB and not editor.dialog_open and editor.playtest is None:
                 editor.request_close(self.admin_panel.toggle)
             else:
-                editor.handle_event(event)
+                editor.handle_event(event, actions)
             return True
         if key == pygame.K_F2 and self.game_state != GameState.CONTROLS:
             self.admin_panel.close()
@@ -1808,8 +1811,10 @@ class Game:
             if self.game_state == GameState.CONTROLS:
                 self.controls_menu.handle_event(event)
                 continue
-            actions = self.input.actions_for(event, player_count=self.player_count)
-            if self._handle_level_editor_event(event):
+            playtest = self.level_editor.playtest
+            player_count = self.player_count if playtest is None else playtest.player_count
+            actions = self.input.actions_for(event, player_count=player_count)
+            if self._handle_level_editor_event(event, actions):
                 continue
             if event.type == pygame.KEYDOWN and event.key == pygame.K_TAB:
                 self.admin_panel.toggle()
@@ -2306,6 +2311,8 @@ class Game:
             self.update()
         elif was_playing:
             self._suspend_stall_clock()
+        if self.level_editor.playtest is not None:
+            self.level_editor.playtest.update(time.monotonic())
         after_update = self.metrics.stamp()
         self.metrics.record_phase("events", start, after_events)
         self.metrics.record_phase("update", after_events, after_update)
