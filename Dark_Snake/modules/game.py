@@ -25,7 +25,6 @@ from modules.graphics import (
     PROJECTILE_IMG, TITLE_IMG,
     BOSS_IMG, BOSS_ALT_IMG,
     PORTAL_IMAGES, ITEM_IMAGES,
-    OPTIONS_BUTTON_IMG, PLAY_BUTTON_IMG,
 )
 from modules.level_editor import LevelEditor
 from modules.audio import (
@@ -37,6 +36,7 @@ from modules.ui import Button, Slider, CheckBox, Dropdown
 from modules.aoe_zones import AoEZone, DamageZone, HealZone, DebuffZone, FollowZone, GrowingBossAOEZone  # [KS_TAG: BOSS_AOE]
 from modules.controls import ControlsMenu
 from modules.input_manager import InputManager
+from modules.main_menu import FrostAgeMenu
 from modules.resources import asset_path, user_data_path
 from modules.customization import CustomizationMenu
 from modules.enemies import NormalEnemy
@@ -485,7 +485,7 @@ class Game:
                         self.settings['music_track'] = DEFAULT_MUSIC_TRACK
         self.player_count = 1
         self.input = InputManager(initialize_joysticks=not headless, load_saved=not headless)
-        self.intro_focus = 0
+        self._menu_suspended = False
         self.create_ui_elements()
         self.reset_game()
         self.current_frame_index = 0
@@ -500,10 +500,6 @@ class Game:
         self.level_map = None
         self.level_background_surface = self.default_background_surface.copy()
         self.background = self.level_background_surface
-        self.menu_bg = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT))
-        if not headless:
-            self.menu_bg.fill(DARK_GREY)
-        self.intro_bg = self.menu_bg.copy()
         self.last_click_time = 0
         self.double_click_interval = 0.5
         self.respawn_invincible_until = 0
@@ -564,30 +560,21 @@ class Game:
         self.clear_game_state()
 
     def create_ui_elements(self):
-        center_x = WINDOW_WIDTH // 2
-        button_width = 160
-        button_height = 40
-        def scale_image(img):
-            if img:
-                w, h = img.get_size()
-                return pygame.transform.scale(img, (int(w * 0.6), int(h * 0.6)))
-            return None
-        self.intro_buttons = [
-            Button(center_x - 100, WINDOW_HEIGHT - 500, button_width, button_height, "Spieler 1",
-                   action=lambda: self.start_game(1), image=scale_image(OPTIONS_BUTTON_IMG)),
-            Button(center_x - 100, WINDOW_HEIGHT - 440, button_width, button_height, "Spieler 2",
-                   action=lambda: self.start_game(2), image=scale_image(OPTIONS_BUTTON_IMG)),
-            Button(center_x - 100, WINDOW_HEIGHT - 380, button_width, button_height, "Optionen",
-                   action=lambda: self.set_state(GameState.SETTINGS), image=scale_image(PLAY_BUTTON_IMG)),
-            Button(center_x - 100, WINDOW_HEIGHT - 320, button_width, button_height, "Steuerung",
-                   action=lambda: self.set_state(GameState.CONTROLS), image=scale_image(PLAY_BUTTON_IMG)),
-            Button(center_x - 100, WINDOW_HEIGHT - 260, button_width, button_height, "Besten-Liste",
-                   action=lambda: self.set_state(GameState.LEADERBOARD), image=scale_image(PLAY_BUTTON_IMG)),
-            Button(center_x - 100, WINDOW_HEIGHT - 200, button_width, button_height, "Beenden",
-                   color=RED, action=lambda: sys.exit(), image=scale_image(PLAY_BUTTON_IMG)),
-            Button(center_x - 100, WINDOW_HEIGHT - 140, button_width, button_height, "Entwickler",
-                   action=lambda: self.set_state(GameState.SIMULATION), image=scale_image(PLAY_BUTTON_IMG))
-        ]
+        self.main_menu = FrostAgeMenu({
+            "single_player": lambda: self.start_game(1),
+            "multiplayer": lambda: self.start_game(2),
+            "continue": self.continue_game,
+            "options": lambda: self.set_state(GameState.SETTINGS),
+            "highscore": lambda: self.set_state(GameState.LEADERBOARD),
+            "level_studio": self._open_level_editor,
+            "controls": lambda: self.set_state(GameState.CONTROLS),
+            "developer": lambda: self.set_state(GameState.SIMULATION),
+            "quit": lambda: sys.exit(),
+        }, can_continue=self.can_continue, background=TITLE_IMG)
+
+    def _open_level_editor(self):
+        self.admin_panel.close()
+        self.level_editor.toggle()
 
     def create_additional_ui(self):
         center_x = WINDOW_WIDTH // 2
@@ -597,7 +584,7 @@ class Game:
             Button(center_x - 100, WINDOW_HEIGHT // 2, button_width, button_height, "WEITER",
                    action=self._resume_game),
             Button(center_x - 100, WINDOW_HEIGHT // 2 + 80, button_width, button_height, "HAUPTMENÜ",
-                   color=PURPLE, action=lambda: self.confirm_back_to_main()),
+                   color=PURPLE, action=self.open_main_menu),
             Button(center_x - 100, WINDOW_HEIGHT // 2 + 160, button_width, button_height, "BEENDEN",
                    color=RED, action=lambda: sys.exit())
         ]
@@ -605,8 +592,12 @@ class Game:
             Button(WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT // 2 + 100, button_width, button_height, "NEUSTART",
                    action=lambda: self.start_game(self.player_count)),
             Button(WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT // 2 + 180, button_width, button_height, "HAUPTMENÜ",
-                   color=PURPLE, action=lambda: self.confirm_back_to_main())
+                   color=PURPLE, action=lambda: self.set_state(GameState.INTRO))
         ]
+        self.leaderboard_back_button = Button(
+            center_x - 100, WINDOW_HEIGHT - 80, 200, 60, "ZURÜCK", color=PURPLE,
+            action=lambda: self.set_state(GameState.INTRO),
+        )
 
     def load_leaderboard(self):
         leaderboard = []
@@ -676,21 +667,10 @@ class Game:
         self.classic_level_name = name
         self._classic_level_map = [row.copy() for row in level_map] if level_map is not None else None
 
-    def confirm_back_to_main(self):
-        overlay = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 200))
-        self.screen.blit(overlay, (0, 0))
-        msg = pygame.font.SysFont('Comic Sans MS', 30).render("Zum Hauptmenü?", True, WHITE)
-        self.screen.blit(msg, (WINDOW_WIDTH // 2 - msg.get_width() // 2, WINDOW_HEIGHT // 2 - msg.get_height() // 2))
-        self.admin_panel.draw(self.screen)
-        pygame.display.update()
-        time.sleep(2)
-        self.set_state(self.intro_state())
-
     def set_state(self, state):
         previous = getattr(self, "game_state", None)
         was_playing = self._gameplay_active()
-        if state == GameState.INTRO and previous != GameState.INTRO:
+        if state == GameState.INTRO and previous != GameState.INTRO and not self._menu_suspended:
             self.clear_game_state()
         if state == GameState.PAUSE and previous in (GameState.GAME, GameState.BOSS_FIGHT):
             self._paused_state = previous
@@ -707,7 +687,29 @@ class Game:
     def _resume_game(self):
         self.set_state(getattr(self, "_paused_state", GameState.GAME))
 
+    def open_main_menu(self):
+        """Keep a paused Classic round available when leaving through the pause menu."""
+        if self.game_state != GameState.PAUSE:
+            return
+        snakes = (self.snake,) if self.player_count == 1 else (self.snake1, self.snake2)
+        self._menu_suspended = self.lives > 0 and all(snakes)
+        self.set_state(self.intro_state())
+
+    def can_continue(self):
+        return self._menu_suspended and self.game_state == GameState.INTRO
+
+    def continue_game(self):
+        if self.can_continue():
+            self._menu_suspended = False
+            self.set_state(GameState.PAUSE)
+            self._resume_game()
+
+    def _toggle_admin_panel(self):
+        if not self._menu_suspended:
+            self.admin_panel.toggle()
+
     def reset_game(self):
+        self._menu_suspended = False
         self.frost.clear()
         self.metrics.cancel_pending()
         self._reset_snake_stalls()
@@ -779,6 +781,7 @@ class Game:
 
     def clear_game_state(self):
         """Drop every object belonging to a round before showing a menu."""
+        self._menu_suspended = False
         self.metrics.cancel_pending()
         self._reset_snake_stalls()
         self.snake = []
@@ -1043,7 +1046,6 @@ class Game:
                 pygame.draw.rect(self.background,
                                  (random.randint(10,30), random.randint(10,30), random.randint(10,30)),
                                  (i, j, GRID_SIZE, GRID_SIZE))
-        self.intro_bg = self.menu_bg.copy()
         if event == "teleport":
             if self.player_count == 2:
                 self.snake1[0] = (random.randint(0, GRID_WIDTH - 1), random.randint(0, GRID_HEIGHT - 1))
@@ -1790,13 +1792,13 @@ class Game:
                 else:
                     editor.toggle()
             elif key == pygame.K_TAB and not editor.dialog_open and editor.playtest is None:
-                editor.request_close(self.admin_panel.toggle)
+                if not self._menu_suspended:
+                    editor.request_close(self._toggle_admin_panel)
             else:
                 editor.handle_event(event, actions)
             return True
         if key == pygame.K_F2 and self.game_state != GameState.CONTROLS:
-            self.admin_panel.close()
-            editor.toggle()
+            self._open_level_editor()
             return True
         return False
 
@@ -1813,11 +1815,13 @@ class Game:
                 continue
             playtest = self.level_editor.playtest
             player_count = self.player_count if playtest is None else playtest.player_count
+            if self.game_state == GameState.INTRO and not self.level_editor.active:
+                player_count = None
             actions = self.input.actions_for(event, player_count=player_count)
             if self._handle_level_editor_event(event, actions):
                 continue
             if event.type == pygame.KEYDOWN and event.key == pygame.K_TAB:
-                self.admin_panel.toggle()
+                self._toggle_admin_panel()
                 continue
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 if self.admin_panel.active:
@@ -1828,8 +1832,10 @@ class Game:
                 self.admin_panel.handle_event(event)
                 continue
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                if self.game_state not in (GameState.GAME, GameState.BOSS_FIGHT, GameState.SIMULATION):
+                if self.game_state not in (GameState.GAME, GameState.BOSS_FIGHT,
+                                           GameState.PAUSE, GameState.SIMULATION):
                     self.set_state(self.intro_state())
+                    continue
             if self.game_state == GameState.SETTINGS:
                 self.options_menu.handle_event(event)
             elif self.game_state == GameState.SIMULATION:
@@ -1837,25 +1843,20 @@ class Game:
             elif self.game_state == GameState.CUSTOMIZATION:
                 self.custom_menu.handle_event(event)
             elif self.game_state == GameState.INTRO:
-                if "menu_accept" in actions:
-                    self.intro_buttons[self.intro_focus].action()
-                    continue
-                if event.type == pygame.KEYDOWN and event.key in (pygame.K_DOWN, pygame.K_TAB):
-                    self.intro_focus = (self.intro_focus + 1) % len(self.intro_buttons)
-                    continue
-                if event.type == pygame.KEYDOWN and event.key == pygame.K_UP:
-                    self.intro_focus = (self.intro_focus - 1) % len(self.intro_buttons)
-                    continue
-                for btn in self.intro_buttons:
-                    btn.check_hover(pygame.mouse.get_pos())
-                    btn.handle_event(event)
+                self.main_menu.layout(self.screen.get_size())
+                self.main_menu.handle_event(event, actions)
+            elif self.game_state == GameState.LEADERBOARD:
+                if event.type in (pygame.MOUSEMOTION, pygame.MOUSEBUTTONDOWN):
+                    self.leaderboard_back_button.check_hover(event.pos)
+                    self.leaderboard_back_button.handle_event(event)
             elif self.game_state == GameState.PAUSE:
-                if "pause" in actions:
+                if "pause" in actions or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
                     self._resume_game()
                     continue
-                for btn in self.pause_buttons:
-                    btn.check_hover(pygame.mouse.get_pos())
-                    btn.handle_event(event)
+                if event.type in (pygame.MOUSEMOTION, pygame.MOUSEBUTTONDOWN):
+                    for btn in self.pause_buttons:
+                        btn.check_hover(event.pos)
+                        btn.handle_event(event)
             elif self.game_state == GameState.GAME_OVER:
                 if self.leaderboard_mode:
                     if event.type == pygame.KEYDOWN:
@@ -2045,16 +2046,7 @@ class Game:
         pygame.draw.rect(self.screen, WHITE, (x, y, bar_width, bar_height), 2)
 
     def draw_intro(self):
-        self.screen.blit(self.menu_bg, (0, 0))
-        if TITLE_IMG:
-            scaled_title = pygame.transform.scale(TITLE_IMG, (TITLE_IMG.get_width() * 2, TITLE_IMG.get_height() * 2))
-            self.screen.blit(scaled_title, (WINDOW_WIDTH // 2 - scaled_title.get_width() // 2, 20))
-        title_txt = pygame.font.SysFont('Comic Sans MS', 60, bold=True).render("Dark-Snake", True, (50, 50, 50))
-        self.screen.blit(title_txt, (WINDOW_WIDTH // 2 - title_txt.get_width() // 2, 100))
-        for i, btn in enumerate(self.intro_buttons):
-            if i == self.intro_focus:
-                btn.is_hovered = True
-            btn.draw(self.screen)
+        self.main_menu.draw(self.screen)
 
     def draw_game(self, *, include_hud=True):
         # 1. Raster (Hintergrund) zeichnen – unterste Ebene
@@ -2281,23 +2273,7 @@ class Game:
                 entry_txt = pygame.font.SysFont('Arial', 30).render(f"{i+1}. {name}: {score}", True, col)
                 self.screen.blit(entry_txt, (WINDOW_WIDTH // 2 - 150, y_pos))
                 y_pos += 40
-        back_btn = Button(WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT - 80, 200, 60, "ZURÜCK", color=PURPLE, action=lambda: self.confirm_back_to_main())
-        back_btn.draw(self.screen)
-        for event in pygame.event.get():
-            if self._handle_level_editor_event(event):
-                continue
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_TAB:
-                self.admin_panel.toggle()
-            self.admin_panel.handle_event(event)
-            if event.type == pygame.QUIT:
-                sys.exit()
-            elif event.type == pygame.MOUSEBUTTONDOWN:
-                mpos = pygame.mouse.get_pos()
-                if back_btn.check_hover(mpos):
-                    back_btn.handle_event(event)
-            elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE:
-                    self.set_state(GameState.INTRO)
+        self.leaderboard_back_button.draw(self.screen)
 
     def run_frame(self):
         start = self.metrics.stamp()

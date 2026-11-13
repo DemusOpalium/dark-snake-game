@@ -12,6 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "Dark_Snake"))
 import pygame
 
 from modules import resources
+from modules.frostage_assets import frostage_assets
 from modules.tile_catalog import load_tile_catalog
 from modules.tile_library import TileLibrary
 
@@ -138,6 +139,17 @@ def test_search_by_theme_and_filename_and_enter_selects_unique_match(library):
     assert chosen == ["galactic_stern"]
     assert not _click(view, view.clear_rect.center)
     assert not any(row.kind == "tile" for row in view._rows)
+
+
+def test_frostage_menu_art_is_excluded_from_tile_search(library):
+    view, chosen, _, _ = library
+    view.frost_assets = frostage_assets()
+    view.open()
+    view.handle_event(pygame.event.Event(pygame.TEXTINPUT, text="frostage_menu_single_player"))
+    assert not view.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_RETURN))
+    assert not chosen
+    assert not view._matches
+    assert any(entry.category == "frostage_roof" for entry in view._entries)
 
 
 def test_scroll_reaches_last_thumbnail_and_respects_viewport(library):

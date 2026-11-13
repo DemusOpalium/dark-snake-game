@@ -473,7 +473,7 @@ def test_frostage_objects_are_selected_and_edited_as_whole_footprints(studio):
     asset = frostage_assets()["frostage_10x1_001"]
     assert asset.cells == (1, 10)
     button(game, editor, "Tile-Bibliothek")
-    assert len(editor.tile_library._entries) == len(editor.tiles) + 175
+    assert len(editor.tile_library._entries) == len(editor.tiles) + 163
     text(game, asset.name)
     entry, = [row for row in editor.tile_library._rows if row.kind == "tile"]
     assert entry.target == asset.id and entry.label.endswith("1×10")

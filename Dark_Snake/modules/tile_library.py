@@ -20,7 +20,7 @@ FAVORITES = "favorites"
 FROST_CATEGORIES = {
     "ground": "Boden", "walls": "Wände", "objects": "Objekte", "roof": "Dächer",
     "aoe": "AoE", "enemies": "Gegner", "projectiles": "Projektile",
-    "items": "Items", "menu": "Menügrafiken",
+    "items": "Items",
 }
 
 
@@ -70,6 +70,7 @@ class TileLibrary:
             TileEntry(asset.id, f"frostage_{asset.category}",
                       "single" if asset.cells == (1, 1) else "multi")
             for asset in self.frost_assets.values()
+            if asset.category in FROST_CATEGORIES
         )
         self._refresh_rows()
         pygame.key.start_text_input()
