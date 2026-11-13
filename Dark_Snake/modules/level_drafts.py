@@ -7,10 +7,12 @@ from pathlib import Path, PureWindowsPath
 from tempfile import NamedTemporaryFile
 
 from config import GRID_HEIGHT, GRID_WIDTH
+from modules.level_effects import CellEffects, DamageField, EffectCells, SlowField
 from modules.resources import custom_level_path, level_drafts_directory
 
 
-LEVEL_FORMAT_VERSION = 1
+COLLISION_FORMAT_VERSION = 1
+LEVEL_FORMAT_VERSION = 2
 COLLISION_TYPES = ("WALL", "BARRIER")
 CollisionCells = dict[tuple[int, int], str]
 
@@ -92,22 +94,59 @@ def _read_json(path: Path):
             raise ValueError("Die Leveldatei enthält ungültiges JSON.") from error
 
 
-def _validate_collision_cell(x, y, kind) -> None:
+def _validate_position(x, y, layer: str) -> None:
     if type(x) is not int or type(y) is not int or not (0 <= x < GRID_WIDTH and 0 <= y < GRID_HEIGHT):
-        raise ValueError("Ungültige Koordinaten in der Kollisionsebene.")
+        raise ValueError(f"Ungültige Koordinaten in der {layer}.")
+
+
+def _validate_collision_cell(x, y, kind) -> None:
+    _validate_position(x, y, "Kollisionsebene")
     if kind not in COLLISION_TYPES:
         raise ValueError("Ungültiger Typ in der Kollisionsebene.")
 
 
-def _decode_level(document) -> tuple[list, CollisionCells]:
+def _decode_effects(records) -> EffectCells:
+    if not isinstance(records, list):
+        raise ValueError("Ungültige Effektebene.")
+    effects = {}
+    for record in records:
+        if (not isinstance(record, dict) or not {"x", "y"} <= record.keys()
+                or record.keys() - {"x", "y", "damage", "slow"}
+                or record.keys().isdisjoint(("damage", "slow"))):
+            raise ValueError("Ungültiger Eintrag in der Effektebene.")
+        x, y = record["x"], record["y"]
+        _validate_position(x, y, "Effektebene")
+        if (x, y) in effects:
+            raise ValueError("Doppelte Zelle in der Effektebene.")
+        damage, slow = None, None
+        if "damage" in record:
+            fields = record["damage"]
+            if (not isinstance(fields, dict) or not {"amount", "interval"} <= fields.keys()
+                    or fields.keys() - {"amount", "interval", "duration"}):
+                raise ValueError("Ungültige Einstellungen für ein Schadensfeld.")
+            damage = DamageField(**fields)
+        if "slow" in record:
+            fields = record["slow"]
+            if not isinstance(fields, dict) or fields.keys() != {"percent"}:
+                raise ValueError("Ungültige Einstellungen für ein Verlangsamungsfeld.")
+            slow = SlowField(**fields)
+        effects[(x, y)] = CellEffects(damage, slow)
+    return effects
+
+
+def _decode_level(document) -> tuple[list, CollisionCells, EffectCells]:
     if isinstance(document, list):
         _validate_map(document)
-        return document, {}
+        return document, {}, {}
     if not isinstance(document, dict) or type(document.get("version")) is not int:
         raise ValueError("Ungültiges Level-Format.")
-    if document["version"] != LEVEL_FORMAT_VERSION:
+    version = document["version"]
+    if version not in (COLLISION_FORMAT_VERSION, LEVEL_FORMAT_VERSION):
         raise ValueError("Diese Level-Formatversion wird nicht unterstützt.")
-    if document.keys() != {"version", "graphics", "collision"} or not isinstance(document["collision"], list):
+    fields = {"version", "graphics", "collision"}
+    if version == LEVEL_FORMAT_VERSION:
+        fields.add("effects")
+    if document.keys() != fields or not isinstance(document["collision"], list):
         raise ValueError("Ungültige Level-Ebenen.")
 
     graphics = document["graphics"]
@@ -121,14 +160,20 @@ def _decode_level(document) -> tuple[list, CollisionCells]:
         if (x, y) in collision:
             raise ValueError("Doppelte Zelle in der Kollisionsebene.")
         collision[(x, y)] = kind
-    return graphics, collision
+    return graphics, collision, _decode_effects(document.get("effects", []))
+
+
+def read_level_layers(name: str) -> tuple[list, CollisionCells, EffectCells]:
+    """Read the graphics, collision and effect layers of a named draft."""
+    name = normalize_draft_name(name)
+    matches = _matching_paths(level_drafts_directory(), name)
+    return _decode_level(_read_json(_existing_draft(matches, name)))
 
 
 def read_level(name: str) -> tuple[list, CollisionCells]:
     """Read a draft's graphics and collision cells, including graphics-only legacy files."""
-    name = normalize_draft_name(name)
-    matches = _matching_paths(level_drafts_directory(), name)
-    return _decode_level(_read_json(_existing_draft(matches, name)))
+    graphics, collision, _ = read_level_layers(name)
+    return graphics, collision
 
 
 def read_draft(name: str) -> list:
@@ -153,24 +198,52 @@ def _publish_new_draft(source: Path, destination: Path) -> None:
         os.link(source, destination)
 
 
-def _level_document(graphics: list, collision: CollisionCells) -> dict:
+def _effect_records(effects: EffectCells) -> list[dict]:
+    if not isinstance(effects, dict):
+        raise ValueError("Ungültige Effektebene.")
+    records = []
+    for position, cell in effects.items():
+        if not isinstance(position, tuple) or len(position) != 2:
+            raise ValueError("Ungültige Koordinaten in der Effektebene.")
+        x, y = position
+        _validate_position(x, y, "Effektebene")
+        if not isinstance(cell, CellEffects) or (cell.damage is None and cell.slow is None):
+            raise ValueError("Ungültiger Eintrag in der Effektebene.")
+        record = {"x": x, "y": y}
+        if cell.damage is not None:
+            record["damage"] = {
+                "amount": cell.damage.amount,
+                "interval": cell.damage.interval,
+                "duration": cell.damage.duration,
+            }
+        if cell.slow is not None:
+            record["slow"] = {"percent": cell.slow.percent}
+        records.append(record)
+    return sorted(records, key=lambda record: (record["y"], record["x"]))
+
+
+def _level_document(graphics: list, collision: CollisionCells, effects: EffectCells | None) -> dict:
     if not isinstance(collision, dict):
         raise ValueError("Ungültige Kollisionsebene.")
     for position, kind in collision.items():
         if not isinstance(position, tuple) or len(position) != 2:
             raise ValueError("Ungültige Koordinaten in der Kollisionsebene.")
         _validate_collision_cell(*position, kind)
-    return {
-        "version": LEVEL_FORMAT_VERSION,
+    document = {
+        "version": COLLISION_FORMAT_VERSION if effects is None else LEVEL_FORMAT_VERSION,
         "graphics": graphics,
         "collision": [{"x": x, "y": y, "type": collision[(x, y)]}
                       for x, y in sorted(collision, key=lambda cell: (cell[1], cell[0]))],
     }
+    if effects is not None:
+        document["effects"] = _effect_records(effects)
+    return document
 
 
 def write_draft(name: str, level_map: list, *, collision: CollisionCells | None = None,
+                effects: EffectCells | None = None,
                 replace: bool = False) -> str:
-    """Save a draft atomically. A graphics-only update keeps existing collision cells."""
+    """Save a draft atomically, retaining existing layers omitted by the caller."""
     name = normalize_draft_name(name)
     _validate_map(level_map)
     directory = level_drafts_directory()
@@ -178,15 +251,19 @@ def write_draft(name: str, level_map: list, *, collision: CollisionCells | None 
     if replace:
         path = _existing_draft(matches, name)
         previous = _read_json(path)
-        _, previous_collision = _decode_level(previous)
-        if collision is None and isinstance(previous, dict):
-            collision = previous_collision
+        _, previous_collision, previous_effects = _decode_level(previous)
+        if isinstance(previous, dict):
+            if collision is None:
+                collision = previous_collision
+            if effects is None and previous["version"] == LEVEL_FORMAT_VERSION:
+                effects = previous_effects
     else:
         if matches:
             raise FileExistsError(f"Ein Entwurf mit dem Namen „{name}“ existiert bereits.")
         path = directory / f"{name}.json"
 
-    document = level_map if collision is None else _level_document(level_map, collision)
+    document = (level_map if collision is None and effects is None
+                else _level_document(level_map, {} if collision is None else collision, effects))
     if not replace:
         directory.mkdir(parents=True, exist_ok=True)
     temporary = None

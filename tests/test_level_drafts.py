@@ -10,6 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "Dark_Snake"))
 
 from config import GRID_HEIGHT, GRID_WIDTH
 from modules import level_drafts, resources
+from modules.level_effects import CellEffects, DamageField, SlowField
 
 
 @pytest.fixture
@@ -84,9 +85,13 @@ def test_first_save_never_clobbers_a_concurrent_save(profile, monkeypatch):
     assert [path.name for path in (profile / "levels").iterdir()] == ["Gleichzeitig.json"]
 
 
-@pytest.mark.parametrize("collision", [None, {(2, 3): "BARRIER"}])
-def test_failed_replace_keeps_prior_file_and_cleans_up(profile, monkeypatch, collision):
-    level_drafts.write_draft("Level_001", level_with("old"), collision=collision)
+@pytest.mark.parametrize("collision,effects", [
+    (None, None),
+    ({(2, 3): "BARRIER"}, None),
+    ({(2, 3): "BARRIER"}, {(2, 3): CellEffects(slow=SlowField())}),
+])
+def test_failed_replace_keeps_prior_file_and_cleans_up(profile, monkeypatch, collision, effects):
+    level_drafts.write_draft("Level_001", level_with("old"), collision=collision, effects=effects)
     path = profile / "levels" / "Level_001.json"
     original = path.read_bytes()
 
@@ -96,7 +101,8 @@ def test_failed_replace_keeps_prior_file_and_cleans_up(profile, monkeypatch, col
 
     monkeypatch.setattr(Path, "replace", denied_replace)
     with pytest.raises(PermissionError):
-        level_drafts.write_draft("Level_001", level_with("new"), collision=collision, replace=True)
+        level_drafts.write_draft("Level_001", level_with("new"), collision=collision,
+                                 effects=effects, replace=True)
 
     assert path.read_bytes() == original
     assert list(path.parent.iterdir()) == [path]
@@ -178,6 +184,114 @@ def test_graphics_only_save_keeps_collision_until_explicitly_removed(profile):
     assert level_drafts.read_level("Mauer") == (decorated, {})
     path = profile / "levels" / "Mauer.json"
     assert json.loads(path.read_text(encoding="utf-8"))["version"] == 1
+
+
+@pytest.mark.parametrize("collision", [None, {(3, 2): "WALL"}])
+def test_raw_and_v1_drafts_load_empty_effects_and_migrate_without_data_loss(profile, collision):
+    graphics = level_with("alte-kachel")
+    level_drafts.write_draft("Alt", graphics, collision=collision)
+    path = profile / "levels" / "Alt.json"
+    before = path.read_bytes()
+
+    assert level_drafts.read_level_layers("Alt") == (graphics, collision or {}, {})
+    assert path.read_bytes() == before
+
+    effects = {(3, 2): CellEffects(damage=DamageField(12, 0.5))}
+    level_drafts.write_draft("Alt", graphics, effects=effects, replace=True)
+    assert level_drafts.read_level_layers("Alt") == (graphics, collision or {}, effects)
+    assert json.loads(path.read_text(encoding="utf-8"))["version"] == 2
+
+
+def test_version_two_round_trip_keeps_two_effects_and_collision_on_same_cell(profile):
+    graphics = level_with("dekor")
+    collision = {(2, 3): "BARRIER"}
+    effects = {
+        (2, 3): CellEffects(DamageField(23, 0.75, 12.5), SlowField(90)),
+        (1, 2): CellEffects(damage=DamageField()),
+        (0, 1): CellEffects(slow=SlowField(25)),
+    }
+    level_drafts.write_draft("Labor", graphics, collision=collision, effects=effects)
+    assert level_drafts.read_level_layers("Labor") == (graphics, collision, effects)
+    assert level_drafts.read_level("Labor") == (graphics, collision)
+    assert level_drafts.read_draft("Labor") == graphics
+    path = profile / "levels" / "Labor.json"
+    assert json.loads(path.read_text(encoding="utf-8")) == {
+        "version": 2,
+        "graphics": graphics,
+        "collision": [{"x": 2, "y": 3, "type": "BARRIER"}],
+        "effects": [
+            {"x": 0, "y": 1, "slow": {"percent": 25}},
+            {"x": 1, "y": 2, "damage": {"amount": 10, "interval": 1.0, "duration": None}},
+            {"x": 2, "y": 3, "damage": {"amount": 23, "interval": 0.75, "duration": 12.5},
+             "slow": {"percent": 90}},
+        ],
+    }
+
+
+def test_updating_layers_preserves_omitted_effects_until_explicitly_removed(profile):
+    effects = {(0, 0): CellEffects(slow=SlowField(50))}
+    collision = {(0, 0): "WALL"}
+    level_drafts.write_draft("Tempo", level_with("Original"), collision=collision, effects=effects)
+
+    graphics = level_with("Neue Grafik")
+    level_drafts.write_draft("Tempo", graphics, replace=True)
+    assert level_drafts.read_level_layers("Tempo") == (graphics, collision, effects)
+    level_drafts.write_draft("Tempo", graphics, collision={}, replace=True)
+    assert level_drafts.read_level_layers("Tempo") == (graphics, {}, effects)
+
+    level_drafts.write_draft("Tempo", graphics, effects={}, replace=True)
+    assert level_drafts.read_level_layers("Tempo") == (graphics, {}, {})
+    path = profile / "levels" / "Tempo.json"
+    level_drafts.write_draft("Tempo", graphics, replace=True)
+    assert json.loads(path.read_text(encoding="utf-8"))["version"] == 2
+
+
+@pytest.mark.parametrize("changes", [
+    {"version": 3},
+    {"effects": {}},
+    {"effects": [{"x": 0, "y": 0}]},
+    {"effects": [{"x": False, "y": 0, "slow": {"percent": 10}}]},
+    {"effects": [{"x": 0, "y": GRID_HEIGHT, "slow": {"percent": 10}}]},
+    {"effects": [{"x": 0, "y": 0, "slow": {"percent": 15}}]},
+    {"effects": [{"x": 0, "y": 0, "slow": {"percent": 50.0}}]},
+    {"effects": [{"x": 0, "y": 0, "damage": {"amount": True, "interval": 0.5}}]},
+    {"effects": [{"x": 0, "y": 0, "damage": {"amount": 10, "interval": 0}}]},
+    {"effects": [{"x": 0, "y": 0, "damage": {"amount": 10, "interval": float("nan")}}]},
+    {"effects": [{"x": 0, "y": 0, "damage": {"amount": 10, "interval": 1, "duration": -1}}]},
+    {"effects": [{"x": 0, "y": 0, "damage": {"amount": 10, "interval": 1, "extra": 0}}]},
+    {"effects": [{"x": 0, "y": 0, "slow": {"percent": 10}},
+                 {"x": 0, "y": 0, "slow": {"percent": 25}}]},
+])
+def test_invalid_effect_document_cannot_be_opened_or_replaced(profile, changes):
+    directory = profile / "levels"
+    directory.mkdir(parents=True)
+    path = directory / "Kaputt.json"
+    document = {"version": 2, "graphics": level_with(), "collision": [], "effects": []} | changes
+    path.write_text(json.dumps(document), encoding="utf-8")
+    original = path.read_bytes()
+
+    with pytest.raises(ValueError):
+        level_drafts.read_level_layers("Kaputt")
+    with pytest.raises(ValueError):
+        level_drafts.write_draft("Kaputt", level_with(), collision={}, effects={}, replace=True)
+    assert path.read_bytes() == original
+
+
+@pytest.mark.parametrize("effects", [
+    {(1, 1): CellEffects()},
+    {(1, 1): {"slow": 50}},
+    {(False, 0): CellEffects(slow=SlowField())},
+    {(1,): CellEffects(slow=SlowField())},
+    [(1, 1)],
+])
+def test_invalid_effect_settings_never_replace_existing_file(profile, effects):
+    level_drafts.write_draft("Labor", level_with(), effects={(0, 0): CellEffects(slow=SlowField())})
+    path = profile / "levels" / "Labor.json"
+    original = path.read_bytes()
+
+    with pytest.raises(ValueError):
+        level_drafts.write_draft("Labor", level_with(), effects=effects, replace=True)
+    assert path.read_bytes() == original
 
 
 @pytest.mark.parametrize("changes", [

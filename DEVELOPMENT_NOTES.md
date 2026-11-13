@@ -211,7 +211,24 @@ Bei vier Randrichtungen und beiden Köpfen bleibt der Rastertakt gleich. Bei ein
 
 Formatversion 1 speichert Grafik und Kollision als getrennte Felder. Die Kollisionsliste enthält Koordinaten mit dem Typ WALL oder BARRIER. Ältere JSON-Raster öffnen sich als Grafikkarten mit leerer Kollisionsebene. **Für Classic wählen** übernimmt weiterhin den grafischen Hintergrund. WALL und BARRIER wirken im isolierten Editor-Test.
 
-Die korrigierte Reihenfolge nach #122 beginnt mit diesem Kollisionseditor. Damage und Slow folgen in PR 2, Multi-Tiles und Stamp Builder in PR 3 und das Druckplatten- und Trigger-System in PR 4. Die Palette erhält bei Bedarf einen eigenen Bedienungs-PR.
+## World Studio – Damage und Slow testen
+
+1. Mit **F2** einen Entwurf öffnen. Über **Effektwerte** den Schaden (1–100 HP), das Trefferintervall (0,1–60 s) und optional die maximale Dauer eines Kontakts (0,1–600 s) einstellen. Ein leeres Dauerfeld bedeutet, dass der Schaden bei dauerhaftem Kontakt weiter wiederholt wird. Für Slow stehen 10, 25, 50, 75 und 90 Prozent zur Wahl.
+2. **Schaden** oder **Slow** auswählen und mit Linksklick auf dem Raster malen. Rechtsklick löscht den gewählten Effekt. Beide Effekte können dieselbe Zelle belegen. Grafik, Kollision und der jeweils andere Effekt bleiben beim Löschen erhalten. **Effekte ein/aus** steuert die Editor-Markierungen. Undo/Redo und **Speichern** erfassen die Effektfelder.
+3. Ein Schadensfeld eine Zelle rechts vom Start malen und zwei Felder rechts eine WALL setzen. **Test 1P** starten. Beim Betreten sinken die HP um den eingestellten Betrag. Vor der Wand stehen bleiben, um das Intervall und die optionale Dauer zu beobachten. Mit WASD ausweichen und erneut auf das Feld fahren. In **Test 2P** gilt derselbe Ablauf getrennt für beide Spieler.
+4. Eine Reihe Slow-Felder neben den Start malen. Der Test zeigt die HP und das verbleibende Tempo je Spieler. 75 Prozent Slow lässt 25 Prozent Tempo übrig. Sobald der Kopf das Feld verlässt, gilt wieder das normale Tempo. Eine Zelle hat einen Slow-Wert. Erneutes Malen ersetzt ihn.
+
+Schaden wirkt beim Betreten und nach Ablauf des jeweiligen Trefferintervalls, solange der Kopf auf der Zelle bleibt. Am Ende der eingestellten Kontaktdauer trifft das Feld nicht erneut. Ein Verlassen beendet den Kontakt. Beim erneuten Betreten beginnt er neu. Bei null HP bleibt nur der betroffene Testspieler stehen. Mit **Esc** zum Entwurf zurückkehren und den Test bei Bedarf neu starten.
+
+Formatversion 2 speichert Grafik, Kollision und Effekte getrennt. Ältere Grafik- und Wandkarten bleiben lesbar. Damage und Slow gelten im isolierten Editor-Test. Für Classic lässt sich weiterhin nur die Grafik des Entwurfs auswählen.
+
+### World Studio V3 – Folgeaufträge
+
+3. **Multi-Tiles und Stamp Builder.** Zusammenhängende Grafiken mit frei wählbarer Rastergröße und wiederverwendbare Stempel aus vorhandenen Kacheln. Platzierung, Löschen und Undo/Redo bearbeiten jeweils das gesamte Objekt.
+4. **Roof und Foreground.** Transparente Objekte über den Figuren und unter dem HUD. Optional öffnet sich um jeden Schlangenkopf ein weicher transparenter Bereich mit einstellbarem Radius und Stärke.
+5. **Lighting 1.0.** Konfigurierbare Lichtquellen mit weichen, wiederverwendbaren Verläufen, Farbe, Radius, Intensität und Flackern. Darstellung bei 1350×930 messen.
+6. **Druckplatten und Trigger.** Ein isolierter Spieltest prüft die Druckplatte, das Warnsignal, den Timer und eine zeitlich begrenzte Schadenszone. Leveldateien beschreiben feste Ereignistypen.
+7. **Editor-Bedienung bei Bedarf.** Tile-Gruppen und Favoriten links sowie Auswahl und Sichtbarkeit der Ebenen näher an die Arbeitsfläche rücken.
 
 ## Vorgeschlagene nächste Phase
 

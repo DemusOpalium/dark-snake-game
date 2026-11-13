@@ -12,6 +12,7 @@ import pygame
 
 from config import GRID_HEIGHT, GRID_WIDTH, START_SPEED
 from modules.enums import Direction
+from modules.level_effects import CellEffects, DamageField, SLOW_PERCENTAGES, SlowField
 from modules.level_playtest import (
     COLLISION_COLORS,
     PLAYER_COLORS,
@@ -181,3 +182,132 @@ def test_players_share_a_free_cell_and_remain_visible():
         for py in range(top, top + size)
     }
     assert set(PLAYER_COLORS) <= pixels
+
+
+def test_damage_applies_on_entry_and_repeats_only_at_the_interval():
+    x, y = CENTER
+    test = LevelPlaytest({(x + 2, y): "WALL"}, 1, started_at=0, effects={
+        (x + 1, y): CellEffects(damage=DamageField(amount=12, interval=0.5)),
+    })
+    player, = test.players
+
+    test.update(STEP / 2)
+    assert player.health == 100
+    test.update(STEP)
+    assert player.cell == (x + 1, y)
+    assert player.health == 88
+    for frame in range(8, 38):
+        test.update(frame / 60)
+    assert player.blocked == "WALL"
+    assert player.health == 88
+    test.update(STEP + 0.5)
+    assert player.health == 76
+    test.update(STEP + 0.5)
+    assert player.health == 76
+    test.update(STEP + 1.0)
+    assert player.health == 64
+
+    test.apply_actions(("p1_up",))
+    test.update(STEP * 10)
+    assert player.cell == (x + 1, y - 1)
+    test.apply_actions(("p1_down",))
+    test.update(STEP * 11)
+    assert player.cell == (x + 1, y)
+    assert player.health == 52
+
+
+def test_damage_duration_limits_a_visit_and_restarts_on_reentry():
+    x, y = CENTER
+    test = LevelPlaytest({(x + 2, y): "BARRIER"}, 1, started_at=0, effects={
+        (x + 1, y): CellEffects(damage=DamageField(amount=10, interval=0.5, duration=1.0)),
+    })
+    player, = test.players
+
+    for tick in range(1, 20):
+        test.update(STEP * tick)
+    assert player.health == 80
+    assert player.blocked == "BARRIER"
+
+    test.apply_actions(("p1_up",))
+    test.update(STEP * 20)
+    test.apply_actions(("p1_down",))
+    test.update(STEP * 21)
+    assert player.cell == (x + 1, y)
+    assert player.health == 70
+
+
+def test_damage_repeat_is_cancelled_when_a_player_leaves_at_its_deadline():
+    x, y = CENTER
+    test = LevelPlaytest({}, 1, started_at=0, effects={
+        (x + 1, y): CellEffects(damage=DamageField(amount=8, interval=STEP)),
+    })
+    player, = test.players
+
+    test.update(STEP)
+    assert player.health == 92
+    test.update(STEP * 2)
+    assert player.cell == (x + 2, y)
+    assert player.health == 92
+    test.update(STEP * 3)
+    assert player.health == 92
+
+
+@pytest.mark.parametrize("percent", SLOW_PERCENTAGES)
+def test_slow_reduces_movement_on_the_occupied_cell_and_restores_it_on_exit(percent):
+    x, y = CENTER
+    test = LevelPlaytest({}, 1, started_at=0, effects={
+        (x + 1, y): CellEffects(slow=SlowField(percent=percent)),
+    })
+    player, = test.players
+    interval = STEP / (1 - percent / 100)
+
+    test.update(STEP)
+    assert player.cell == (x + 1, y)
+    assert player.speed_percent == 100 - percent
+    test.update(STEP + interval - 0.0001)
+    assert player.cell == (x + 1, y)
+    test.update(STEP + interval)
+    assert player.cell == (x + 2, y)
+    assert player.speed_percent == 100
+    test.update(STEP * 2 + interval)
+    assert player.cell == (x + 3, y)
+
+
+def test_touching_another_slow_field_replaces_the_factor_without_stacking():
+    x, y = CENTER
+    test = LevelPlaytest({}, 1, started_at=0, effects={
+        (x + 1, y): CellEffects(slow=SlowField(percent=75)),
+        (x + 2, y): CellEffects(slow=SlowField(percent=50)),
+    })
+    player, = test.players
+
+    test.update(STEP)
+    assert player.speed_percent == 25
+    test.update(STEP * 5)
+    assert player.cell == (x + 2, y)
+    assert player.speed_percent == 50
+    test.update(STEP * 7)
+    assert player.cell == (x + 3, y)
+    assert player.speed_percent == 100
+
+
+def test_combined_fields_and_knockout_are_independent_for_two_players():
+    x, y = CENTER
+    effects = {
+        (x + 1, y): CellEffects(damage=DamageField(amount=60, interval=0.5), slow=SlowField(percent=75)),
+        (x + 1, y + 2): CellEffects(damage=DamageField(amount=8)),
+    }
+    test = LevelPlaytest({(x + 2, y): "WALL"}, 2, started_at=0, effects=effects)
+    first, second = test.players
+    effects.clear()
+
+    test.update(STEP)
+    assert (first.health, first.speed_percent, second.health, second.speed_percent) == (40, 25, 92, 100)
+    test.update(STEP * 5)
+    assert first.cell == (x + 1, y)
+    assert first.health == 0
+    assert second.cell == (x + 5, y + 2)
+    test.apply_actions(("p1_down", "p2_down"))
+    test.update(STEP * 6)
+    assert first.cell == (x + 1, y) and first.health == 0
+    assert second.cell == (x + 5, y + 3) and second.health == 92
