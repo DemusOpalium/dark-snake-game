@@ -98,6 +98,10 @@ lassen sich für die nächste Classic-Runde als Hintergrund auswählen.
 Spielreihenfolge bringen. Die **Tile-Bibliothek** bietet aufklappbare Themen,
 Vorschaubilder und eine Suche. [Anleitung zu World Studio 2.0](DEVELOPMENT_NOTES.md#world-studio-20--phase-a)
 
+In der Kollisionsebene kannst du WALL und BARRIER malen. **Test 1P** und
+**Test 2P** prüfen die Wände direkt am aktuellen Entwurf.
+[Anleitung zum Wandtest](DEVELOPMENT_NOTES.md#world-studio--wände-malen-und-testen)
+
 ---
 
 ## 🌄 Screenshots

@@ -206,9 +206,11 @@
 - ✅ Visuelle Kartenvorschau und ausdrückliche Classic-Hintergrundwahl aus #121.
 - ✅ **Phase A.** Themenwelten, Level-Anzeigenamen, stabile Zuordnungen und eine getrennte, frei sortierbare Spielreihenfolge.
 - ✅ **Phase A.** Aufklappbare Themen für 495 Tiles mit Suche, Vorschaubildern, Favoriten und manuell korrigierbaren Katalogeinträgen.
-- ⬜ **Phase B.** Multi-Tiles, frei definierbare Grafikgrößen und Stamp Builder mit Undo/Redo.
-- ⬜ **Phase C.** Eigenständige Kollisionsebene für WALL/BARRIER, sichere Spawns und isolierte Kollisions-Spieltests.
-- ⬜ **Phase D.** Effektfelder, Trigger, Fallen, Ereignisketten und GO-IN-GAME-Übergänge.
+- ✅ **PR 1.** Separate Kollisionsebene für WALL und BARRIER mit sicherem Spielerstart im isolierten 1P-/2P-Wandtest.
+- ⬜ **PR 2.** Damage und Slow Blocks mit prüfbaren Zeitintervallen und isoliertem Spieltest.
+- ⬜ **PR 3.** Multi-Tiles, frei definierbare Grafikgrößen und Stamp Builder mit Undo/Redo.
+- ⬜ **PR 4.** Druckplatte, Verzögerung und zeitlich begrenzte Schadenszone als erster Trigger.
+- ⬜ **PR 5 bei Bedarf.** Tile-Gruppen, Favoriten und Werkzeugwechsel direkt in der linken Palette.
 - ⬜ Bestehenden Editor grundlegend erweitern.
 - ⬜ Eigenen großen Editor-Bildschirm entwickeln.
 - ⬜ Level Studio über die Entwicklerkonsole öffnen.
@@ -424,7 +426,7 @@ Vier Slots pro Spieler, Item-Icons, frei belegbare Aktivierungstasten.
 Seelenschrein, individuelle Bosstypen, feste AoE-Profile, Kampfphasen.
 
 **PHASE 5 – WORLD STUDIO 2.0**
-Phase A liefert Welt- und Tile-Bibliothek. Die Folgeaufträge bauen darauf auf. Phase B ergänzt Multi-Tiles und Stempel. Phase C führt getrennte Kollisionsdaten und sichere Spawns ein. Phase D erweitert Karten um Ereignisse und Effekte.
+Phase A liefert Welt- und Tile-Bibliothek. Der korrigierte Ablauf priorisiert die spielbare Kollisionsebene. Danach folgen Damage und Slow, Multi-Tiles und Stempel sowie Trigger in eigenen Pull Requests.
 
 **PHASE 6 – LEVEL-VERWALTUNG**
 Entwürfe, Level-Bibliothek, JSON, Grafikpakete, Export und Import.
