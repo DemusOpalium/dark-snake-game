@@ -10,6 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "Dark_Snake"))
 
 from config import GRID_HEIGHT, GRID_WIDTH
 from modules import level_drafts, resources
+from modules.graphic_objects import GraphicObject
 from modules.level_effects import CellEffects, DamageField, SlowField
 
 
@@ -25,6 +26,44 @@ def level_with(tile=None):
     level[0][0] = tile
     return level
 
+
+def test_graphic_objects_upgrade_and_round_trip_with_existing_layers(profile):
+    graphics = level_with("existing_tile")
+    collisions = {(3, 4): "WALL"}
+    effects = {(3, 4): CellEffects(slow=SlowField(25))}
+    level_drafts.write_draft("Alt", graphics, collision=collisions, effects=effects)
+    assert level_drafts.read_level_document("Alt") == (graphics, collisions, effects, {})
+    objects = {(3, 4): GraphicObject("frostage_6x6_001", 6, 6),
+               (12, 4): GraphicObject("frostage_missing_future_asset", 1, 10)}
+    level_drafts.write_draft("Alt", graphics, objects=objects, replace=True)
+    path = profile / "levels" / "Alt.json"
+    assert json.loads(path.read_text(encoding="utf-8"))["version"] == 3
+    assert level_drafts.read_level_document("Alt") == (graphics, collisions, effects, objects)
+    level_drafts.write_draft("Alt", level_with("other"), replace=True)
+    assert level_drafts.read_level_document("Alt") == (level_with("other"), collisions, effects, objects)
+    level_drafts.write_draft("Alt", graphics, objects={}, replace=True)
+    assert level_drafts.read_level_document("Alt") == (graphics, collisions, effects, {})
+
+
+@pytest.mark.parametrize("invalid_records", [
+    [{"x": 44, "y": 0, "asset_id": "frostage_a", "width": 2, "height": 1}],
+    [{"x": 0, "y": 0, "asset_id": "../unsafe", "width": 1, "height": 1}],
+    [{"x": 0, "y": 0, "asset_id": "frostage_a", "width": True, "height": 1}],
+    [{"x": 0, "y": 0, "asset_id": "frostage_a", "width": 2, "height": 1},
+     {"x": 1, "y": 0, "asset_id": "frostage_b", "width": 1, "height": 1}],
+])
+def test_bad_object_records_do_not_get_replaced(profile, invalid_records):
+    level_drafts.write_draft("Kaputt", level_with(), objects={})
+    path = profile / "levels" / "Kaputt.json"
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload["objects"] = invalid_records
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    original = path.read_bytes()
+    with pytest.raises(ValueError):
+        level_drafts.read_level_document("Kaputt")
+    with pytest.raises(ValueError):
+        level_drafts.write_draft("Kaputt", level_with(), objects={}, replace=True)
+    assert path.read_bytes() == original
 
 def test_two_named_drafts_round_trip_independently(profile, tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)

@@ -7,12 +7,14 @@ from pathlib import Path, PureWindowsPath
 from tempfile import NamedTemporaryFile
 
 from config import GRID_HEIGHT, GRID_WIDTH
+from modules.graphic_objects import GraphicObject, GraphicObjects, place_graphic_object
 from modules.level_effects import CellEffects, DamageField, EffectCells, SlowField
 from modules.resources import custom_level_path, level_drafts_directory
 
 
 COLLISION_FORMAT_VERSION = 1
-LEVEL_FORMAT_VERSION = 2
+EFFECT_FORMAT_VERSION = 2
+LEVEL_FORMAT_VERSION = 3
 COLLISION_TYPES = ("WALL", "BARRIER")
 CollisionCells = dict[tuple[int, int], str]
 
@@ -134,18 +136,35 @@ def _decode_effects(records) -> EffectCells:
     return effects
 
 
-def _decode_level(document) -> tuple[list, CollisionCells, EffectCells]:
+def _decode_objects(records) -> GraphicObjects:
+    if not isinstance(records, list):
+        raise ValueError("Ungültige Grafikobjektebene.")
+    objects = {}
+    for record in records:
+        if not isinstance(record, dict) or record.keys() != {"x", "y", "asset_id", "width", "height"}:
+            raise ValueError("Ungültiger Eintrag in der Grafikobjektebene.")
+        x, y = record["x"], record["y"]
+        _validate_position(x, y, "Grafikobjektebene")
+        item = GraphicObject(record["asset_id"], record["width"], record["height"])
+        if not place_graphic_object(objects, (x, y), item):
+            raise ValueError("Grafikobjekte überlappen sich oder reichen aus der Karte.")
+    return objects
+
+
+def _decode_level(document) -> tuple[list, CollisionCells, EffectCells, GraphicObjects]:
     if isinstance(document, list):
         _validate_map(document)
-        return document, {}, {}
+        return document, {}, {}, {}
     if not isinstance(document, dict) or type(document.get("version")) is not int:
         raise ValueError("Ungültiges Level-Format.")
     version = document["version"]
-    if version not in (COLLISION_FORMAT_VERSION, LEVEL_FORMAT_VERSION):
+    if version not in (COLLISION_FORMAT_VERSION, EFFECT_FORMAT_VERSION, LEVEL_FORMAT_VERSION):
         raise ValueError("Diese Level-Formatversion wird nicht unterstützt.")
     fields = {"version", "graphics", "collision"}
-    if version == LEVEL_FORMAT_VERSION:
+    if version >= EFFECT_FORMAT_VERSION:
         fields.add("effects")
+    if version == LEVEL_FORMAT_VERSION:
+        fields.add("objects")
     if document.keys() != fields or not isinstance(document["collision"], list):
         raise ValueError("Ungültige Level-Ebenen.")
 
@@ -160,14 +179,20 @@ def _decode_level(document) -> tuple[list, CollisionCells, EffectCells]:
         if (x, y) in collision:
             raise ValueError("Doppelte Zelle in der Kollisionsebene.")
         collision[(x, y)] = kind
-    return graphics, collision, _decode_effects(document.get("effects", []))
+    return (graphics, collision, _decode_effects(document.get("effects", [])),
+            _decode_objects(document.get("objects", [])))
 
 
-def read_level_layers(name: str) -> tuple[list, CollisionCells, EffectCells]:
-    """Read the graphics, collision and effect layers of a named draft."""
+def read_level_document(name: str) -> tuple[list, CollisionCells, EffectCells, GraphicObjects]:
+    """Read the graphics, collision, effect and graphic object layers of a named draft."""
     name = normalize_draft_name(name)
     matches = _matching_paths(level_drafts_directory(), name)
     return _decode_level(_read_json(_existing_draft(matches, name)))
+
+
+def read_level_layers(name: str) -> tuple[list, CollisionCells, EffectCells]:
+    graphics, collision, effects, _ = read_level_document(name)
+    return graphics, collision, effects
 
 
 def read_level(name: str) -> tuple[list, CollisionCells]:
@@ -222,7 +247,22 @@ def _effect_records(effects: EffectCells) -> list[dict]:
     return sorted(records, key=lambda record: (record["y"], record["x"]))
 
 
-def _level_document(graphics: list, collision: CollisionCells, effects: EffectCells | None) -> dict:
+def _object_records(objects: GraphicObjects) -> list[dict]:
+    if not isinstance(objects, dict):
+        raise ValueError("Ungültige Grafikobjektebene.")
+    records = []
+    for position, item in objects.items():
+        if not isinstance(position, tuple) or len(position) != 2 or not isinstance(item, GraphicObject):
+            raise ValueError("Ungültiger Eintrag in der Grafikobjektebene.")
+        x, y = position
+        _validate_position(x, y, "Grafikobjektebene")
+        records.append({"x": x, "y": y, "asset_id": item.asset_id, "width": item.width, "height": item.height})
+    _decode_objects(records)
+    return sorted(records, key=lambda record: (record["y"], record["x"]))
+
+
+def _level_document(graphics: list, collision: CollisionCells, effects: EffectCells | None,
+                    objects: GraphicObjects | None) -> dict:
     if not isinstance(collision, dict):
         raise ValueError("Ungültige Kollisionsebene.")
     for position, kind in collision.items():
@@ -230,18 +270,24 @@ def _level_document(graphics: list, collision: CollisionCells, effects: EffectCe
             raise ValueError("Ungültige Koordinaten in der Kollisionsebene.")
         _validate_collision_cell(*position, kind)
     document = {
-        "version": COLLISION_FORMAT_VERSION if effects is None else LEVEL_FORMAT_VERSION,
+        "version": COLLISION_FORMAT_VERSION,
         "graphics": graphics,
         "collision": [{"x": x, "y": y, "type": collision[(x, y)]}
                       for x, y in sorted(collision, key=lambda cell: (cell[1], cell[0]))],
     }
     if effects is not None:
+        document["version"] = EFFECT_FORMAT_VERSION
         document["effects"] = _effect_records(effects)
+    if objects is not None:
+        document["version"] = LEVEL_FORMAT_VERSION
+        document.setdefault("effects", [])
+        document["objects"] = _object_records(objects)
     return document
 
 
 def write_draft(name: str, level_map: list, *, collision: CollisionCells | None = None,
                 effects: EffectCells | None = None,
+                objects: GraphicObjects | None = None,
                 replace: bool = False) -> str:
     """Save a draft atomically, retaining existing layers omitted by the caller."""
     name = normalize_draft_name(name)
@@ -251,19 +297,21 @@ def write_draft(name: str, level_map: list, *, collision: CollisionCells | None 
     if replace:
         path = _existing_draft(matches, name)
         previous = _read_json(path)
-        _, previous_collision, previous_effects = _decode_level(previous)
+        _, previous_collision, previous_effects, previous_objects = _decode_level(previous)
         if isinstance(previous, dict):
             if collision is None:
                 collision = previous_collision
-            if effects is None and previous["version"] == LEVEL_FORMAT_VERSION:
+            if effects is None and previous["version"] >= EFFECT_FORMAT_VERSION:
                 effects = previous_effects
+            if objects is None and previous["version"] == LEVEL_FORMAT_VERSION:
+                objects = previous_objects
     else:
         if matches:
             raise FileExistsError(f"Ein Entwurf mit dem Namen „{name}“ existiert bereits.")
         path = directory / f"{name}.json"
 
-    document = (level_map if collision is None and effects is None
-                else _level_document(level_map, {} if collision is None else collision, effects))
+    document = (level_map if collision is None and effects is None and objects is None
+                else _level_document(level_map, {} if collision is None else collision, effects, objects))
     if not replace:
         directory.mkdir(parents=True, exist_ok=True)
     temporary = None
