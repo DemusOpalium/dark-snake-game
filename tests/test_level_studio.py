@@ -21,6 +21,8 @@ from modules.enums import GameState
 from modules.game import Game
 from modules import level_editor as layout
 from modules import level_drafts
+from modules.effect_settings import EFFECT_COLORS
+from modules.level_effects import CellEffects, DamageField, SlowField
 from modules.level_playtest import COLLISION_COLORS
 
 
@@ -63,6 +65,128 @@ def cell(col, row):
             layout.MAP_TOP + row * layout.CELL_SIZE + layout.CELL_SIZE // 2)
 
 
+def test_effect_settings_paint_and_save_both_independent_effects(studio):
+    game, editor, profile = studio
+    key(game, pygame.K_F2)
+    assert editor.new_map("Effektlabor")
+    button(game, editor, "Effektwerte")
+    text(game, "17")
+    key(game, pygame.K_TAB)
+    text(game, "0,5")
+    key(game, pygame.K_TAB)
+    text(game, "1,5")
+    slow_button = dict(editor.effect_settings._slow_buttons())[75]
+    click(game, slow_button.center)
+    key(game, pygame.K_RETURN)
+    assert not editor.dialog_open and not editor.dirty
+
+    spot = (4, 3)
+    button(game, editor, "Schaden")
+    click(game, cell(*spot))
+    button(game, editor, "Slow")
+    click(game, cell(*spot))
+    both = CellEffects(damage=DamageField(17, 0.5, 1.5), slow=SlowField(75))
+    assert editor.effects == {spot: both}
+    assert editor.map[3][4] is None and not editor.collisions
+    game.draw()
+    left = layout.TOOLBAR_W + spot[0] * layout.CELL_SIZE
+    top = layout.MAP_TOP + spot[1] * layout.CELL_SIZE
+    assert game.screen.get_at((left + 4, top + 3))[:3] == EFFECT_COLORS["damage"]
+    assert game.screen.get_at((left + 4, top + layout.CELL_SIZE - 5))[:3] == EFFECT_COLORS["slow"]
+    button(game, editor, "Effekte ein/aus")
+    game.draw()
+    assert game.screen.get_at((left + 4, top + 3))[:3] != EFFECT_COLORS["damage"]
+    assert editor.effects == {spot: both}
+    button(game, editor, "Nur Grafik")
+    click(game, cell(*spot))
+    click(game, cell(*spot), button=3)
+    assert editor.effects == {spot: both}
+
+    button(game, editor, "Slow")
+    click(game, cell(*spot), button=3)
+    assert editor.effects == {spot: CellEffects(damage=both.damage)}
+    key(game, pygame.K_z, pygame.KMOD_CTRL)
+    assert editor.effects == {spot: both}
+    assert editor.save_map()
+    saved = json.loads((profile / "levels" / "Effektlabor.json").read_text(encoding="utf-8"))
+    assert saved["version"] == 2
+    reopened = Game()
+    key(reopened, pygame.K_F2)
+    assert reopened.level_editor.load_map("Effektlabor")
+    assert reopened.level_editor.effects == {spot: both}
+    assert not reopened.level_editor.dirty
+
+
+def test_editor_2p_effect_test_updates_hp_and_returns_to_unsaved_map(studio, monkeypatch):
+    game, editor, profile = studio
+    game.start_game(1)
+    original_round = (game.player_health, game.snake.copy(), game.score, game.lives)
+    key(game, pygame.K_F2)
+    assert editor.new_map("Ungespeicherte Effekte")
+    x, y = GRID_WIDTH // 2, GRID_HEIGHT // 2
+    spot = (x + 1, y)
+    button(game, editor, "Schaden")
+    click(game, cell(*spot))
+    button(game, editor, "Slow")
+    click(game, cell(*spot))
+    draft = editor.effects.copy()
+    profile_before = {path.relative_to(profile): path.read_bytes()
+                      for path in profile.rglob("*") if path.is_file()}
+    clock = [100.0]
+    monkeypatch.setattr("modules.game.time.monotonic", lambda: clock[0])
+    button(game, editor, "Test 2P")
+    session = editor.playtest
+    p1, p2 = session.players
+    clock[0] += session.step_seconds
+    game.run_frame()
+    assert p1.cell == spot and p1.health == 90
+    assert p2.health == 100 and p2.cell == (x + 1, y + 2)
+    clock[0] += session.step_seconds
+    game.run_frame()
+    assert p1.cell == spot and p1.health == 90
+    assert p2.cell == (x + 2, y + 2)
+    clock[0] += session.step_seconds
+    game.run_frame()
+    assert p1.cell == (x + 2, y)
+    clock[0] += session.step_seconds
+    game.run_frame()
+    assert p1.cell == (x + 3, y)
+    key(game, pygame.K_ESCAPE)
+    assert editor.active and editor.playtest is None and editor.dirty
+    assert editor.effects == draft
+    assert (game.player_health, game.snake, game.score, game.lives) == original_round
+    assert {path.relative_to(profile): path.read_bytes()
+            for path in profile.rglob("*") if path.is_file()} == profile_before
+
+
+def test_editor_1p_damage_repeats_while_wall_blocks_and_stops_on_exit(studio, monkeypatch):
+    game, editor, _ = studio
+    key(game, pygame.K_F2)
+    x, y = GRID_WIDTH // 2, GRID_HEIGHT // 2
+    button(game, editor, "Schaden")
+    click(game, cell(x + 1, y))
+    button(game, editor, "Nur Kollision")
+    click(game, cell(x + 2, y))
+    clock = [100.0]
+    monkeypatch.setattr("modules.game.time.monotonic", lambda: clock[0])
+    button(game, editor, "Test 1P")
+    test = editor.playtest
+    player = test.players[0]
+    for frame in range(1, 81):
+        clock[0] = 100.0 + frame / 64
+        game.run_frame()
+        if frame == 71:
+            assert player.health == 90
+        if frame == 72:
+            assert player.health == 80
+    assert player.blocked == "WALL" and player.cell == (x + 1, y)
+    key(game, pygame.K_w)
+    for frame in range(81, 152):
+        clock[0] = 100.0 + frame / 64
+        test.update(clock[0])
+    assert player.cell[1] != y and player.health == 80
+
+
 def test_collision_tools_keep_graphics_and_walls_independent(studio):
     game, editor, profile = studio
     key(game, pygame.K_F2)
@@ -102,7 +226,8 @@ def test_collision_tools_keep_graphics_and_walls_independent(studio):
     assert editor.save_map()
     assert not editor.dirty
     saved = json.loads((profile / "levels" / "Wandlabor.json").read_text(encoding="utf-8"))
-    assert saved["version"] == 1
+    assert saved["version"] == 2
+    assert saved["effects"] == []
     assert level_drafts.read_level("Wandlabor") == (editor.map, editor.collisions)
     assert saved["graphics"][3][5] is None
 
@@ -182,7 +307,7 @@ def test_saved_wall_is_playable_but_classic_background_keeps_original_movement(s
     assert editor.load_map("Classic-Hintergrund")
     button(game, editor, "Test 1P")
     session = editor.playtest
-    session.update(session._next_step + session.step_seconds)
+    session.update(session.players[0].next_step + session.step_seconds)
     assert session.players[0].cell == (center[0] + 1, center[1])
     assert session.players[0].blocked == "WALL"
 
@@ -209,7 +334,7 @@ def test_editor_playtest_hits_walls_via_game_frames_and_returns_to_unsaved_draft
     button(game, editor, f"Test {player_count}P")
     session = editor.playtest
     assert session.player_count == player_count and game.player_count == 1
-    clock = [session._next_step]
+    clock = [session.players[0].next_step]
     monkeypatch.setattr("modules.game.time.monotonic", lambda: clock[0])
     rows = [center_y + index * 2 for index in range(player_count)]
     assert [player.cell for player in session.players] == [(center_x, row) for row in rows]

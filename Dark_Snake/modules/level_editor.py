@@ -5,10 +5,12 @@ import time
 import pygame
 
 from config import GRID_HEIGHT, GRID_SIZE, GRID_WIDTH, WINDOW_HEIGHT, WINDOW_WIDTH
+from modules.effect_settings import EFFECT_COLORS, EffectSettings, draw_effect_overlay
 from modules.graphics import TILE_IMAGES
 from modules.level_drafts import (COLLISION_TYPES, legacy_map_exists, list_drafts,
-                                  normalize_draft_name, read_legacy_map, read_level,
+                                  normalize_draft_name, read_legacy_map, read_level_layers,
                                   suggest_draft_name, write_draft)
+from modules.level_effects import CellEffects, DamageField, SlowField
 from modules.level_playtest import COLLISION_COLORS, LevelPlaytest, draw_collision_overlay
 
 TOOLBAR_W = 200
@@ -17,7 +19,7 @@ ZOOM = 0.72
 FAV_ROW_H = 50
 SCROLL_TOP = 312
 TILE_ROW_H = WINDOW_HEIGHT - SCROLL_TOP - 12
-MAP_TOP = 136
+MAP_TOP = 168
 CELL_SIZE = max(1, min(int(GRID_SIZE * ZOOM), (WINDOW_WIDTH - TOOLBAR_W - 12) // GRID_WIDTH,
                        (WINDOW_HEIGHT - MAP_TOP - 42) // GRID_HEIGHT))
 MAP_RECT = pygame.Rect(TOOLBAR_W, MAP_TOP, GRID_WIDTH * CELL_SIZE, GRID_HEIGHT * CELL_SIZE)
@@ -40,6 +42,9 @@ PLACEMENT_TOOLS = (
     ("combined", "Grafik + Kollision", 142, "beide Ebenen"),
     ("collision", "Nur Kollision", 114, "Kollision"),
 )
+EFFECT_TOOLS = (("damage", "Schaden"), ("slow", "Slow"))
+ERASE_LABELS = {mode: description for mode, _, _, description in PLACEMENT_TOOLS}
+ERASE_LABELS.update({"damage": "Schaden", "slow": "Slow"})
 
 
 def _empty_map():
@@ -60,10 +65,15 @@ class LevelEditor:
         self.current_tile = next(iter(self.tiles), None)
         self.map = _empty_map()
         self.collisions = {}
+        self.effects = {}
         self._saved_layers = self._snapshot()
         self.placement_mode = "graphics"
         self.collision_type = "WALL"
         self.show_collisions = True
+        self.show_effects = True
+        self.damage_brush = DamageField()
+        self.slow_brush = SlowField()
+        self.effect_settings = None
         self.playtest = None
         self.name = ""
         self._saved_name = None
@@ -85,7 +95,7 @@ class LevelEditor:
 
     @property
     def dirty(self):
-        return (self.map, self.collisions) != self._saved_layers
+        return (self.map, self.collisions, self.effects) != self._saved_layers
 
     @property
     def dialog_open(self):
@@ -117,16 +127,26 @@ class LevelEditor:
             ("Tile-Bibliothek", pygame.Rect(WINDOW_WIDTH - 154, 10, 140, BTN_H), self.open_tile_library),
         ))
         x = TOOLBAR_W
+        collision_toolbar_y = MAP_TOP - 2 * (BTN_H + 4)
         for mode, label, width, _ in PLACEMENT_TOOLS:
-            buttons.append((label, pygame.Rect(x, MAP_TOP - BTN_H - 4, width, BTN_H),
+            buttons.append((label, pygame.Rect(x, collision_toolbar_y, width, BTN_H),
                             lambda mode=mode: self._set_placement_mode(mode)))
             x += width + 4
         for kind in COLLISION_TYPES:
-            buttons.append((kind, pygame.Rect(x, MAP_TOP - BTN_H - 4, 75, BTN_H),
+            buttons.append((kind, pygame.Rect(x, collision_toolbar_y, 75, BTN_H),
                             lambda kind=kind: self._set_collision_type(kind)))
             x += 79
-        buttons.append(("Kollision ein/aus", pygame.Rect(x, MAP_TOP - BTN_H - 4, 138, BTN_H),
+        buttons.append(("Kollision ein/aus", pygame.Rect(x, collision_toolbar_y, 138, BTN_H),
                         self._toggle_collision_overlay))
+        effect_toolbar_y = MAP_TOP - BTN_H - 4
+        for index, (mode, label) in enumerate(EFFECT_TOOLS):
+            buttons.append((label, pygame.Rect(TOOLBAR_W + index * 100, effect_toolbar_y, 96, BTN_H),
+                            lambda mode=mode: self._set_placement_mode(mode)))
+        buttons.extend((
+            ("Effektwerte", pygame.Rect(TOOLBAR_W + 200, effect_toolbar_y, 106, BTN_H), self.open_effect_settings),
+            ("Effekte ein/aus", pygame.Rect(TOOLBAR_W + 310, effect_toolbar_y, 126, BTN_H),
+             self._toggle_effect_overlay),
+        ))
         return buttons
 
     def _set_placement_mode(self, mode):
@@ -140,6 +160,17 @@ class LevelEditor:
     def _toggle_collision_overlay(self):
         self.show_collisions = not self.show_collisions
         self.info = "Kollisionsansicht ein" if self.show_collisions else "Kollisionsansicht aus"
+
+    def _toggle_effect_overlay(self):
+        self.show_effects = not self.show_effects
+        self.info = "Effektmarkierungen ein" if self.show_effects else "Effektmarkierungen aus"
+
+    def open_effect_settings(self):
+        self._stroke_button = None
+        self.effect_settings = EffectSettings(self.damage_brush, self.slow_brush,
+                                              pygame.Rect(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT))
+        self._dialog = {"kind": "effects"}
+        pygame.key.start_text_input()
 
     def toggle(self):
         if self.active:
@@ -160,9 +191,10 @@ class LevelEditor:
 
         def close():
             if self.dirty:
-                saved_map, saved_collisions = self._saved_layers
+                saved_map, saved_collisions, saved_effects = self._saved_layers
                 self.map = _copy_map(saved_map)
                 self.collisions = saved_collisions.copy()
+                self.effects = saved_effects.copy()
                 self.undo_stack.clear()
                 self.redo_stack.clear()
             self.stop_sim()
@@ -220,7 +252,8 @@ class LevelEditor:
 
     def _save_named_map(self, name, *, replace=False):
         try:
-            saved_name = write_draft(name, self.map, collision=self.collisions, replace=replace)
+            saved_name = write_draft(name, self.map, collision=self.collisions,
+                                     effects=self.effects, replace=replace)
         except FileExistsError as error:
             self.info = str(error)
             if not replace:
@@ -256,29 +289,31 @@ class LevelEditor:
         except ValueError as error:
             self.info = f"Level konnte nicht geladen werden. {error}"
             return False
-        return self._load_document(name, lambda: read_level(name), saved_name=name)
+        return self._load_document(name, lambda: read_level_layers(name), saved_name=name)
 
     def load_legacy_map(self):
-        return self._load_document("custom_level.json", lambda: (read_legacy_map(), {}), legacy=True)
+        return self._load_document("custom_level.json", lambda: (read_legacy_map(), {}, {}), legacy=True)
 
     def _load_document(self, name, read, *, saved_name=None, legacy=False):
         def load():
             try:
-                level_map, collisions = read()
+                level_map, collisions, effects = read()
             except (OSError, ValueError) as error:
                 self.info = f"Level konnte nicht geladen werden. {error}"
                 return False
-            self._set_document(name, level_map, collisions=collisions, saved_name=saved_name, legacy=legacy)
+            self._set_document(name, level_map, collisions=collisions, effects=effects,
+                               saved_name=saved_name, legacy=legacy)
             self.info = f"{name} geladen"
             return True
 
         return self._after_discard_confirmation(load)
 
-    def _set_document(self, name, level_map, *, collisions=None, saved_name=None, legacy=False):
+    def _set_document(self, name, level_map, *, collisions=None, effects=None, saved_name=None, legacy=False):
         self._stroke_button = None
         self.name = name
         self.map = level_map
         self.collisions = {} if collisions is None else collisions
+        self.effects = {} if effects is None else effects
         self._saved_layers = self._snapshot()
         self._saved_name = saved_name
         self._legacy = legacy
@@ -366,7 +401,7 @@ class LevelEditor:
 
     def start_playtest(self, player_count):
         try:
-            session = LevelPlaytest(self.collisions, player_count, started_at=time.monotonic())
+            session = LevelPlaytest(self.collisions, player_count, started_at=time.monotonic(), effects=self.effects)
         except ValueError as error:
             self.info = str(error)
             return
@@ -374,13 +409,13 @@ class LevelEditor:
         self._preview_background = pygame.transform.scale(self.game.default_background_surface, MAP_RECT.size)
         self._stroke_button = None
         self.buttons = self._make_buttons()
-        self.info = "Wandtest gestartet"
+        self.info = "Leveltest gestartet"
 
     def stop_playtest(self):
         self.playtest = None
         self._preview_background = None
         self.buttons = self._make_buttons()
-        self.info = "Wandtest beendet · Entwurf unverändert"
+        self.info = "Leveltest beendet · Entwurf unverändert"
 
     def handle_event(self, event, actions=()):
         if not self.active:
@@ -472,17 +507,18 @@ class LevelEditor:
         gx = (mx - MAP_RECT.x) // CELL_SIZE
         gy = (my - MAP_RECT.y) // CELL_SIZE
         erase = self._stroke_button == 3
+        cell = (gx, gy)
+        if self.placement_mode in ("damage", "slow"):
+            self._paint_effect(cell, erase)
+            return
         tile = None if erase else self.current_tile
         collision = None if erase else self.collision_type
-        cell = (gx, gy)
         change_graphics = (self.placement_mode != "collision" and (erase or tile is not None)
                            and self.map[gy][gx] != tile)
         change_collision = self.placement_mode != "graphics" and self.collisions.get(cell) != collision
         if not (change_graphics or change_collision):
             return
-        if self._stroke_button is None or not self._stroke_changed:
-            self._store_undo()
-            self._stroke_changed = True
+        self._begin_stroke_change()
         if change_graphics:
             self.map[gy][gx] = tile
         if change_collision:
@@ -497,8 +533,30 @@ class LevelEditor:
         else:
             self.info = "Kachel entfernt" if erase else f"{tile} gesetzt"
 
+    def _paint_effect(self, cell, erase):
+        existing = self.effects.get(cell, CellEffects())
+        if self.placement_mode == "damage":
+            updated = CellEffects(damage=None if erase else self.damage_brush, slow=existing.slow)
+            label = "Schaden"
+        else:
+            updated = CellEffects(damage=existing.damage, slow=None if erase else self.slow_brush)
+            label = "Slow"
+        if updated == existing:
+            return
+        self._begin_stroke_change()
+        if updated.damage is None and updated.slow is None:
+            del self.effects[cell]
+        else:
+            self.effects[cell] = updated
+        self.info = f"{label} entfernt" if erase else f"{label} gesetzt"
+
+    def _begin_stroke_change(self):
+        if self._stroke_button is None or not self._stroke_changed:
+            self._store_undo()
+            self._stroke_changed = True
+
     def _snapshot(self):
-        return _copy_map(self.map), self.collisions.copy()
+        return _copy_map(self.map), self.collisions.copy(), self.effects.copy()
 
     def _store_undo(self):
         self.undo_stack.append(self._snapshot())
@@ -507,15 +565,15 @@ class LevelEditor:
     def undo(self):
         self._stroke_button = None
         if self.undo_stack:
-            self.redo_stack.append((self.map, self.collisions))
-            self.map, self.collisions = self.undo_stack.pop()
+            self.redo_stack.append((self.map, self.collisions, self.effects))
+            self.map, self.collisions, self.effects = self.undo_stack.pop()
             self.info = "Bearbeitung rückgängig gemacht"
 
     def redo(self):
         self._stroke_button = None
         if self.redo_stack:
-            self.undo_stack.append((self.map, self.collisions))
-            self.map, self.collisions = self.redo_stack.pop()
+            self.undo_stack.append((self.map, self.collisions, self.effects))
+            self.map, self.collisions, self.effects = self.redo_stack.pop()
             self.info = "Bearbeitung wiederholt"
 
     def fill_middle(self):
@@ -540,10 +598,11 @@ class LevelEditor:
         pygame.key.start_text_input()
 
     def _dismiss_dialog(self):
-        if self._dialog["kind"] == "name":
+        if self._dialog["kind"] in ("name", "effects"):
             pygame.key.stop_text_input()
         elif self._dialog["kind"] == "tiles":
             self.tile_library.close()
+        self.effect_settings = None
         self._dialog = None
 
     def _cancel_dialog(self):
@@ -595,6 +654,13 @@ class LevelEditor:
             self._handle_open(event)
         elif kind == "world":
             self.world_tree.handle_event(event)
+        elif kind == "effects":
+            result = self.effect_settings.handle_event(event)
+            if result is not None:
+                self._dismiss_dialog()
+                if result is not False:
+                    self.damage_brush, self.slow_brush = result
+                    self.info = "Effektwerte übernommen"
 
     def _handle_name(self, event):
         dialog = self._dialog
@@ -676,7 +742,7 @@ class LevelEditor:
 
     def _button_available(self, action):
         if self.playtest is not None:
-            return action in (self.stop_playtest, self._toggle_collision_overlay)
+            return action in (self.stop_playtest, self._toggle_collision_overlay, self._toggle_effect_overlay)
         return not self.preview_active or action == self.stop_sim
 
     def _tool_outline(self, label):
@@ -684,9 +750,18 @@ class LevelEditor:
             return COLLISION_COLORS[label]
         if label == "Kollision ein/aus" and self.show_collisions:
             return COLOR_SELECT
+        if label == "Effekte ein/aus" and self.show_effects:
+            return COLOR_SELECT
+        if (self.placement_mode, label) in EFFECT_TOOLS:
+            return EFFECT_COLORS[self.placement_mode]
         if any(mode == self.placement_mode and label == name for mode, name, _, _ in PLACEMENT_TOOLS):
             return COLOR_SELECT
         return None
+
+    def _draw_effect_legend(self, screen):
+        x, y = TOOLBAR_W + 451, MAP_TOP - BTN_H + 3
+        self._draw_text(screen, "Schaden", (x, y), EFFECT_COLORS["damage"])
+        self._draw_text(screen, "Slow", (x + 70, y), EFFECT_COLORS["slow"])
 
     def draw(self, screen):
         if not self.active:
@@ -702,6 +777,8 @@ class LevelEditor:
         for label, rect, action in self.buttons:
             if self._button_available(action):
                 self._draw_button(screen, label, rect, self._tool_outline(label))
+        if self.show_effects and not self.preview_active:
+            self._draw_effect_legend(screen)
 
         title = self._display_name() or "Neuer Entwurf"
         if self._legacy:
@@ -715,19 +792,33 @@ class LevelEditor:
 
         if self.playtest is not None:
             self.playtest.draw(screen, MAP_RECT)
-            statuses = " · ".join(f"P{index}: {player.blocked or 'frei'}"
-                                  for index, player in enumerate(self.playtest.players, start=1))
-            hint = f"Wandtest · Esc/F2 zurück · {statuses}"
+            statuses = " | ".join(
+                f"P{index}: {player.health} HP · "
+                + (f"Tempo {player.speed_percent} %{f' · {player.blocked}' if player.blocked else ''}"
+                   if player.health else "K. o.")
+                for index, player in enumerate(self.playtest.players, start=1)
+            )
+            self._draw_text(screen, statuses, (TOOLBAR_W, WINDOW_HEIGHT - 20), COLOR_SELECT)
+            hint = "Leveltest · Esc/F2 zurück"
         elif self.preview_active:
             hint = "Karten-Vorschau · Esc zurück"
         else:
-            erase = next(erase for mode, _, _, erase in PLACEMENT_TOOLS if mode == self.placement_mode)
+            erase = ERASE_LABELS[self.placement_mode]
             hint = f"Links malen · Rechts löscht {erase} · Mausrad über Kacheln"
+            if self.placement_mode == "damage":
+                damage = self.damage_brush
+                duration = "" if damage.duration is None else f" · Dauer {damage.duration:g} s"
+                hint = f"Links {damage.amount} HP je {damage.interval:g} s{duration} · Rechts löscht Schaden"
+            elif self.placement_mode == "slow":
+                hint = f"Links Slow {self.slow_brush.percent} % · Rechts löscht Slow"
         self._draw_text(screen, hint, (TOOLBAR_W, WINDOW_HEIGHT - 39))
-        self._draw_text(screen, self.info, (TOOLBAR_W, WINDOW_HEIGHT - 20), COLOR_SELECT)
+        if self.playtest is None:
+            self._draw_text(screen, self.info, (TOOLBAR_W, WINDOW_HEIGHT - 20), COLOR_SELECT)
         if self.dialog_open:
             if self._dialog["kind"] == "world":
                 self.world_tree.draw(screen)
+            elif self._dialog["kind"] == "effects":
+                self.effect_settings.draw(screen, self._draw_text, self._draw_button)
             else:
                 self._draw_dialog(screen)
 
@@ -775,6 +866,8 @@ class LevelEditor:
         pygame.draw.rect(screen, COLOR_FRAME, MAP_RECT, 2)
         if self.show_collisions and not self.preview_active:
             draw_collision_overlay(screen, MAP_RECT, self.collisions)
+        if self.show_effects and not self.preview_active:
+            draw_effect_overlay(screen, MAP_RECT, CELL_SIZE, self.effects)
 
     def _draw_dialog(self, screen):
         dialog = self._dialog
