@@ -1,77 +1,61 @@
 <p align="center">
-  <img src="Dark_Snake/assets/graphics/titel1.png" alt="DARK SNAKE Titelgrafik" width="240">
+  <img src="GamePICs/Dunkle%20Frostschlange%20im%20Eisk%C3%B6nigreich.png" alt="DARK SNAKE — FrostAge: dunkle Schlange im Eiskönigreich (Konzeptgrafik)" width="820">
 </p>
 
 <h1 align="center">🐍 DARK SNAKE</h1>
+<p align="center"><strong>Arcade-Snake mit Roguelite-Ideen, Bosskämpfen, Elementareffekten und einer wachsenden Level-Werkstatt.</strong></p>
+<p align="center"><a href="README.md">English 🇬🇧</a> · <strong>Deutsch</strong> · <a href="https://github.com/DemusOpalium/dark-snake-game/discussions">Mitdiskutieren</a> · <a href="ROADMAP.md">Roadmap</a></p>
 
-<p align="center">
-  <strong>Klassisches Snake trifft auf düsteres Arcade-Chaos.</strong><br>
-  Bosskämpfe · Zwei Spieler · Portale · Elementare Effekte · World Studio
-</p>
-
-<p align="center">
-  <a href="README.md">English 🇬🇧</a> · <strong>Deutsch</strong> ·
-  <a href="https://github.com/DemusOpalium/dark-snake-game/discussions">Community & Feedback</a> ·
-  <a href="ROADMAP.md">Roadmap</a>
-</p>
-
-> 🚧 **Aktives Hobbyprojekt / Alpha.** Entwickelt von DemusOpalium mit KI-Unterstützung, Neugier und Freude an Spielen. Kostenlos zum Entdecken und Testen; noch keine fertige kommerzielle Veröffentlichung.
+> 🚧 **Spielbare Alpha in aktiver Entwicklung.** DARK SNAKE ist das Hobbyprojekt von DemusOpalium, persönlich gespielt und getestet, gemeinsam mit Irian und KI-gestützter Entwicklung umgesetzt. Das große FrostAge-Bild oben ist eine **Konzeptgrafik**, kein Spiel-Screenshot.
 
 ## 🎮 So sieht das Spiel aus
 
-<p align="center">
-  <img src="GamePICs/Spiel%2BAdminPanel-open22.4.2025.png" alt="DARK SNAKE im Spiel mit geöffnetem Entwickler-Panel (älterer Stand)" width="740">
-</p>
-<p align="center"><em>Echter Spiel-Screenshot aus einem älteren Build, mit geöffnetem Entwickler-Panel.</em></p>
+| Neues FrostAge-Hauptmenü | Bosskampf |
+| :---: | :---: |
+| <img src="GamePICs/FrontUI.png" alt="Aktuelles FrostAge-Hauptmenü mit illustrierten Buttons" width="420"> | <img src="GamePICs/boss%20fight%20game.png" alt="Echter DARK-SNAKE-Screenshot aus einem Bosskampf" width="420"> |
 
-**Was steckt drin?** Ein schnelles Snake-Arcade-Spiel mit Bossen, Gegnern, Projektilen, Portalen, Items und Zwei-Spieler-Steuerung. Dazu kommen eigene Snake-Designs und Hintergrundmusik.
+**Worum geht's?** Eine Schlange steuern, Punkte und Items einsammeln, Gegnern und Projektilen ausweichen und auftauchende Bosse überstehen. Du startest mit **drei Leben**. Klassisches Snake trifft auf Zeitereignisse, Lebenspunkte, Portale, Schüsse, Überraschungen und ein **W20-Würfelereignissystem**. Die Arcade-Runde funktioniert bereits; die größere Roguelite-Abenteuerwelt wächst erst noch.
 
-<p align="center">
-  <img src="GamePICs/LvLEDITOR.png" alt="Der integrierte DARK SNAKE Level-Editor (älterer Screenshot)" width="640">
-</p>
-<p align="center"><em>World Studio: eigene Karten gestalten und speichern. Die Werkstatt wird weiterentwickelt.</em></p>
+Allein oder lokal zu zweit spielen, die Schlange gestalten und eigene Hintergrundmusik verwenden. Mal hektisch, mal einfach entspannt Punkte jagen — und vielleicht noch eine Runde versuchen.
 
-## ❄️ World Studio & FrostAge
+## 🛠️ World Studio — eigene Level gestalten
 
-**Schon nutzbar:** Mit **F2** den Editor öffnen, **495 bisherige Tiles** auswählen, benannte JSON-Entwürfe speichern, Themenwelten verwalten und **WALL/BARRIER**, **Schaden** sowie **Slow** im isolierten 1P-/2P-Leveltest ausprobieren.
+<p align="center"><img src="GamePICs/ui%20editor.png" alt="Aktuelle F2-World-Studio-Oberfläche mit Kacheln, Spielfeld und Werkzeugen" width="820"></p>
+<p align="center"><em>World Studio am 13. November 2026 — noch im Ausbau. Nicht jede geplante Funktion ist bereits verfügbar.</em></p>
 
-**Wichtig:** Der reguläre Classic-Modus übernimmt ausgewählte Karten bisher **nur als Hintergrund**. Eigene Wandkollisionen und Effektfelder wirken derzeit **im Editor-Spieltest**, noch nicht in der normalen Classic-Runde.
+Mit **F2** öffnet sich der Editor. Bereits vorhanden: **495 Classic-Tiles**, **175 neue FrostAge-PNGs**, große **Multi-Tile-Grafikobjekte**, benannte Kartenentwürfe, Themenwelten, Undo/Redo und isolierte **1P-/2P-Leveltests** für WALL/BARRIER, Schaden und Slow. Die neuen FrostAge-Grafiken sind außerdem als echte Buttons im Hauptmenü im Einsatz.
 
-**Als Nächstes geplant:** Große Multi-Tiles und Stempel, übersichtlichere Werkzeuge, Dächer mit transparentem Sichtbereich, flackernde Lichtquellen, Trigger und vollständig spielbare eigene Level.
+**Noch nicht fertig:** eine echte Dach-/Vordergrundebene mit transparentem Sichtkreis, dynamische Beleuchtung, die vergrößerte Editor-Oberfläche, spielbare Profile für die neuen FrostAge-Gegner/Projektile/Items und ein vollständiger Adventure-Ablauf. Im regulären Classic-Modus werden eigene Karten bisher als **Hintergrund** verwendet. Die erstellten Kollisionen und Effekte funktionieren derzeit im **isolierten Editor-Spieltest**.
 
-🎨 **126 neue FrostAge-PNGs** liegen bereits im [Grafik-Eingangsordner](GamePICs/Incoming/Frost_Tiles/). Sie sind **noch nicht in den Grafik-Loader des Spiels eingebaut**.
+Geplant sind unter anderem Brücken zum Unterqueren, Höhlen, leuchtende Frostkristalle, Pilzwelten, Fallen, interaktive Truhen und später mehr Roguelite-Fortschritt. Details stehen in der [Roadmap](ROADMAP.md).
 
-## ⬇️ Unter Windows ausprobieren
+## ⬇️ Windows-Alpha ausprobieren
 
-Eine stabile, direkt herunterladbare Windows-Veröffentlichung gibt es **noch nicht**. Über [GitHub Actions](https://github.com/DemusOpalium/dark-snake-game/actions/workflows/python-app.yml) werden Windows-Testversionen gebaut; zum Herunterladen der Artefakte kann eine GitHub-Anmeldung nötig sein. Die Test-Builds sind nicht signiert.
+Ein stabiles, signiertes öffentliches Release gibt es **noch nicht**. Windows-Testversionen samt ZIP entstehen über [GitHub Actions](https://github.com/DemusOpalium/dark-snake-game/actions/workflows/python-app.yml). Für den Download kann eine GitHub-Anmeldung nötig sein. **Das heruntergeladene Archiv und die enthaltene Spiel-ZIP vollständig entpacken**, erst dann die EXE starten. Siehe [Windows-Anleitung](WINDOWS_BUILD.md).
 
-Nach dem Download das Actions-Archiv und die darin enthaltene Spiel-ZIP vollständig entpacken, dann die EXE starten. Mehr dazu: [Windows-Build und Sicherheitshinweise](WINDOWS_BUILD.md).
-
-**Aus dem Quellcode starten** (Python / pygame):
+Alternativ aus dem Python-Quellcode:
 
 ```bash
 python -m pip install -r requirements.txt
 python Dark_Snake/main.py
 ```
 
-## ⌨️ Steuerung im Überblick
+## ⌨️ Steuerung auf einen Blick
 
-| Aktion | Standardtaste |
+| Aktion | Standard |
 | --- | --- |
 | Bewegung Spieler 1 / Spieler 2 | WASD / Pfeiltasten |
 | Schießen | Leertaste (P1), + (P2) |
-| Level-Editor | F2 |
+| World Studio | F2 |
 | Entwickler-Panel | Tab |
-| Zurück / Pausenmenüs | Esc |
+| Pause / Navigation | P / Esc |
 
-Tasten und weitere Optionen lassen sich im Spiel anpassen. Weitere Details: [Steuerung](CONTROLS.md).
+Tasten lassen sich im Spiel anpassen. Mehr unter [Steuerung](CONTROLS.md). Das Hauptmenü lässt sich mit Maus, Tastatur und unterstütztem Controller bedienen. **Continue** setzt eine unterbrochene Runde fort, solange das Spiel geöffnet bleibt. Workshop, Boss Rush, Inventar, Statistik und Credits sind derzeit sichtbar als **nicht verfügbar** markiert.
 
-## 🤝 Mitmachen & Feedback
+## 🤝 Gemeinsam weiterentwickeln
 
-Du hast einen Spielfehler entdeckt, eine Level-Idee oder möchtest DARK SNAKE ausprobieren? Wir freuen uns über Rückmeldungen und Austausch.
+DARK SNAKE entsteht Stück für Stück als langfristiges Hobbyprojekt. Ich spiele selbst, entdecke Fehler und interessante Ideen und entwickle das Spiel weiter. Wer testen, Rückmeldung geben oder mitentwickeln möchte, ist herzlich willkommen. Es geht um Spaß am Spielen und Gestalten — nicht darum, das perfekte Spiel zu behaupten.
 
-**[💬 Discussions](https://github.com/DemusOpalium/dark-snake-game/discussions)** · **[🐛 Issues](https://github.com/DemusOpalium/dark-snake-game/issues)** · **[🛣️ Roadmap](ROADMAP.md)**
-
-Mehr zum Projekt: [World Studio / Entwicklung](DEVELOPMENT_NOTES.md) · [Spielgalerie](GALLERY.md) · [Windows-Build](WINDOWS_BUILD.md).
+**[💬 Discussions](https://github.com/DemusOpalium/dark-snake-game/discussions)** · **[🐛 Issues](https://github.com/DemusOpalium/dark-snake-game/issues)** · **[🛣️ Roadmap](ROADMAP.md)** · **[📷 Galerie](GALLERY.md)**
 
 **Lizenz:** [MIT](LICENSE). Entstanden mit Python, pygame und der Zusammenarbeit von Mensch und KI. 🐍

@@ -1,31 +1,23 @@
-# 🎨 GALLERY.md – Dark Snake Galerie
+# 📷 DARK SNAKE — Current screenshots / Aktuelle Bilder
 
-Hier findest du eine Übersicht der wichtigsten Screenshots und UI-Elemente.
+These are real captures from the game and its editor, except for the clearly marked FrostAge concept image. / Die Screenshots stammen aus dem Spiel beziehungsweise Editor. Das FrostAge-Titelbild ist ausdrücklich eine Konzeptgrafik.
 
-## Hauptmenü
-![Start](assets/screenshots/StartMenü.png)
+## ❄️ FrostAge title illustration / Titelillustration
 
-## AdminPanel aktiv
-![Admin](assets/screenshots/adminpanel+SpielAnsicht.png)
+![DARK SNAKE — FrostAge concept illustration](GamePICs/Dunkle%20Frostschlange%20im%20Eisk%C3%B6nigreich.png)
 
-## Optionen
-![Optionen](assets/screenshots/Options.png)
+## 🎮 Main menu / Hauptmenü
 
-## Bosskampf
-![Bosskampf](assets/screenshots/Boss-DemusG60.png)
+![FrostAge main menu with buttons](GamePICs/FrontUI.png)
 
-## AOE Effekte
-![AOE](assets/screenshots/AOE-Zonen.png)
+## 👹 Boss fight / Bosskampf
 
-## Two Player Modus
-![2P](assets/screenshots/TwoPlayerModus.png)
+![DARK SNAKE boss fight gameplay](GamePICs/boss%20fight%20game.png)
 
----
+## 🛠️ World Studio editor / Level-Editor
 
-## 📚 Weitere Dokumentation
+![World Studio user interface](GamePICs/ui%20editor.png)
 
-- 📦 [Modulübersicht (DEV_STRUCTURE.md)](DEV_STRUCTURE.md)
-- 🎨 [Screenshot-Galerie (GALLERY.md)](GALLERY.md)
-- 🎮 [Steuerung (CONTROLS.md)](CONTROLS.md)
-- 🤖 [Prompt-Guide für GPT (PROMPT_GUIDE.md)](PROMPT_GUIDE.md)
-- 🛣️ [Projekt-Roadmap (ROADMAP.md)](ROADMAP.md)
+Screenshots from **13 November 2026**; the project is evolving. / Bilder vom **13. November 2026**, weitere Änderungen folgen.
+
+[← English README](README.md) · [← Deutsche README](README.de.md) · [Roadmap](ROADMAP.md)
