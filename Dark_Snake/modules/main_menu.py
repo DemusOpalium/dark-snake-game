@@ -6,6 +6,7 @@ from math import ceil
 import pygame
 
 from modules.frostage_assets import load_frostage_image
+from modules.resources import find_asset
 
 
 GROUPS = (
@@ -64,6 +65,17 @@ def _menu_background(image, size):
     shade.fill((9, 13, 28, 140))
     background.blit(shade, (0, 0))
     return background
+
+
+def load_frostage_background(fallback=None):
+    """Use the packaged FrostAge title image; preserve the legacy image as fallback."""
+    path = find_asset("graphics", "menu", "frostage_title_background.png")
+    try:
+        image = pygame.image.load(str(path))
+        # Game also runs headless, without an active display.
+        return image.convert() if pygame.display.get_surface() is not None else image
+    except (OSError, pygame.error):
+        return fallback
 
 
 class FrostAgeMenu:

@@ -19,7 +19,7 @@ from modules import resources
 from modules.enums import GameState
 from modules.frostage_assets import frostage_assets, load_frostage_image
 from modules.game import Game
-from modules.main_menu import FrostAgeMenu, cover_background
+from modules.main_menu import FrostAgeMenu, cover_background, load_frostage_background
 
 
 ART_KEYS = {
@@ -102,6 +102,23 @@ def test_cover_background_crops_centrally_without_stretch_or_side_bars():
     assert cropped.get_at((0, 0))[:3] == (60, 210, 90)
     assert cropped.get_at((7, 7))[:3] == (60, 210, 90)
     assert source.get_at((0, 0))[:3] == (220, 50, 30)
+
+
+def test_game_uses_packaged_frostage_title_background(game):
+    path = resources.find_asset("graphics", "menu", "frostage_title_background.png")
+    assert path.is_file()
+    source = pygame.image.load(str(path))
+    active = game.main_menu._background_source
+    assert active is not None
+    assert active.get_size() == source.get_size()
+    assert active.get_at((0, 0))[:3] == source.get_at((0, 0))[:3]
+    assert game.main_menu.background.get_size() == game.screen.get_size()
+
+
+def test_frostage_background_falls_back_if_the_asset_is_missing(tmp_path, monkeypatch):
+    monkeypatch.setattr("modules.main_menu.find_asset", lambda *parts: tmp_path / "missing.png")
+    legacy = pygame.Surface((11, 17))
+    assert load_frostage_background(legacy) is legacy
 
 
 def test_main_menu_background_is_cached_per_viewport_size():

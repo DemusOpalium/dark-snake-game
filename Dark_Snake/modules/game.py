@@ -36,7 +36,7 @@ from modules.ui import Button, Slider, CheckBox, Dropdown
 from modules.aoe_zones import AoEZone, DamageZone, HealZone, DebuffZone, FollowZone, GrowingBossAOEZone  # [KS_TAG: BOSS_AOE]
 from modules.controls import ControlsMenu
 from modules.input_manager import InputManager
-from modules.main_menu import FrostAgeMenu
+from modules.main_menu import FrostAgeMenu, load_frostage_background
 from modules.resources import asset_path, user_data_path
 from modules.customization import CustomizationMenu
 from modules.enemies import NormalEnemy
@@ -570,7 +570,7 @@ class Game:
             "controls": lambda: self.set_state(GameState.CONTROLS),
             "developer": lambda: self.set_state(GameState.SIMULATION),
             "quit": lambda: sys.exit(),
-        }, can_continue=self.can_continue, background=TITLE_IMG)
+        }, can_continue=self.can_continue, background=load_frostage_background(TITLE_IMG))
 
     def _open_level_editor(self):
         self.admin_panel.close()
