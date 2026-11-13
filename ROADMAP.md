@@ -196,7 +196,7 @@
 
 ---
 
-## 07 · WORLD STUDIO 2.0
+## 07 · WORLD STUDIO 3.0 – FROSTAGE
 
 **Ziel:** Ein vollständiger Level-Baukasten direkt innerhalb von DARK Snake.
 
@@ -207,10 +207,18 @@
 - ✅ **Phase A.** Themenwelten, Level-Anzeigenamen, stabile Zuordnungen und eine getrennte, frei sortierbare Spielreihenfolge.
 - ✅ **Phase A.** Aufklappbare Themen für 495 Tiles mit Suche, Vorschaubildern, Favoriten und manuell korrigierbaren Katalogeinträgen.
 - ✅ **PR 1.** Separate Kollisionsebene für WALL und BARRIER mit sicherem Spielerstart im isolierten 1P-/2P-Wandtest.
-- ⬜ **PR 2.** Damage und Slow Blocks mit prüfbaren Zeitintervallen und isoliertem Spieltest.
-- ⬜ **PR 3.** Multi-Tiles, frei definierbare Grafikgrößen und Stamp Builder mit Undo/Redo.
-- ⬜ **PR 4.** Druckplatte, Verzögerung und zeitlich begrenzte Schadenszone als erster Trigger.
-- ⬜ **PR 5 bei Bedarf.** Tile-Gruppen, Favoriten und Werkzeugwechsel direkt in der linken Palette.
+- ✅ **#124.** Damage und Slow mit Trefferintervall, HP- und Tempoanzeige im isolierten Spieltest.
+- ✅ **#125–#141.** Eingang der 175 FrostAge-PNGs als Originaldateien.
+- 🔧 **PR A.** Zentraler Katalog, 175 geprüfte Laufzeitgrafiken und platzierbare Multi-Tiles mit Speichern und Undo/Redo. Windows-Paket prüfen.
+- ⬜ **PR B.** Vergrößerbarer Editor mit fester Spielfeldgröße, linker Bibliothek, Werkzeugleisten, Eigenschaften, Ebenenauswahl, Tooltips und deutscher Hilfe. Stamp Builder als getrennten Arbeitsschritt einplanen.
+- ⬜ **PR C.** Acht FrostAge-Dächer auf der Vordergrundebene, lokale weiche Transparenz für 1P/2P sowie konfigurierbare 2D-Beleuchtung. Darstellung mit mehreren Lichtquellen bei 1350×930 messen.
+- ⬜ **PR D.** 13 Projektil- und 11 AoE-Grafiken über bestehende Treffer- und Effektsysteme. Profile und sichtbare Beispiele im Leveltest.
+- ⬜ **PR E.** Acht FrostAge-Gegner mit Richtungsdarstellung, konfigurierbaren Angriffen, sicheren Editor-Spawns und Tests.
+- ⬜ **PR F.** Fünf FrostAge-Items, unter anderem Schlüssel und Truhe. Interaktionen auf deklarative Leveldaten stützen.
+- ⬜ **PR G.** Zwölf FrostAge-Menügrafiken. Vorhandene Aktionen verbinden, fehlende Funktionen gesondert umsetzen.
+- ⬜ **PR H.** Eigene Levels mit ihren Gameplay-Ebenen im Adventure-Modus spielen. Classic separat erhalten.
+- ⬜ Druckplatten, Verzögerung und Schadenszone als Trigger-Arbeitspaket.
+- ⬜ Größerer Spielrahmen um das unveränderte 45×31-Raster und später eine Challenge-Zeitleiste.
 - ⬜ Bestehenden Editor grundlegend erweitern.
 - ⬜ Eigenen großen Editor-Bildschirm entwickeln.
 - ⬜ Level Studio über die Entwicklerkonsole öffnen.
@@ -425,8 +433,8 @@ Vier Slots pro Spieler, Item-Icons, frei belegbare Aktivierungstasten.
 **PHASE 4 – BOSSFIGHT 2.0**
 Seelenschrein, individuelle Bosstypen, feste AoE-Profile, Kampfphasen.
 
-**PHASE 5 – WORLD STUDIO 2.0**
-Phase A liefert Welt- und Tile-Bibliothek. Der korrigierte Ablauf priorisiert die spielbare Kollisionsebene. Danach folgen Damage und Slow, Multi-Tiles und Stempel sowie Trigger in eigenen Pull Requests.
+**PHASE 5 – WORLD STUDIO 3.0**
+Weltbibliothek, Kollision und Damage/Slow sind integriert. FrostAge beginnt mit Asset-Katalog und Multi-Tiles. Editor-Oberfläche, Roof/Lighting, Projektile/AoE, Gegner, Items, Menü und Adventure folgen in der Reihenfolge PR A bis H.
 
 **PHASE 6 – LEVEL-VERWALTUNG**
 Entwürfe, Level-Bibliothek, JSON, Grafikpakete, Export und Import.
