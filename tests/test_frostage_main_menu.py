@@ -282,4 +282,3 @@ def test_game_over_to_main_menu_cannot_continue_old_round(game, monkeypatch):
     assert not game.can_continue() and not game.main_menu.is_enabled("continue")
     click_menu(game, "continue")
     assert game.game_state is GameState.INTRO and not game.snake
-
