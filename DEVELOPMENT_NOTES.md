@@ -270,7 +270,14 @@ Levelformat 3 speichert Dächer und Sichtfenster-Einstellungen getrennt von Graf
 3. Unter **Ansicht → Zelle untersuchen** eine Zelle anklicken und rechts die vorhandenen Daten lesen. **Esc** beendet die Auswahl. Die bestehenden Einstellungen für Damage, Slow und Dächer stehen unter **Effekte** und im Eigenschaftenpanel.
 4. **Testen → Dach-Demo** laden und **Test 1P** sowie **Test 2P** spielen. **F2** beendet zuerst den Test und anschließend den Editor. Beim Schließen erscheint bei Änderungen der vorhandene Dialog. Die normale Spielansicht kehrt zu 1350×930 zurück.
 
-Bei 900×620 ist die Karte in der Gesamtansicht kleiner. Mit Zoom und eingeklappten Seitenleisten bleiben Zellwerkzeuge bedienbar. **Rand** setzt weiterhin die gewählte Kachel rundum. Rechtsklick löscht weiterhin direkt auf der aktiven Ebene. Rand-Builder, gesichertes Löschen, vollständige Ebenenkontrollen und DE/EN folgen laut Roadmap. **Lernen** führt aktuell zur spielbaren Dach-Demo. Der geführte Kurs folgt als eigenes Paket.
+Bei 900×620 ist die Karte in der Gesamtansicht kleiner. Mit Zoom und eingeklappten Seitenleisten bleiben Zellwerkzeuge bedienbar. Rechtsklick löscht weiterhin direkt auf der aktiven Ebene. Gesichertes Löschen, vollständige Ebenenkontrollen und DE/EN folgen laut Roadmap. **Lernen** führt aktuell zur spielbaren Dach-Demo. Der geführte Kurs folgt als eigenes Paket.
+
+## World Studio · Rand-Builder ausprobieren
+
+1. Im Editor **Bauen → Rand** öffnen. Die vier Seiten einzeln aktivieren oder den gesamten Rand auswählen. Auf den Grafikplatz einer Seite klicken und anschließend links im Baukasten eine Kachel auswählen. Für jede Seite kann eine andere Grafik verwendet werden.
+2. Die vier Ecken übernehmen die Kachel der angrenzenden aktiven Seite. Sind beide angrenzenden Seiten aktiv, gewinnt **oben** beziehungsweise **unten**. Eine eigene Eckgrafik hat Vorrang, sobald eine angrenzende Seite aktiv ist. Die Vorschau zeigt, welche Kachel jede Ecke erhält.
+3. Vor **Anwenden** die markierten Felder und Überschreibungen prüfen. **Abbrechen** verwirft die Vorschau. **Strg+Z** nimmt den angewendeten Rand in einem Schritt zurück, **Strg+Y** stellt ihn wieder her.
+4. **Bauen → Mittelfeld** füllt weiterhin nur die Fläche innerhalb des Randes. Der Rand-Builder arbeitet mit Einzelkacheln aus der Bodenebene. FrostAge-Grafikobjekte und Dächer werden über ihre jeweiligen Ebenen platziert. Kollisions- und Effektfelder behalten beim Anwenden des Randes ihre Werte.
 
 ## Vorgeschlagene nächste Phase
 
