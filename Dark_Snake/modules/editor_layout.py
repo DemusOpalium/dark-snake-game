@@ -14,10 +14,10 @@ ZOOM_FACTOR = 1.25
 
 
 class StudioLayout:
-    def __init__(self, size, *, show_library=True, show_inspector=True):
+    def __init__(self, size, *, show_library=True, show_inspector=True, header_height=HEADER_HEIGHT):
         width, height = size
         self.bounds = pygame.Rect(0, 0, width, height)
-        header_height = min(HEADER_HEIGHT, height // 3)
+        header_height = min(header_height, height // 3)
         status_height = min(STATUS_HEIGHT, height // 4)
         self.header = pygame.Rect(0, 0, width, header_height)
         self.status = pygame.Rect(0, height - status_height, width, status_height)

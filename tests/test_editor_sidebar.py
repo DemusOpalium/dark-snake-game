@@ -16,6 +16,7 @@ if pygame.display.get_surface() is None:
     pygame.display.set_mode((1, 1))
 
 from modules import resources
+from modules.editor_buttons import load_editor_button_catalog
 from modules.editor_sidebar import PANEL, StudioSidebar
 from modules.game import Game
 from modules.graphic_objects import GraphicObject
@@ -97,3 +98,32 @@ def test_sidebar_leaves_pointer_cleanup_to_the_editor(studio):
     motion = pygame.event.Event(pygame.MOUSEMOTION, pos=bounds.center)
     assert not sidebar.handle_event(release, bounds, editor)
     assert not sidebar.handle_event(motion, bounds, editor)
+
+
+def test_drawn_layer_art_invokes_the_displayed_tools(studio, monkeypatch):
+    editor, sidebar = studio
+    surface = pygame.Surface((330, 490))
+    bounds = pygame.Rect(108, 0, 204, 490)
+    sidebar.show("layers")
+    art = {}
+    render = sidebar.button_art.draw
+
+    def observe(screen, action_id, label, rect, **state):
+        art[action_id] = (rect.copy(), state)
+        render(screen, action_id, label, rect, **state)
+
+    monkeypatch.setattr(sidebar.button_art, "draw", observe)
+    sidebar.draw(surface, bounds, editor)
+    assert {"layer_ground", "layer_objects", "layer_roof", "layer_collision",
+            "layer_effects", "view_collision", "view_effects"} <= set(art)
+    assert set(art) <= set(load_editor_button_catalog())
+    for layer in ("roof", "objects", "ground"):
+        target = art[f"layer_{layer}"][0]
+        assert _click(sidebar, editor, bounds, target.center)
+        assert editor.graphic_layer == layer
+        sidebar.draw(surface, bounds, editor)
+        assert art[f"layer_{layer}"][1]["active"]
+    assert _click(sidebar, editor, bounds, art["layer_collision"][0].center)
+    assert editor.placement_mode == "collision"
+    assert _click(sidebar, editor, bounds, art["view_collision"][0].center)
+    assert not editor.show_collisions
