@@ -5,6 +5,7 @@ import time
 import pygame
 
 from config import GRID_HEIGHT, GRID_WIDTH
+from modules.border_builder_ui import BorderBuilderUI
 from modules.editor_layout import MapCamera, StudioLayout
 from modules.editor_sidebar import StudioSidebar
 from modules.effect_settings import EFFECT_COLORS, EffectSettings, draw_effect_overlay
@@ -88,6 +89,7 @@ class LevelEditor:
         self.slow_brush = SlowField()
         self.effect_settings = None
         self.roof_settings_editor = None
+        self.border_builder = None
         self.playtest = None
         self.name = ""
         self._saved_name = None
@@ -138,6 +140,8 @@ class LevelEditor:
         for panel in (self.world_tree, self.effect_settings, self.roof_settings_editor):
             if panel is not None:
                 panel.set_bounds(self.layout.bounds)
+        if self.border_builder is not None:
+            self.border_builder.set_bounds(self._border_bounds())
         self.buttons = self._make_buttons()
 
     def _set_section(self, section):
@@ -508,6 +512,12 @@ class LevelEditor:
         self._stroke_button = None
 
     def _select_tile(self, key):
+        if self.border_builder is not None:
+            if key in self.tiles:
+                self.border_builder.select_tile(key)
+            else:
+                self.border_builder.reject_tile()
+            return
         self.current_tile = key
         self.inspect_mode = False
         self._object_brush = None
@@ -927,15 +937,48 @@ class LevelEditor:
             self.info = "Mittelfeld gefüllt"
 
     def set_border(self):
-        if self.graphic_layer != "ground":
-            self.info = "Rand ist für einzelne Kacheln verfügbar."
+        self._reset_pointer()
+        self._blur_library()
+        self._stop_object_move()
+        if not self.show_library:
+            self._toggle_sidebar("library")
+        self._ensure_library()
+        tile = self.current_tile if self.current_tile in self.tiles else None
+        self.border_builder = BorderBuilderUI(tile, self._border_bounds())
+        self._dialog = {"kind": "border"}
+
+    def _border_bounds(self):
+        return self.layout.viewport.union(self.layout.inspector) if self.show_inspector else self.layout.viewport
+
+    def _handle_border_builder(self, event):
+        if event.type in (pygame.MOUSEBUTTONDOWN, pygame.MOUSEWHEEL):
+            position = getattr(event, "pos", pygame.mouse.get_pos())
+            if self.layout.library.collidepoint(position):
+                self.tile_library.handle_event(event)
+                return
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                self._blur_library()
+        if self.library_search_focused and event.type in (pygame.KEYDOWN, pygame.TEXTINPUT):
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_TAB:
+                self._blur_library()
+            else:
+                self.tile_library.handle_event(event)
             return
-        if self.current_tile in self.tiles:
+        result = self.border_builder.handle_event(event, self.map)
+        if result == "apply":
+            self._apply_border()
+        elif result == "cancel":
+            self._dismiss_dialog()
+            self.info = "Rand-Builder abgebrochen"
+
+    def _apply_border(self):
+        changed = [cell for cell in self.border_builder.plan.preview(self.map) if cell.changed]
+        if changed:
             self._store_undo()
-            for row in self.map:
-                row[0] = row[-1] = self.current_tile
-            self.map[0][:] = self.map[-1][:] = [self.current_tile] * GRID_WIDTH
-            self.info = "Rand gesetzt"
+            for cell in changed:
+                self.map[cell.y][cell.x] = cell.tile
+            self.info = f"Rand gestaltet · {len(changed)} Bodenfelder geändert"
+        self._dismiss_dialog()
 
     def _name_dialog(self, title, text, submit, *, validate=None, cancel=None):
         self._blur_library()
@@ -945,6 +988,9 @@ class LevelEditor:
         pygame.key.start_text_input()
 
     def _dismiss_dialog(self):
+        if self.border_builder is not None:
+            self._blur_library()
+            self.border_builder = None
         if self._dialog["kind"] in ("name", "effects", "roof_settings"):
             pygame.key.stop_text_input()
         self.effect_settings = None
@@ -986,6 +1032,9 @@ class LevelEditor:
     def _handle_dialog(self, event):
         dialog = self._dialog
         kind = dialog["kind"]
+        if kind == "border":
+            self._handle_border_builder(event)
+            return
         if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
             self._cancel_dialog()
             return
@@ -1136,6 +1185,9 @@ class LevelEditor:
         self._draw_map(screen)
         self._draw_status(screen)
         if self.dialog_open:
+            if self._dialog["kind"] == "border":
+                self.border_builder.draw(screen, self.map, self.tiles, self._draw_text, self._draw_button)
+                return
             if self._dialog_shade is None or self._dialog_shade.get_size() != screen.get_size():
                 self._dialog_shade = pygame.Surface(screen.get_size(), pygame.SRCALPHA)
                 self._dialog_shade.fill((6, 11, 18, 135))

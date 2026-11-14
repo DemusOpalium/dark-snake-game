@@ -798,7 +798,7 @@ def test_visual_preview_leaves_round_files_and_edit_history_intact(studio):
             for path in profile.rglob("*") if path.is_file()} == profile_before
 
 
-def test_tile_drag_overwrite_erase_and_border_have_undo_redo(studio):
+def test_tile_drag_overwrite_and_erase_have_undo_redo(studio):
     game, editor, _ = studio
     key(game, pygame.K_F2)
     first, second = list(editor.tiles)[:2]
@@ -824,11 +824,6 @@ def test_tile_drag_overwrite_erase_and_border_have_undo_redo(studio):
     assert game.screen.get_rect().collidepoint(last)
     click(game, last)
     assert editor.map[-1][-1] == second
-    before_border = deepcopy(editor.map)
-    button(game, editor, "Rand")
-    assert editor.map != before_border
-    editor.undo()
-    assert editor.map == before_border
 
 
 def test_embedded_library_search_and_favorites_paint_from_the_same_tile_selection(studio):
