@@ -1,0 +1,130 @@
+{
+  "version": 3,
+  "graphics": [
+    [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+    [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+    [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+    [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+    [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+    [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+    [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+    [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+    [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, "frozenbase_0_0", "frozenbase_1_0", "frozenbase_2_0", "frosthauch_3_0", "frozenbase_0_0", "frozenbase_1_0", "frozenbase_2_0", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+    [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, "frozenbase_0_1", "frozenbase_1_1", "frozenbase_2_1", "frosthauch_3_1", "frozenbase_0_1", "frozenbase_1_1", "frozenbase_2_1", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+    [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, "frozenbase_0_2", "frozenbase_1_2", "frozenbase_2_2", "frosthauch_3_2", "frozenbase_0_2", "frozenbase_1_2", "frozenbase_2_2", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+    [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, "frozenbase_0_3", "frozenbase_1_3", "frozenbase_2_3", "frosthauch_3_3", "frozenbase_0_3", "frozenbase_1_3", "frozenbase_2_3", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+    [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, "frozenbase_0_0", "frozenbase_1_0", "bone_corner_tl", "frosthauch_3_0", "bone_corner_tr", "frozenbase_1_0", "frozenbase_2_0", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+    [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, "frozenbase_0_1", "frozenbase_1_1", "bone_corner_tl", "frosthauch_3_1", "bone_corner_tr", "frozenbase_1_1", "frozenbase_2_1", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+    [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, "frozenbase_0_2", "frozenbase_1_2", "bone_corner_tl", "frosthauch_3_2", "bone_corner_tr", "frozenbase_1_2", "frozenbase_2_2", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+    [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, "frozenbase_0_3", "frozenbase_1_3", "bone_corner_tl", "frosthauch_3_3", "bone_corner_tr", "frozenbase_1_3", "frozenbase_2_3", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+    [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, "frozenbase_0_0", "frozenbase_1_0", "bone_corner_tl", "frosthauch_3_0", "bone_corner_tr", "frozenbase_1_0", "frozenbase_2_0", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+    [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, "frozenbase_0_1", "frozenbase_1_1", "bone_corner_tl", "frosthauch_3_1", "bone_corner_tr", "frozenbase_1_1", "frozenbase_2_1", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+    [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, "frozenbase_0_2", "frozenbase_1_2", "frozenbase_2_2", "frosthauch_3_2", "frozenbase_0_2", "frozenbase_1_2", "frozenbase_2_2", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+    [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, "frozenbase_0_3", "frozenbase_1_3", "frozenbase_2_3", "frosthauch_3_3", "frozenbase_0_3", "frozenbase_1_3", "frozenbase_2_3", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+    [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+    [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+    [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+    [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+    [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+    [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+    [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+    [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+    [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+    [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+    [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
+  ],
+  "collision": [
+    {
+      "x": 21,
+      "y": 12,
+      "type": "WALL"
+    },
+    {
+      "x": 23,
+      "y": 12,
+      "type": "WALL"
+    },
+    {
+      "x": 21,
+      "y": 13,
+      "type": "WALL"
+    },
+    {
+      "x": 23,
+      "y": 13,
+      "type": "WALL"
+    },
+    {
+      "x": 21,
+      "y": 14,
+      "type": "WALL"
+    },
+    {
+      "x": 23,
+      "y": 14,
+      "type": "WALL"
+    },
+    {
+      "x": 21,
+      "y": 15,
+      "type": "WALL"
+    },
+    {
+      "x": 23,
+      "y": 15,
+      "type": "WALL"
+    },
+    {
+      "x": 21,
+      "y": 16,
+      "type": "WALL"
+    },
+    {
+      "x": 23,
+      "y": 16,
+      "type": "WALL"
+    },
+    {
+      "x": 21,
+      "y": 17,
+      "type": "WALL"
+    },
+    {
+      "x": 23,
+      "y": 17,
+      "type": "WALL"
+    }
+  ],
+  "effects": [],
+  "objects": [
+    {
+      "x": 21,
+      "y": 12,
+      "asset_id": "frostage_10x1_004",
+      "width": 1,
+      "height": 6
+    },
+    {
+      "x": 23,
+      "y": 12,
+      "asset_id": "frostage_10x1_004",
+      "width": 1,
+      "height": 6
+    }
+  ],
+  "roofs": [
+    {
+      "x": 20,
+      "y": 11,
+      "asset_id": "frostage_roof_005",
+      "width": 5,
+      "height": 3
+    }
+  ],
+  "roof_visibility": {
+    "enabled": true,
+    "radius": 1.5,
+    "transparency": 75,
+    "softness": 1.0
+  }
+}

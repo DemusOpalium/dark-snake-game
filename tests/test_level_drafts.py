@@ -12,6 +12,7 @@ from config import GRID_HEIGHT, GRID_WIDTH
 from modules import level_drafts, resources
 from modules.graphic_objects import GraphicObject
 from modules.level_effects import CellEffects, DamageField, SlowField
+from modules.roof_settings import RoofVisibility, is_roof_asset
 
 
 @pytest.fixture
@@ -43,6 +44,94 @@ def test_graphic_objects_upgrade_and_round_trip_with_existing_layers(profile):
     assert level_drafts.read_level_document("Alt") == (level_with("other"), collisions, effects, objects)
     level_drafts.write_draft("Alt", graphics, objects={}, replace=True)
     assert level_drafts.read_level_document("Alt") == (graphics, collisions, effects, {})
+
+
+def test_roofs_and_visibility_round_trip_separately_from_older_layers(profile):
+    graphics = level_with("Boden")
+    anchor = (3, 4)
+    collision = {anchor: "WALL", (5, 4): "BARRIER"}
+    effects = {anchor: CellEffects(slow=SlowField(25))}
+    objects = {anchor: GraphicObject("frostage_6x6_001", 3, 2)}
+    roofs = {anchor: GraphicObject("frostage_roof_001", 3, 1)}
+    visibility = RoofVisibility(enabled=False, radius=3.5, transparency=60, softness=1.5)
+    level_drafts.write_draft("Dach", graphics, collision=collision, effects=effects, objects=objects)
+    level_drafts.write_draft("Dach", graphics, roofs=roofs, roof_visibility=visibility, replace=True)
+
+    path = profile / "levels" / "Dach.json"
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    assert payload["version"] == 3
+    assert payload["roofs"] == [{"x": 3, "y": 4, "asset_id": "frostage_roof_001", "width": 3, "height": 1}]
+    assert payload["roof_visibility"] == {"enabled": False, "radius": 3.5, "transparency": 60, "softness": 1.5}
+    assert level_drafts.read_level_file(path) == level_drafts.LevelDocument(
+        graphics, collision, effects, objects, roofs, visibility,
+    )
+    assert level_drafts.read_level_document("Dach") == (graphics, collision, effects, objects)
+
+    updated = level_with("Anderer Boden")
+    level_drafts.write_draft("Dach", updated, replace=True)
+    assert level_drafts.load_level_document("Dach") == level_drafts.LevelDocument(
+        updated, collision, effects, objects, roofs, visibility,
+    )
+    level_drafts.write_draft("Dach", updated, roofs={}, replace=True)
+    assert level_drafts.load_level_document("Dach") == level_drafts.LevelDocument(
+        updated, collision, effects, objects, {}, visibility,
+    )
+
+
+@pytest.mark.parametrize("version", [None, 1, 2, 3])
+def test_existing_drafts_keep_placed_legacy_roof_as_an_object(profile, version):
+    graphics = level_with()
+    options = {}
+    collisions, effects, objects = {}, {}, {}
+    if version is not None:
+        collisions = {(6, 7): "WALL"}
+        options["collision"] = collisions
+    if version in (2, 3):
+        effects = {(6, 7): CellEffects(damage=DamageField())}
+        options["effects"] = effects
+    if version == 3:
+        objects = {(6, 7): GraphicObject("frostage_roof_001", 3, 1)}
+        options["objects"] = objects
+    level_drafts.write_draft("Alt", graphics, **options)
+    path = profile / "levels" / "Alt.json"
+    original = path.read_bytes()
+    assert level_drafts.load_level_document("Alt") == level_drafts.LevelDocument(
+        graphics, collisions, effects, objects,
+    )
+    assert path.read_bytes() == original
+
+
+@pytest.mark.parametrize(("field", "value"), [
+    ("roofs", [{"x": 44, "y": 0, "asset_id": "frostage_roof_001", "width": 2, "height": 1}]),
+    ("roofs", [{"x": 0, "y": 0, "asset_id": "../roof", "width": 1, "height": 1}]),
+    ("roofs", [
+        {"x": 0, "y": 0, "asset_id": "frostage_roof_001", "width": 2, "height": 1},
+        {"x": 1, "y": 0, "asset_id": "frostage_roof_002", "width": 1, "height": 1},
+    ]),
+    ("roof_visibility", {"enabled": True, "radius": 1, "transparency": 75, "softness": 1.5}),
+    ("roof_visibility", {"enabled": 1, "radius": 2, "transparency": 75, "softness": 1}),
+    ("roof_visibility", {"enabled": True, "radius": 2, "transparency": 101, "softness": 1}),
+    ("roof_visibility", {"enabled": True, "radius": 2, "transparency": 75}),
+])
+def test_invalid_roof_document_is_rejected_without_replacing_it(profile, field, value):
+    graphics = level_with()
+    level_drafts.write_draft("Kaputt", graphics, roofs={})
+    path = profile / "levels" / "Kaputt.json"
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload[field] = value
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    original = path.read_bytes()
+    with pytest.raises(ValueError):
+        level_drafts.load_level_document("Kaputt")
+    with pytest.raises(ValueError):
+        level_drafts.write_draft("Kaputt", graphics, roofs={}, replace=True)
+    assert path.read_bytes() == original
+
+
+def test_roof_asset_selection_uses_the_catalogue():
+    assert all(is_roof_asset(f"frostage_roof_{number:03d}") for number in range(1, 9))
+    assert not is_roof_asset("frostage_menu_single_player")
+    assert not is_roof_asset("frostage_missing_roof")
 
 
 @pytest.mark.parametrize("invalid_records", [

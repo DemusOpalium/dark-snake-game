@@ -241,7 +241,7 @@ Leveldateien in Version 3 speichern Grafikobjekte separat von Hintergrundkacheln
 
 Alle 175 Quellen bleiben unter `GamePICs/Incoming/Frost_Tiles/` erhalten. Der Katalog ordnet ihnen stabile IDs und Laufzeitpfade zu. Er erfasst Pixelmaße, Alpha, tatsächliche Ausrichtung, Rastergröße und SHA-256. Alle PNGs besitzen einen Alphakanal, 107 enthalten nicht vollständig deckende Pixel. Die Ordner `10x1` und `2x1` enthalten Hochformate, `1x10` Querformate. Die Metadaten verwenden 1×10, 1×2 beziehungsweise 10×1. Ähnliche AoE- und Projektilvarianten wurden als Einzelbilder erfasst, da sich aus den Quellen keine verlässliche Framefolge ableiten lässt.
 
-PR #142 hat die Multi-Tiles als dekorative Objekte eingeführt. Das FrostAge-Hauptmenü verwendet die zwölf Menügrafiken als Schaltflächen. Bereits platzierte Menügrafiken in älteren Entwürfen bleiben als Grafikobjekte lesbar. Dachwirkung, Licht, Gegner-, Projektil- und Itemprofile und der Stamp Builder folgen in den in der Roadmap aufgeführten Etappen.
+PR #142 hat die Multi-Tiles als dekorative Objekte eingeführt. Das FrostAge-Hauptmenü verwendet die zwölf Menügrafiken als Schaltflächen. Bereits platzierte Menügrafiken in älteren Entwürfen bleiben als Grafikobjekte lesbar. Licht, Gegner-, Projektil- und Itemprofile und der Stamp Builder folgen in den in der Roadmap aufgeführten Etappen.
 
 ## FrostAge-Hauptmenü unter Windows prüfen
 
@@ -251,6 +251,17 @@ PR #142 hat die Multi-Tiles als dekorative Objekte eingeführt. Das FrostAge-Hau
 4. **Workshop**, **Boss Rush**, **Inventory**, **Statistics** und **Credits** tragen den Hinweis **Nicht verfügbar**. Ein Klick bleibt ohne Aktion. **Quit** schließt das Spiel.
 
 **Continue** hält die Runde im Arbeitsspeicher und folgt den bestehenden Pausenregeln für laufende Effekte. Während eine Runde im Hauptmenü zur Fortsetzung bereitsteht, lässt sich das AdminPanel dort nicht per Tab öffnen. Nach der Fortsetzung ist es wieder erreichbar.
+
+## FrostAge-Dachbogen unter Windows ausprobieren
+
+1. `DARK-Snake.exe` starten, **Level Studio** öffnen und auf **Dach-Demo** klicken. Die mitgelieferte Karte öffnet sich als Entwurf. Mit **Speichern** lässt sich eine eigene Kopie anlegen.
+2. **Test 1P** wählen. Die Schlange steht zwischen zwei Säulen. Bei Standardbelegung fährt **W** nach oben durch den mittleren Durchgang. **Test 2P** wiederholt den Versuch mit **W** für Spieler 1 und **↑** für Spieler 2. Über **Esc** geht es zurück zur Karte.
+3. Im Durchgang verdeckt der Bogen die Schlangenköpfe teilweise. Unter **Dachwerte** lassen sich Sichtfenster, Radius, Transparenz und Randweichheit ändern. Für den Vergleich das Sichtfenster ausschalten und den Leveltest erneut starten. Die Säulen blockieren weiterhin nur ihre eigenen Kollisionsfelder.
+4. Für einen eigenen Bogen **Dach / Foreground** wählen, in der **Tile-Bibliothek** nach **FrostAge Dach** suchen und das Motiv mit Linksklick platzieren. **Objekt verschieben** wählt ein Dach und anschließend sein Ziel. Rechtsklick entfernt das Dach. Mit **Auf Dachebene** und einem Klick auf ein bereits unter **Objekte** liegendes Dach kann man es gezielt übertragen. Undo und Redo erfassen Platzierung, Verschieben, Löschen, Ebenenwechsel und Dachwerte.
+
+Der isolierte 1P-/2P-Leveltest verwendet die Kollisionsfelder der Karte. Im regulären Classic-Spiel zeigt **Für Classic wählen** beim nächsten Start die Bodenkacheln und die Dachebene eines gespeicherten Entwurfs. Dort wirkt das Dach auch über Gegnern, Bossen und Projektilen. Classic verwendet seine üblichen Kollisions- und Effektregeln. **Classic-Standard** kehrt zur Standardkarte zurück.
+
+Levelformat 3 speichert Dächer und Sichtfenster-Einstellungen getrennt von Grafikobjekten, Kollisionen und Effekten. Bestehende Entwürfe bleiben lesbar. Ältere Dachgrafiken behalten ihren Platz auf der Objektebene, bis sie im Editor gezielt übertragen werden.
 
 ## Vorgeschlagene nächste Phase
 

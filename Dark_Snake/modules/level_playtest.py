@@ -8,6 +8,8 @@ import pygame
 from config import GRID_HEIGHT, GRID_WIDTH, START_SPEED
 from modules.enums import Direction
 from modules.level_effects import EffectCells
+from modules.roof_render import draw_roof_objects
+from modules.roof_settings import RoofVisibility
 
 
 COLLISION_COLORS = {
@@ -80,11 +82,14 @@ class PlaytestPlayer:
 class LevelPlaytest:
     """Test authored collision and effect fields with a one-cell start."""
 
-    def __init__(self, collisions, player_count, *, started_at=None, effects: EffectCells | None = None):
+    def __init__(self, collisions, player_count, *, started_at=None, effects: EffectCells | None = None,
+                 roof_objects=None, roof_visibility=None):
         if player_count not in (1, 2):
             raise ValueError("Der Wandtest unterstützt einen oder zwei Spieler.")
         self._collisions = dict(collisions)
         self._effects = dict(effects or {})
+        self._roof_objects = dict(roof_objects or {})
+        self._roof_visibility = roof_visibility if roof_visibility is not None else RoofVisibility()
         self.player_count = player_count
         self.step_seconds = 1 / START_SPEED
         start = monotonic() if started_at is None else started_at
@@ -154,6 +159,7 @@ class LevelPlaytest:
     def draw(self, surface, board_rect):
         """Draw the two snakes as distinct directional markers over the map."""
         shared_cell = self.player_count == 2 and self.players[0].cell == self.players[1].cell
+        head_centers = []
         for index, (player, color) in enumerate(zip(self.players, PLAYER_COLORS)):
             rect = _cell_rect(board_rect, player.cell).inflate(-4, -4)
             if shared_cell:
@@ -163,3 +169,8 @@ class LevelPlaytest:
             dx, dy = player.direction.value
             front = (rect.centerx + dx * rect.width // 3, rect.centery + dy * rect.height // 3)
             pygame.draw.line(surface, (28, 32, 37), rect.center, front, width=2)
+            if self._roof_objects and player.health > 0:
+                head_centers.append(rect.center)
+        if self._roof_objects:
+            draw_roof_objects(surface, board_rect, self._roof_objects, self._roof_visibility,
+                              head_centers=head_centers)

@@ -66,19 +66,31 @@ def _scaled_image(asset_id, width, height):
     return pygame.transform.smoothscale(image, size)
 
 
-def draw_graphic_object(surface, board_rect, anchor, item: GraphicObject, *, preview=False):
-    cell_width = board_rect.width // GRID_WIDTH
-    cell_height = board_rect.height // GRID_HEIGHT
+def graphic_cell_size(board_rect):
+    return board_rect.width // GRID_WIDTH, board_rect.height // GRID_HEIGHT
+
+
+def graphic_object_art(board_rect, anchor, item: GraphicObject):
+    """Return the cached art and its aspect-fit position in the target board."""
+    cell_width, cell_height = graphic_cell_size(board_rect)
     x, y = anchor
     target = pygame.Rect(board_rect.x + x * cell_width, board_rect.y + y * cell_height,
                          item.width * cell_width, item.height * cell_height)
     image = _scaled_image(item.asset_id, target.width, target.height)
     if image is None:
+        return None
+    return image, image.get_rect(center=target.center)
+
+
+def draw_graphic_object(surface, board_rect, anchor, item: GraphicObject, *, preview=False):
+    art = graphic_object_art(board_rect, anchor, item)
+    if art is None:
         return
+    image, rect = art
     if preview:
         image = image.copy()
         image.set_alpha(145)
-    surface.blit(image, image.get_rect(center=target.center))
+    surface.blit(image, rect)
 
 
 def draw_graphic_objects(surface, board_rect, objects: GraphicObjects):
