@@ -17,7 +17,7 @@ pygame.display.set_mode((1, 1))
 
 from config import GRID_HEIGHT, GRID_SIZE, GRID_WIDTH
 from modules import resources
-from modules.enums import GameState
+from modules.enums import Direction, GameState
 from modules.game import Game
 from modules import level_editor as layout
 from modules import level_drafts
@@ -953,3 +953,12 @@ def test_releasing_a_brush_over_the_inspector_ends_the_map_stroke(studio):
          pygame.event.Event(pygame.MOUSEMOTION, pos=next_cell, rel=(0, 0), buttons=(0, 0, 0)))
     assert editor.map[5][3] == editor.current_tile
     assert editor.map[5][4] is None
+
+
+def test_map_pan_shortcut_does_not_steal_a_rebound_playtest_key(studio):
+    game, editor, _ = studio
+    key(game, pygame.K_F2)
+    game.input.bindings["p1_up"]["key"] = pygame.K_SPACE
+    button(game, editor, "Test 1P")
+    key(game, pygame.K_SPACE)
+    assert editor.playtest.players[0].direction == Direction.UP

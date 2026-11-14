@@ -708,7 +708,8 @@ class LevelEditor:
                 self.camera.zoom_at(position, event.y)
                 self._hover_cell = self._map_cell(position)
                 return True
-        if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE and not self.library_search_focused:
+        if (self.playtest is None and event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE
+                and not self.library_search_focused):
             self._space_held = True
             return True
         if event.type == pygame.KEYUP and event.key == pygame.K_SPACE:
