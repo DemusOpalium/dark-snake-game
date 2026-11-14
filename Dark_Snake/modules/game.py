@@ -38,6 +38,8 @@ from modules.controls import ControlsMenu
 from modules.input_manager import InputManager
 from modules.main_menu import FrostAgeMenu, load_frostage_background
 from modules.resources import asset_path, user_data_path
+from modules.roof_render import draw_roof_objects
+from modules.roof_settings import RoofVisibility
 from modules.customization import CustomizationMenu
 from modules.enemies import NormalEnemy
 from modules.bolbu_enemy import BolbuEnemy
@@ -497,6 +499,8 @@ class Game:
                                            if headless else self._build_default_background())
         self.classic_level_name = None
         self._classic_level_map = None
+        self._classic_roof_objects = {}
+        self._classic_roof_visibility = RoofVisibility()
         self.level_map = None
         self.level_background_surface = self.default_background_surface.copy()
         self.background = self.level_background_surface
@@ -659,13 +663,17 @@ class Game:
         self._reset_snake_interpolation()
         self.spawn_food()
         self.level_map = [row.copy() for row in self._classic_level_map] if self._classic_level_map else None
+        self._roof_objects = self._classic_roof_objects.copy()
+        self._roof_visibility = self._classic_roof_visibility
         self.background = self.build_background_from_map()
         self.set_state(GameState.GAME)
 
-    def choose_classic_background(self, name, level_map):
-        """Remember an explicit background selection for the next Classic start."""
+    def choose_classic_background(self, name, level_map, *, roof_objects=None, roof_visibility=None):
+        """Remember the chosen visual layers for the next Classic start."""
         self.classic_level_name = name
         self._classic_level_map = [row.copy() for row in level_map] if level_map is not None else None
+        self._classic_roof_objects = dict(roof_objects or {})
+        self._classic_roof_visibility = roof_visibility if roof_visibility is not None else RoofVisibility()
 
     def set_state(self, state):
         previous = getattr(self, "game_state", None)
@@ -808,6 +816,7 @@ class Game:
         self.lives = 0
         self.player_health = self.player_health_p1 = self.player_health_p2 = 0
         self.level_map = None
+        self._roof_objects = {}
         if hasattr(self, "default_background_surface"):
             self.level_background_surface = self.default_background_surface.copy()
             self.background = self.level_background_surface
@@ -2078,6 +2087,7 @@ class Game:
         for proj in self.enemy_projectiles:
             proj.draw(self.screen)
         # Spieler (Snake) zeichnen:
+        head_centers = []
         if self.player_count == 2:
             # Spieler 1 zeichnen:
             for i, (x, y) in enumerate(self.get_snake_render_positions(1)):
@@ -2091,6 +2101,7 @@ class Game:
                         print("Fehler bei der Rotation des Spieler 1 Kopfbildes:", e)
                         rotated = head_img
                     self.screen.blit(rotated, (x, y))
+                    head_centers.append((round(x + GRID_SIZE / 2), round(y + GRID_SIZE / 2)))
                     if self.metrics.enabled:
                         self.metrics.head_drawn(1, (x, y), self.snake_direction1.value[0])
                 else:
@@ -2110,6 +2121,7 @@ class Game:
                         print("Fehler bei der Rotation des Spieler 2 Kopfbildes:", e)
                         rotated = head_img
                     self.screen.blit(rotated, (x, y))
+                    head_centers.append((round(x + GRID_SIZE / 2), round(y + GRID_SIZE / 2)))
                     if self.metrics.enabled:
                         self.metrics.head_drawn(2, (x, y), self.snake_direction2.value[0])
                 else:
@@ -2130,6 +2142,7 @@ class Game:
                         print("Fehler bei der Rotation des Kopfbildes:", e)
                         rotated = head_img
                     self.screen.blit(rotated, (x, y))
+                    head_centers.append((round(x + GRID_SIZE / 2), round(y + GRID_SIZE / 2)))
                     if self.metrics.enabled:
                         self.metrics.head_drawn(1, (x, y), self.snake_direction.value[0])
                 else:
@@ -2149,6 +2162,11 @@ class Game:
             else:
                 proj_img = scale_sprite(PROJECTILE_IMG, (int(GRID_SIZE * 1.5), int(GRID_SIZE * 1.5)))
             self.screen.blit(proj_img, (proj_x, proj_y))
+
+        if self._roof_objects:
+            board = pygame.Rect(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT)
+            draw_roof_objects(self.screen, board, self._roof_objects, self._roof_visibility,
+                              head_centers=head_centers)
 
         # --- DEBUG: hitbox overlay (one color per gameplay category) ---
         if self.debug_show_hitboxes:
