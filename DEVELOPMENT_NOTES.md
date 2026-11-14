@@ -254,14 +254,23 @@ PR #142 hat die Multi-Tiles als dekorative Objekte eingeführt. Das FrostAge-Hau
 
 ## FrostAge-Dachbogen unter Windows ausprobieren
 
-1. `DARK-Snake.exe` starten, **Level Studio** öffnen und auf **Dach-Demo** klicken. Die mitgelieferte Karte öffnet sich als Entwurf. Mit **Speichern** lässt sich eine eigene Kopie anlegen.
+1. `DARK-Snake.exe` starten, **Level Studio** öffnen und unter **Testen** auf **Dach-Demo** klicken. Die mitgelieferte Karte öffnet sich als Entwurf. Unter **Datei → Speichern** lässt sich eine eigene Kopie anlegen.
 2. **Test 1P** wählen. Die Schlange steht zwischen zwei Säulen. Bei Standardbelegung fährt **W** nach oben durch den mittleren Durchgang. **Test 2P** wiederholt den Versuch mit **W** für Spieler 1 und **↑** für Spieler 2. Über **Esc** geht es zurück zur Karte.
-3. Im Durchgang verdeckt der Bogen die Schlangenköpfe teilweise. Unter **Dachwerte** lassen sich Sichtfenster, Radius, Transparenz und Randweichheit ändern. Für den Vergleich das Sichtfenster ausschalten und den Leveltest erneut starten. Die Säulen blockieren weiterhin nur ihre eigenen Kollisionsfelder.
-4. Für einen eigenen Bogen **Dach / Foreground** wählen, in der **Tile-Bibliothek** nach **FrostAge Dach** suchen und das Motiv mit Linksklick platzieren. **Objekt verschieben** wählt ein Dach und anschließend sein Ziel. Rechtsklick entfernt das Dach. Mit **Auf Dachebene** und einem Klick auf ein bereits unter **Objekte** liegendes Dach kann man es gezielt übertragen. Undo und Redo erfassen Platzierung, Verschieben, Löschen, Ebenenwechsel und Dachwerte.
+3. Im Durchgang verdeckt der Bogen die Schlangenköpfe teilweise. Unter **Effekte → Dachwerte** lassen sich Sichtfenster, Radius, Transparenz und Randweichheit ändern. Für den Vergleich das Sichtfenster ausschalten und den Leveltest erneut starten. Die Säulen blockieren weiterhin nur ihre eigenen Kollisionsfelder.
+4. Im **Baukasten** links nach **FrostAge Dach** suchen und das Motiv mit Linksklick platzieren. **Bauen → Objekt verschieben** wählt ein Dach und anschließend sein Ziel. Rechtsklick entfernt das Dach. **Bauen → Auf Dachebene** und ein Klick auf ein bereits unter **Objekte** liegendes Dach übertragen es. Undo und Redo erfassen Platzierung, Verschieben, Löschen, Ebenenwechsel und Dachwerte.
 
 Der isolierte 1P-/2P-Leveltest verwendet die Kollisionsfelder der Karte. Im regulären Classic-Spiel zeigt **Für Classic wählen** beim nächsten Start die Bodenkacheln und die Dachebene eines gespeicherten Entwurfs. Dort wirkt das Dach auch über Gegnern, Bossen und Projektilen. Classic verwendet seine üblichen Kollisions- und Effektregeln. **Classic-Standard** kehrt zur Standardkarte zurück.
 
 Levelformat 3 speichert Dächer und Sichtfenster-Einstellungen getrennt von Grafikobjekten, Kollisionen und Effekten. Bestehende Entwürfe bleiben lesbar. Ältere Dachgrafiken behalten ihren Platz auf der Objektebene, bis sie im Editor gezielt übertragen werden.
+
+## World Studio · Editor-Layout unter Windows prüfen
+
+1. **Level Studio** im Hauptmenü oder **F2** öffnen. Den Fensterrand ziehen oder maximieren. Links bleibt der **Baukasten** bedienbar, rechts wechselt der **Arbeitsbereich** zwischen Eigenschaften, Ebenen, Zelle, Hilfe und Lernen. **Ansicht** kann beide Seiten einklappen.
+2. Das Mausrad über der Karte zoomt um den Mauszeiger. Mit mittlerer Maustaste oder **Leertaste + Linksklick** die Karte verschieben. **Ansicht → Karte einpassen** zeigt das ganze 45×31-Raster. Eine Kachel nach dem Zoom platzieren, unten die Rasterkoordinaten prüfen und mit **Strg+Z** rückgängig machen.
+3. Unter **Ansicht → Zelle untersuchen** eine Zelle anklicken und rechts die vorhandenen Daten lesen. **Esc** beendet die Auswahl. Die bestehenden Einstellungen für Damage, Slow und Dächer stehen unter **Effekte** und im Eigenschaftenpanel.
+4. **Testen → Dach-Demo** laden und **Test 1P** sowie **Test 2P** spielen. **F2** beendet zuerst den Test und anschließend den Editor. Beim Schließen erscheint bei Änderungen der vorhandene Dialog. Die normale Spielansicht kehrt zu 1350×930 zurück.
+
+Bei 900×620 ist die Karte in der Gesamtansicht kleiner. Mit Zoom und eingeklappten Seitenleisten bleiben Zellwerkzeuge bedienbar. **Rand** setzt weiterhin die gewählte Kachel rundum. Rechtsklick löscht weiterhin direkt auf der aktiven Ebene. Rand-Builder, gesichertes Löschen, vollständige Ebenenkontrollen und DE/EN folgen laut Roadmap. **Lernen** führt aktuell zur spielbaren Dach-Demo. Der geführte Kurs folgt als eigenes Paket.
 
 ## Vorgeschlagene nächste Phase
 

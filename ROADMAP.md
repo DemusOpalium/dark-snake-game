@@ -211,9 +211,15 @@
 - ✅ **#125–#141.** Eingang der 175 FrostAge-PNGs als Originaldateien.
 - ✅ **#142.** Zentraler Katalog, 175 geprüfte Laufzeitgrafiken und platzierbare Multi-Tiles mit Speichern und Undo/Redo.
 - ✅ **#143 · FrostAge Main Menu.** Zwölf Menügrafiken mit vorhandenen Aktionen, pausierte Runden fortsetzen und den Hintergrund proportional an das Fenster anpassen.
-- 🔧 **Roof / Foreground.** Acht vorhandene Dachgrafiken auf einer eigenen Ebene platzieren und bestehende Dachobjekte gezielt verschieben können. Weiche Sichtfenster mit spielbarem Dachbogen im 1P- und 2P-Leveltest prüfen.
-- ⬜ **PR 2 · World Studio UI.** Vergrößerbarer Editor mit integriertem Katalog, Werkzeugleisten, rechtem Eigenschaftenpanel, Zoom, Ebenenauswahl, Tooltips und deutscher Hilfe. Stamp Builder als eigenen Schritt einplanen.
-- ⬜ **PR 4 · Lighting & Atmosphere.** Helligkeit, platzierbare und spielergebundene Lichtquellen, Flackern, Nebel und Schattenflächen speichern und laden. Darstellung und HUD mit mehreren Lichtquellen bei 1350×930 prüfen.
+- ✅ **#154 · Roof / Foreground.** Acht Dachgrafiken auf einer eigenen Ebene, Übertragen älterer Dachobjekte und spielbarer Dachbogen mit weichen Sichtfenstern in 1P und 2P.
+- 🔧 **PR A · Editor Layout.** Vergrößerbarer Editor mit Hauptnavigation, integriertem Baukasten, rechtem Arbeitsbereich und zoombarer Karte bei festem Spielraster.
+- ⬜ **PR B · Rand-Builder.** Vier Seiten und Ecken getrennt gestalten, Vorschau vor dem Anwenden, Mittelfeld weiter separat füllen.
+- ⬜ **PR C · Layer Explorer.** Ebenenfarben, Sichtbarkeit, Sperren und Vergleich, Zellen-Inspektor mit Objektauswahl, Effektbearbeitung und sicheres Löschen samt Radierer.
+- ⬜ **PR D · Deutsch / English und Hilfe.** Gespeicherte Sprachwahl, vollständige Übersetzung, Tooltips und Werkzeugbeschreibungen.
+- ⬜ **PR E · Learning System.** „Mein erstes FrostAge-Level“ mit geprüften Schritten in einer eigenen Übungskarte.
+- ⬜ **PR F · Lighting & Atmosphere.** Helligkeit, platzierbare und spielergebundene Lichtquellen, Flackern, Nebel und Schattenflächen. Darstellung und HUD mit mehreren Lichtquellen bei 1350×930 prüfen.
+- ⬜ **PR G · Trigger und Fallen.** Auslöser, Bedingungen und Aktionen mit bestehenden Schadens- und Verlangsamungsregeln verbinden.
+- ⬜ Stamp Builder als eigenen Arbeitsschritt einplanen.
 - ⬜ **Danach.** 13 Projektil- und 11 AoE-Grafiken über bestehende Treffer- und Effektsysteme mit Profilen und sichtbaren Beispielen im Leveltest.
 - ⬜ Acht FrostAge-Gegner mit Richtungsdarstellung, konfigurierbaren Angriffen, sicheren Editor-Spawns und Tests.
 - ⬜ Fünf FrostAge-Items, unter anderem Schlüssel und Truhe. Interaktionen auf deklarative Leveldaten stützen.
@@ -435,7 +441,7 @@ Vier Slots pro Spieler, Item-Icons, frei belegbare Aktivierungstasten.
 Seelenschrein, individuelle Bosstypen, feste AoE-Profile, Kampfphasen.
 
 **PHASE 5 – WORLD STUDIO 3.0**
-Weltbibliothek, Kollision, Damage/Slow, FrostAge-Multi-Tiles und Hauptmenü sind integriert. Roof / Foreground kommt vor der erweiterten World-Studio-Oberfläche und Lighting & Atmosphere. Projektile und AoE, Gegner, Items und Adventure folgen danach.
+Weltbibliothek, Kollision, Damage/Slow, FrostAge-Multi-Tiles, Hauptmenü und Roof / Foreground sind integriert. Der World-Studio-Ausbau beginnt mit Layout, Rand-Builder und Ebenen-Werkzeugen. Sprache, Hilfe, Lernmodus, Beleuchtung und Trigger folgen in eigenen Arbeitspaketen. Projektile, AoE, Gegner, Items und Adventure bleiben eingeplant.
 
 **PHASE 6 – LEVEL-VERWALTUNG**
 Entwürfe, Level-Bibliothek, JSON, Grafikpakete, Export und Import.
