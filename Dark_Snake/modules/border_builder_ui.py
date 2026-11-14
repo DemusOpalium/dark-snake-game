@@ -45,6 +45,7 @@ class BorderBuilderUI:
         self._corner_tiles = {}
         self._target = None
         self._hover_cell = None
+        self._hover_slot = None
         self._thumbnail_size = None
         self._thumbnails = {}
         self._swatches = {}
@@ -72,6 +73,7 @@ class BorderBuilderUI:
         self.preview_rect = pygame.Rect(0, 0, GRID_WIDTH * size, GRID_HEIGHT * size)
         self.preview_rect.center = self._preview_frame.center
         self._hover_cell = None
+        self._hover_slot = None
 
     @staticmethod
     def _slots(keys, x, y, width):
@@ -89,7 +91,7 @@ class BorderBuilderUI:
 
     def _choose(self, key):
         self._target = key
-        self._message = f"{LABELS.get(key, 'Gesamter Rand')}: Bodenkachel im Baukasten links wählen."
+        self._message = f"{LABELS.get(key, 'Gesamter Rand')} · Bodenkachel links wählen."
 
     def _choices(self, key):
         return (self.plan.sides, self._side_tiles) if key in SIDES else (self.plan.corners, self._corner_tiles)
@@ -133,7 +135,7 @@ class BorderBuilderUI:
         return True
 
     def reject_tile(self):
-        self._message = "Wähle eine Bodenkachel. FrostAge-Grafikobjekte bleiben auf ihrer eigenen Ebene."
+        self._message = "Bitte links eine Kachel für die Bodenebene wählen."
 
     def _has_changes(self, level_map):
         return not self.target_pending and any(cell.changed for cell in self.plan.preview(level_map))
@@ -145,6 +147,11 @@ class BorderBuilderUI:
             if event.key in (pygame.K_RETURN, pygame.K_KP_ENTER) and self._has_changes(level_map):
                 return "apply"
         if event.type == pygame.MOUSEMOTION:
+            self._hover_slot = next(
+                (key for rows in (self.side_rows, self.corner_rows)
+                 for key, slot in rows.items() if slot.choose.collidepoint(event.pos)),
+                None,
+            )
             if self.preview_rect.collidepoint(event.pos):
                 cell_size = self.preview_rect.width // GRID_WIDTH
                 self._hover_cell = ((event.pos[0] - self.preview_rect.x) // cell_size,
@@ -159,12 +166,15 @@ class BorderBuilderUI:
             return "apply" if self._has_changes(level_map) else None
         if self.all_button.collidepoint(event.pos):
             self._toggle_all()
+            return None
         for rows in (self.side_rows, self.corner_rows):
             for key, slot in rows.items():
                 if slot.toggle.collidepoint(event.pos):
                     self._toggle(key)
-                elif slot.choose.collidepoint(event.pos):
+                    return None
+                if slot.choose.collidepoint(event.pos):
                     self._choose(key)
+                    return None
         return None
 
     def draw(self, screen, level_map, tile_images, text, button):
@@ -193,9 +203,20 @@ class BorderBuilderUI:
             text(screen, "Anwenden", (self.apply_button.x + 8, self.apply_button.y + 5), MUTED)
 
         usable = self.apply_button.left - self.cancel_button.right - 20
-        text(screen, self._message or "Nur Boden-Grafik · Strg+Z macht rückgängig.",
+        text(screen, self._message or self._slot_detail() or "Nur Boden-Grafik · Strg+Z macht rückgängig.",
              (self.cancel_button.right + 9, self.cancel_button.y + 6), ACCENT if self._message else MUTED,
              max_width=usable)
+
+    def _slot_detail(self):
+        key = self._hover_slot
+        if key is None:
+            return None
+        if key in CORNERS:
+            choice = self.plan.corner_choice(key)
+            tile = choice[0] if choice else self.plan.corners.get(key)
+        else:
+            tile = self.plan.sides.get(key)
+        return f"{LABELS[key]} · {tile}" if tile else None
 
     def _draw_slots(self, screen, rows, choices, tile_images, text, button):
         for key, slot in rows.items():
@@ -203,7 +224,8 @@ class BorderBuilderUI:
             tile = choices.get(key)
             button(screen, "An" if tile else "Aus", slot.toggle, ACCENT if tile else None)
             pygame.draw.rect(screen, (29, 43, 62), slot.choose, border_radius=5)
-            pygame.draw.rect(screen, ACCENT if key == self._target else STROKE, slot.choose,
+            highlighted = key in (self._target, self._hover_slot)
+            pygame.draw.rect(screen, ACCENT if highlighted else STROKE, slot.choose,
                              width=2 if key == self._target else 1, border_radius=5)
             label = tile or ("Auto" if key in CORNERS else "Grafik wählen")
             swatch_tile = tile
