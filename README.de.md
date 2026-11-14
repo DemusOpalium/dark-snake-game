@@ -12,7 +12,7 @@
 
 | Neues FrostAge-Hauptmenü | Bosskampf |
 | :---: | :---: |
-| <img src="GamePICs/FrontUI.png" alt="Aktuelles FrostAge-Hauptmenü mit illustrierten Buttons" width="420"> | <img src="GamePICs/boss%20fight%20game.png" alt="Echter DARK-SNAKE-Screenshot aus einem Bosskampf" width="420"> |
+| <img src="GamePICs/DarkSnake%20Titel%20Screen.png" alt="Aktueller DARK-SNAKE-Titelbildschirm vom 14. November 2026" width="420"> | <img src="GamePICs/boss%20fight%20game.png" alt="Echter DARK-SNAKE-Screenshot aus einem Bosskampf" width="420"> |
 
 **Worum geht's?** Eine Schlange steuern, Punkte und Items einsammeln, Gegnern und Projektilen ausweichen und auftauchende Bosse überstehen. Du startest mit **drei Leben**. Klassisches Snake trifft auf Zeitereignisse, Lebenspunkte, Portale, Schüsse, Überraschungen und ein **W20-Würfelereignissystem**. Die Arcade-Runde funktioniert bereits; die größere Roguelite-Abenteuerwelt wächst erst noch.
 
@@ -20,14 +20,14 @@ Allein oder lokal zu zweit spielen, die Schlange gestalten und eigene Hintergrun
 
 ## 🛠️ World Studio — eigene Level gestalten
 
-<p align="center"><img src="GamePICs/ui%20editor.png" alt="Aktuelle F2-World-Studio-Oberfläche mit Kacheln, Spielfeld und Werkzeugen" width="820"></p>
-<p align="center"><em>World Studio am 13. November 2026 — noch im Ausbau. Nicht jede geplante Funktion ist bereits verfügbar.</em></p>
+<p align="center"><img src="GamePICs/World%20Studio%20DarkSnake.png" alt="Echter World-Studio-3.0-Editor vom 14. November 2026 mit grafischen Werkzeugen und FrostAge-Level" width="820"></p>
+<p align="center"><em>World Studio am 14. November 2026: größerer Editor, Bild-Buttons und FrostAge-Dach-Demo. Der Screenshot zeigt einen Entwicklungsstand, nicht zwingend die Vorabversion vom 13. November.</em></p>
 
-Mit **F2** öffnet sich der Editor. Bereits vorhanden: **495 Classic-Tiles**, **175 neue FrostAge-PNGs**, große **Multi-Tile-Grafikobjekte**, benannte Kartenentwürfe, Themenwelten, Undo/Redo und isolierte **1P-/2P-Leveltests** für WALL/BARRIER, Schaden und Slow. Die neuen FrostAge-Grafiken sind außerdem als echte Buttons im Hauptmenü im Einsatz.
+Mit **F2** öffnet sich der Editor. Bereits vorhanden: **495 Classic-Tiles**, **175 FrostAge-PNGs**, große **Multi-Tile-Objekte**, benannte JSON-Entwürfe, Themenwelten, Undo/Redo und isolierte **1P-/2P-Leveltests** mit WALL/BARRIER, Schaden und Slow. Das World Studio besitzt jetzt ein **größenveränderbares Fenster**, eine durchsuchbare Tile-Bibliothek, Kartenzoom, einzeln gestaltbare Randseiten und Ecken mit Vorschau sowie **48 eigene grafische Editor-Buttons** für echte Aktionen. Weitere 33 Motive sind reserviert. Das Hauptmenü verwendet ebenfalls FrostAge-Grafiken.
 
-**Noch nicht fertig:** eine echte Dach-/Vordergrundebene mit transparentem Sichtkreis, dynamische Beleuchtung, die vergrößerte Editor-Oberfläche, spielbare Profile für die neuen FrostAge-Gegner/Projektile/Items und ein vollständiger Adventure-Ablauf. Im regulären Classic-Modus werden eigene Karten bisher als **Hintergrund** verwendet. Die erstellten Kollisionen und Effekte funktionieren derzeit im **isolierten Editor-Spieltest**.
+**Bereits spielbar im isolierten Leveltest:** eine eigene **Roof-/Foreground-Ebene** mit weichem, spielerbezogenem Sichtfenster im Dach. In der Dachbogen-Demo fahren beide Schlangen unter dem Dach hindurch. Dachgrafiken und Sichtfenstereinstellungen können auch für den Classic-Hintergrund gewählt werden. Die selbst entworfenen Kollisionen und Effekte unterliegen im regulären Classic-Modus allerdings weiterhin anderen Regeln als im Editor-Leveltest.
 
-Geplant sind unter anderem Brücken zum Unterqueren, Höhlen, leuchtende Frostkristalle, Pilzwelten, Fallen, interaktive Truhen und später mehr Roguelite-Fortschritt. Details stehen in der [Roadmap](ROADMAP.md).
+**Noch geplant:** Ebenensperren/Solo, vollständige DE/EN-Übersetzung, geführte Übungen, großflächige Landschaftshintergründe unter den Tiles, dynamisches Licht und Nebel, neue Gameplay-Profile für FrostAge-Gegner/Projektile/Items sowie ein vollständiger Roguelite-Adventure-Modus. [Roadmap](ROADMAP.md) und [Asset-Legende](ASSET_GUIDE.md) trennen spielbare Funktionen und Konzeptgrafiken.
 
 ## ⬇️ Windows-Alpha ausprobieren
 

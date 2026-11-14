@@ -12,7 +12,7 @@
 
 | FrostAge main menu | Boss fight |
 | :---: | :---: |
-| <img src="GamePICs/FrontUI.png" alt="Current FrostAge main menu with illustrated buttons" width="420"> | <img src="GamePICs/boss%20fight%20game.png" alt="Actual DARK SNAKE boss-fight screenshot" width="420"> |
+| <img src="GamePICs/DarkSnake%20Titel%20Screen.png" alt="Current DARK SNAKE title screen captured on 14 November 2026" width="420"> | <img src="GamePICs/boss%20fight%20game.png" alt="Actual DARK SNAKE boss-fight screenshot" width="420"> |
 
 **The point?** Guide your snake, collect points and items, survive enemies and incoming attacks, and stay alive when bosses appear. You begin with **three lives**. The action mixes classic Snake with timed events, health, projectiles, portals, a **D20 dice-event system**, unusual bonuses and increasingly unpredictable situations. The core is arcade; the broader roguelite adventure is still in development.
 
@@ -20,14 +20,14 @@ Play alone or locally with a second player. Choose your snake's appearance and p
 
 ## 🛠️ World Studio — build your own maps
 
-<p align="center"><img src="GamePICs/ui%20editor.png" alt="Current F2 World Studio interface: tiles, map canvas and level tools" width="820"></p>
-<p align="center"><em>World Studio captured on 13 November 2026 — an evolving editor, not a finished showcase of every planned feature.</em></p>
+<p align="center"><img src="GamePICs/World%20Studio%20DarkSnake.png" alt="Actual World Studio 3.0 editor on 14 November 2026, with illustrated toolbar and FrostAge level" width="820"></p>
+<p align="center"><em>World Studio captured on 14 November 2026: enlarged editor layout, illustrated controls and FrostAge roof demo. Screenshots show development builds, not necessarily the 13 November pre-release.</em></p>
 
-Press **F2** to open the editor. Already available: **495 classic tiles**, the new **175 FrostAge PNG assets**, large **multi-tile graphics**, named level drafts, themed world organization, Undo/Redo and isolated **1P/2P playtests** for wall/barrier collisions and Damage/Slow fields. The new FrostAge artwork also powers the illustrated main-menu buttons.
+Press **F2** to open the editor. Already available: **495 classic tiles**, **175 FrostAge PNG assets**, large **multi-tile objects**, named JSON level drafts, themed world organization, Undo/Redo and isolated **1P/2P playtests** for WALL/BARRIER collision and Damage/Slow fields. World Studio now includes a **resizable window**, a searchable tile library, zoomable map, separate border sides and corners with preview, and **48 custom illustrated editor buttons** mapped to real actions (33 further designs remain reserved). The FrostAge artwork also powers the main menu.
 
-**Current limits:** Roof/Foreground rendering, a see-through roof circle, dynamic lighting, a more spacious editor UI, new FrostAge enemy/projectile/item gameplay profiles, and a complete custom-level adventure are **planned, not finished**. Classic currently applies selected user maps as backgrounds; authored collisions/effects are tested in the **isolated editor playtest**.
+**Playable in the isolated level test:** a separate **Roof/Foreground layer** with soft, player-specific see-through roof windows; the supplied roof-arch demo lets both snakes pass underneath. Roof artwork and its visibility settings can also be chosen for a later Classic background, but authored collision and effects currently have different rules between the isolated editor test and regular Classic mode.
 
-Upcoming ideas include bridges you can pass underneath, icy caverns with glowing crystals, mushrooms, traps, interactive chests, themed enemies and a fuller roguelite progression. Our [roadmap](ROADMAP.md) tracks these separately.
+**Still planned:** layer locks/solo, full DE/EN UI, guided tutorials, persistent full-map landscape backgrounds beneath the tiles, dynamic light and fog, gameplay profiles for new FrostAge enemies/projectiles/items and a complete multi-level roguelite adventure. [The roadmap](ROADMAP.md) and [asset guide](ASSET_GUIDE.md) distinguish functioning features from concept artwork.
 
 ## ⬇️ Try the Windows alpha
 
