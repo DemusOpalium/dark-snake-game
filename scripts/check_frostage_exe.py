@@ -38,6 +38,8 @@ def check(executable: Path) -> None:
     if not {"modules.frostage_assets", "modules.graphic_objects", "modules.roof_render",
             "modules.roof_settings", "modules.roof_editor_settings"} <= pyz.toc.keys():
         raise ValueError("FrostAge runtime modules missing from EXE.")
+    if not {"modules.border_builder", "modules.border_builder_ui"} <= pyz.toc.keys():
+        raise ValueError("World Studio border builder modules missing from EXE.")
     print(f"Verified catalogue, {len(entries)} FrostAge PNGs and roof demo inside {executable.name}.")
 
 
