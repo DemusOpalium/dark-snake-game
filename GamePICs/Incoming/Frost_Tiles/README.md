@@ -25,9 +25,9 @@ Zusätzlich liegen hier 11 AoE-Grafiken, 12 Menübuttons, 8 Gegner, 5 Items und 
 ## Laufzeitkatalog
 
 - `python scripts/frostage_catalog.py --write` erzeugt den Katalog und identische Laufzeitdateien unter `Dark_Snake/assets/graphics/frostage/`. `--check` prüft den Bestand, die Bildmetadaten und die unveränderten Bytes.
-- Der Katalog unterscheidet Ground, Walls, Objects, Roof, AoE, Enemies, Projectiles, Items und Menu. Diese Zuordnungen steuern die Bibliothek. Gameplay-Profile und die Vordergrundebene folgen in eigenen PRs.
+- Der Katalog unterscheidet Ground, Walls, Objects, Roof, AoE, Enemies, Projectiles, Items und Menu. Diese Zuordnungen steuern die Bibliothek. Die Roof-/Foreground-Ebene mit Sichtfenstern ist seit PR #154 spielbar; individuelle Gameplay-Profile für FrostAge-Gegner, Projektile und Items folgen in eigenen PRs.
 - Die Laufzeitkopien belegen rund 72,2 MiB vor dem Verpacken. Die Windows-CI prüft die Prüfsummen der tatsächlich in der EXE enthaltenen PNGs.
 
 ## Herkunft
 
-Die PNGs wurden vom Projektinhaber manuell zugeschnitten, benannt und in `FrostTiles.zip` bereitgestellt. Die Kategorie `Dach` ist ein erster Entwurf, noch keine im Spiel benutzbare Foreground-Ebene.
+Die PNGs wurden vom Projektinhaber manuell zugeschnitten, benannt und in `FrostTiles.zip` bereitgestellt. Die Kategorie `Dach` wurde in PR #154 als spielbare Roof-/Foreground-Ebene mit sichtbaren Fenstern für die Spieler umgesetzt.

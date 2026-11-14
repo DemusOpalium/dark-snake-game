@@ -1,0 +1,874 @@
+{
+  "schema_version": 1,
+  "description": "Repo asset staging snapshot for DARK SNAKE. Git blob SHAs are git hashes, not SHA-256. This is NOT an active runtime mapping.",
+  "inspected_main_commit": "6e1e5c8e8ee6240321f652273b8f2f7b95c70423",
+  "snapshot_date": "2026-11-14",
+  "maintenance": "Regenerate when staged binaries change; compare with repository tree. Never infer integration solely from a PNG file.",
+  "buttons": {
+    "status": "staged_not_bundled",
+    "count": 81,
+    "groups": [
+      "Build",
+      "Building Blocks",
+      "EditorBigs",
+      "Effects",
+      "File",
+      "General",
+      "Layers",
+      "Learn",
+      "Miscellaneos",
+      "Test",
+      "View"
+    ],
+    "entries": [
+      {
+        "category": "Build",
+        "path": "GamePICs/Build/Border_all-removebg-preview.png",
+        "bytes": 365970,
+        "git_blob_sha": "55434949fe1f3e2cd92794d4faf8d671785c1d5f"
+      },
+      {
+        "category": "Build",
+        "path": "GamePICs/Build/Border_bottom-removebg-preview.png",
+        "bytes": 368067,
+        "git_blob_sha": "4890728571dffb8c6b596614ad83638cc6c0cbc0"
+      },
+      {
+        "category": "Build",
+        "path": "GamePICs/Build/Border_Left-removebg-preview.png",
+        "bytes": 358592,
+        "git_blob_sha": "d413f42415c08c7fea7c9c2e7aa29d9fd0dd3a01"
+      },
+      {
+        "category": "Build",
+        "path": "GamePICs/Build/Border_Right-removebg-preview.png",
+        "bytes": 369662,
+        "git_blob_sha": "48a483863d9efec41bf97419b261ff73d5295f9e"
+      },
+      {
+        "category": "Build",
+        "path": "GamePICs/Build/Border_Top-removebg-preview.png",
+        "bytes": 353770,
+        "git_blob_sha": "8233687ecfb1cfef422a85b147101b0e100ba8e7"
+      },
+      {
+        "category": "Build",
+        "path": "GamePICs/Build/Build_Symbol_Text-removebg-preview.png",
+        "bytes": 350813,
+        "git_blob_sha": "73bc81d5bfa00962ee86f9869ee8d18b0d4cfb30"
+      },
+      {
+        "category": "Build",
+        "path": "GamePICs/Build/Build-removebg-preview.png",
+        "bytes": 354841,
+        "git_blob_sha": "40ee2cc46dd057e8c9c7ec5da4c83abd5ecc6937"
+      },
+      {
+        "category": "Build",
+        "path": "GamePICs/Build/Corner-removebg-preview.png",
+        "bytes": 357011,
+        "git_blob_sha": "945c8811ea34cf343b4bbf888e075aeb2096e2aa"
+      },
+      {
+        "category": "Build",
+        "path": "GamePICs/Build/Favorite-removebg-preview.png",
+        "bytes": 367542,
+        "git_blob_sha": "fe0b7b4d398a86c7faad8d826e5da80d86c2ff3c"
+      },
+      {
+        "category": "Build",
+        "path": "GamePICs/Build/Middle_Area-removebg-preview.png",
+        "bytes": 352064,
+        "git_blob_sha": "4d0a65dd7088239bd6da36000daa62b450027461"
+      },
+      {
+        "category": "Build",
+        "path": "GamePICs/Build/Move_Objects-removebg-preview.png",
+        "bytes": 374711,
+        "git_blob_sha": "00b3946965c029313d9d4db6f2280cfe17976cc8"
+      },
+      {
+        "category": "Build",
+        "path": "GamePICs/Build/Object_Size-removebg-preview.png",
+        "bytes": 371653,
+        "git_blob_sha": "547a2629a8f255ef604c115e8347e6469c56882f"
+      },
+      {
+        "category": "Build",
+        "path": "GamePICs/Build/Search-removebg-preview.png",
+        "bytes": 354921,
+        "git_blob_sha": "671380a752d5f2d8cdfc0cae808f68f444f2a267"
+      },
+      {
+        "category": "Build",
+        "path": "GamePICs/Build/Tile_Library-removebg-preview.png",
+        "bytes": 375883,
+        "git_blob_sha": "725873c6b4500f54ddccc1c1c33e01fed66460cb"
+      },
+      {
+        "category": "Building Blocks",
+        "path": "GamePICs/Building Blocks/Barrier-removebg-preview.png",
+        "bytes": 327967,
+        "git_blob_sha": "74adb0cc98b6286f78fed5de298b6b85af3bf111"
+      },
+      {
+        "category": "Building Blocks",
+        "path": "GamePICs/Building Blocks/Building_Blocks-removebg-preview.png",
+        "bytes": 357210,
+        "git_blob_sha": "d1b8d4e4c93f0b9d802b7a6b12a17e6754e2914d"
+      },
+      {
+        "category": "Building Blocks",
+        "path": "GamePICs/Building Blocks/Event_-_Triggers-removebg-preview.png",
+        "bytes": 378212,
+        "git_blob_sha": "939db36040c38beeada8d3bbe6ef9890dd11d7fd"
+      },
+      {
+        "category": "Building Blocks",
+        "path": "GamePICs/Building Blocks/Ground_Tile-removebg-preview.png",
+        "bytes": 337157,
+        "git_blob_sha": "2abaddad1d74ba215668fb474aa29f4a9cdf1318"
+      },
+      {
+        "category": "Building Blocks",
+        "path": "GamePICs/Building Blocks/Lighting-removebg-preview.png",
+        "bytes": 321047,
+        "git_blob_sha": "eb57773112b7e6e541f584808e18d4b481146ba7"
+      },
+      {
+        "category": "Building Blocks",
+        "path": "GamePICs/Building Blocks/Roof_-_Foreground-removebg-preview.png",
+        "bytes": 373618,
+        "git_blob_sha": "41afe79620d5c8012094cc6eada0046ebce314b3"
+      },
+      {
+        "category": "Building Blocks",
+        "path": "GamePICs/Building Blocks/Wall-removebg-preview.png",
+        "bytes": 299518,
+        "git_blob_sha": "b71d0fc563712c5fa78a02df6887644740c41728"
+      },
+      {
+        "category": "EditorBigs",
+        "path": "GamePICs/EditorBigs/Ceiling-removebg-preview.png",
+        "bytes": 430964,
+        "git_blob_sha": "469e5e13c17d0672c13f3f1dfe3992f3fb87cd7c"
+      },
+      {
+        "category": "EditorBigs",
+        "path": "GamePICs/EditorBigs/Collision-removebg-preview.png",
+        "bytes": 450619,
+        "git_blob_sha": "487eea3a706454d2194947d52dbb0333b184c64e"
+      },
+      {
+        "category": "EditorBigs",
+        "path": "GamePICs/EditorBigs/Damage-removebg-preview.png",
+        "bytes": 428880,
+        "git_blob_sha": "ab41064b956f7918d28adac0c5f23749ba5ce443"
+      },
+      {
+        "category": "EditorBigs",
+        "path": "GamePICs/EditorBigs/Events-removebg-preview.png",
+        "bytes": 419614,
+        "git_blob_sha": "dc25892c4349e9b1b20cb8bc714ef7d51ba516b9"
+      },
+      {
+        "category": "EditorBigs",
+        "path": "GamePICs/EditorBigs/floor_object-removebg-preview.png",
+        "bytes": 426050,
+        "git_blob_sha": "930e85e99e00a14b053fb35e333da5c6580ce30e"
+      },
+      {
+        "category": "EditorBigs",
+        "path": "GamePICs/EditorBigs/Light-removebg-preview.png",
+        "bytes": 356074,
+        "git_blob_sha": "5a48511e6b79bad68513444a941fda3b3b611146"
+      },
+      {
+        "category": "EditorBigs",
+        "path": "GamePICs/EditorBigs/Roof-removebg-preview.png",
+        "bytes": 449429,
+        "git_blob_sha": "e8c47520461a855fd9a8d7efe91e8ba4ab3803f1"
+      },
+      {
+        "category": "EditorBigs",
+        "path": "GamePICs/EditorBigs/Slow-removebg-preview.png",
+        "bytes": 426855,
+        "git_blob_sha": "a800438fbf2745966229e4474548e4fdb2a2d197"
+      },
+      {
+        "category": "Effects",
+        "path": "GamePICs/Effects/Damage-removebg-preview.png",
+        "bytes": 329821,
+        "git_blob_sha": "3e00b9fe22d1f0460dc7251b4fdc95797032602c"
+      },
+      {
+        "category": "Effects",
+        "path": "GamePICs/Effects/Effect_Values-removebg-preview.png",
+        "bytes": 365249,
+        "git_blob_sha": "aba24bfaa8a94968cf8d9b8009bc604046d6a0e7"
+      },
+      {
+        "category": "Effects",
+        "path": "GamePICs/Effects/Effects-removebg-preview.png",
+        "bytes": 322911,
+        "git_blob_sha": "68a66f3b518df44e1e5bac1d1b6a8a3170d6bf66"
+      },
+      {
+        "category": "Effects",
+        "path": "GamePICs/Effects/Roof_Value-removebg-preview.png",
+        "bytes": 383980,
+        "git_blob_sha": "1be5941f6f801b362c64893f55600ca55e2c2030"
+      },
+      {
+        "category": "Effects",
+        "path": "GamePICs/Effects/Slow-removebg-preview.png",
+        "bytes": 347775,
+        "git_blob_sha": "f480114871e9d42a74854a7a259928623394a5ff"
+      },
+      {
+        "category": "File",
+        "path": "GamePICs/File/Classic_Default-removebg-preview.png",
+        "bytes": 370782,
+        "git_blob_sha": "0c69807eee93bec4f5a666d9ad9b2ac9cec4f249"
+      },
+      {
+        "category": "File",
+        "path": "GamePICs/File/File-removebg-preview.png",
+        "bytes": 329273,
+        "git_blob_sha": "712e4ee3e9f07abd8ff50f6db7cdddf2ab78941d"
+      },
+      {
+        "category": "File",
+        "path": "GamePICs/File/New-removebg-preview.png",
+        "bytes": 331859,
+        "git_blob_sha": "2b8c53fc253421371138bd681134b56be6ab19f9"
+      },
+      {
+        "category": "File",
+        "path": "GamePICs/File/Open-removebg-preview.png",
+        "bytes": 335338,
+        "git_blob_sha": "13e6d2d4fc4d40dea1bd2a991bc5afe556b49c54"
+      },
+      {
+        "category": "File",
+        "path": "GamePICs/File/Redo-removebg-preview.png",
+        "bytes": 325892,
+        "git_blob_sha": "5f973e2fb3540e5841174a9e7df87f6288b3e3e8"
+      },
+      {
+        "category": "File",
+        "path": "GamePICs/File/Save-removebg-preview.png",
+        "bytes": 339700,
+        "git_blob_sha": "51b7a9b501dd65827d6835f7f9fca4abf30dd9e6"
+      },
+      {
+        "category": "File",
+        "path": "GamePICs/File/Undo-removebg-preview.png",
+        "bytes": 330765,
+        "git_blob_sha": "ea184c4f5dbd004c60caf5066ebe6f64d22987bc"
+      },
+      {
+        "category": "File",
+        "path": "GamePICs/File/Use_in_Classic-removebg-preview.png",
+        "bytes": 374745,
+        "git_blob_sha": "153cc8bdf92e6245d5146500a2717033a257225d"
+      },
+      {
+        "category": "File",
+        "path": "GamePICs/File/Worlds-removebg-preview.png",
+        "bytes": 367331,
+        "git_blob_sha": "5cf3408cbf7ba3a2c419a7c9be544861fe8d29e4"
+      },
+      {
+        "category": "General",
+        "path": "GamePICs/General/About-removebg-preview.png",
+        "bytes": 354092,
+        "git_blob_sha": "235604930aaee995b6df948ecc941ffa28f0186c"
+      },
+      {
+        "category": "General",
+        "path": "GamePICs/General/De-En_Language-removebg-preview.png",
+        "bytes": 391615,
+        "git_blob_sha": "c3b9b1f97ca5f0ae4228f4d4b8868f63ec2ac283"
+      },
+      {
+        "category": "General",
+        "path": "GamePICs/General/Exit-removebg-preview.png",
+        "bytes": 357975,
+        "git_blob_sha": "18dcc7cd0d42a5b23e0c243b18469e76aa228f16"
+      },
+      {
+        "category": "General",
+        "path": "GamePICs/General/General-removebg-preview.png",
+        "bytes": 351666,
+        "git_blob_sha": "45d3881f4959de978784808a9253a58d6a887382"
+      },
+      {
+        "category": "General",
+        "path": "GamePICs/General/Settings-removebg-preview.png",
+        "bytes": 362697,
+        "git_blob_sha": "96fb4a508b4f3f1055514f03bf5d57d4cd0dc691"
+      },
+      {
+        "category": "Layers",
+        "path": "GamePICs/Layers/All_Layers-removebg-preview.png",
+        "bytes": 371089,
+        "git_blob_sha": "29d369ca625dcfb678d79ee7b55bbf3e7233f08e"
+      },
+      {
+        "category": "Layers",
+        "path": "GamePICs/Layers/Collision-removebg-preview.png",
+        "bytes": 344100,
+        "git_blob_sha": "69b9d0646f903be7dfb55d3f18b8e56c975892e4"
+      },
+      {
+        "category": "Layers",
+        "path": "GamePICs/Layers/Effects-removebg-preview.png",
+        "bytes": 351549,
+        "git_blob_sha": "762fb4be6d2e9d3219e98531a8298cc9c4dcdc18"
+      },
+      {
+        "category": "Layers",
+        "path": "GamePICs/Layers/Ground-removebg-preview.png",
+        "bytes": 333867,
+        "git_blob_sha": "d8031cd39a87858fea4ff0e04b646a21131da4bb"
+      },
+      {
+        "category": "Layers",
+        "path": "GamePICs/Layers/Layers-removebg-preview.png",
+        "bytes": 349123,
+        "git_blob_sha": "d3c0a0777e6bc9d5e6da1378a1f2ed7458bf9c0e"
+      },
+      {
+        "category": "Layers",
+        "path": "GamePICs/Layers/Lock_layers-removebg-preview.png",
+        "bytes": 356201,
+        "git_blob_sha": "ce823efd2befe96dd480e218fc3c7420104139a9"
+      },
+      {
+        "category": "Layers",
+        "path": "GamePICs/Layers/Objects-removebg-preview.png",
+        "bytes": 358132,
+        "git_blob_sha": "599b8db5d3d5ef4db58529bb2ffd50ad92fd00fd"
+      },
+      {
+        "category": "Layers",
+        "path": "GamePICs/Layers/Roof-removebg-preview.png",
+        "bytes": 351657,
+        "git_blob_sha": "a7445fa28e3a21b2282bee2335931a93e565550f"
+      },
+      {
+        "category": "Layers",
+        "path": "GamePICs/Layers/Show_Hide-removebg-preview.png",
+        "bytes": 360512,
+        "git_blob_sha": "090ee2fb4e17545314d6d6b7ae02a217bc0bad6a"
+      },
+      {
+        "category": "Learn",
+        "path": "GamePICs/Learn/Examples-removebg-preview.png",
+        "bytes": 349899,
+        "git_blob_sha": "0b08f05c708d972dfc50cfe427954c01033046f0"
+      },
+      {
+        "category": "Learn",
+        "path": "GamePICs/Learn/Guided_Build-removebg-preview.png",
+        "bytes": 394289,
+        "git_blob_sha": "a963338f2ed5c3b0305d078dc033e7706b679a22"
+      },
+      {
+        "category": "Learn",
+        "path": "GamePICs/Learn/Learn_Tutorial-removebg-preview.png",
+        "bytes": 370586,
+        "git_blob_sha": "35e57d347c200385c87049ca88498bcd7dec2f07"
+      },
+      {
+        "category": "Learn",
+        "path": "GamePICs/Learn/Learn-removebg-preview.png",
+        "bytes": 347801,
+        "git_blob_sha": "887f72e1c5a384f1f21c7227de58e35d048b5910"
+      },
+      {
+        "category": "Learn",
+        "path": "GamePICs/Learn/My_FIrst_LvL-removebg-preview.png",
+        "bytes": 371290,
+        "git_blob_sha": "1baab10f3955f7d81e92655063aa79a21e86ce65"
+      },
+      {
+        "category": "Miscellaneos",
+        "path": "GamePICs/Miscellaneos/Chest-removebg-preview.png",
+        "bytes": 339135,
+        "git_blob_sha": "feb6f915ada1c131ad791ff6e87b941fd3394777"
+      },
+      {
+        "category": "Miscellaneos",
+        "path": "GamePICs/Miscellaneos/Coin_-_Item-removebg-preview.png",
+        "bytes": 359286,
+        "git_blob_sha": "9122898da5d6b8f487de71f8b93e1cb8950110bc"
+      },
+      {
+        "category": "Miscellaneos",
+        "path": "GamePICs/Miscellaneos/Miscellaneous-removebg-preview.png",
+        "bytes": 357509,
+        "git_blob_sha": "399bbefe9c1db3e78d50da8e1ac5d179b0beb1cc"
+      },
+      {
+        "category": "Miscellaneos",
+        "path": "GamePICs/Miscellaneos/Random_D20-removebg-preview.png",
+        "bytes": 378761,
+        "git_blob_sha": "20bf97d684b5fc7beab3979d7d9d5e8800c5f096"
+      },
+      {
+        "category": "Test",
+        "path": "GamePICs/Test/Roof_Demo-removebg-preview.png",
+        "bytes": 359583,
+        "git_blob_sha": "611f66ef5c597fce97f15d826bd20a4c003e7063"
+      },
+      {
+        "category": "Test",
+        "path": "GamePICs/Test/Start_Preview-removebg-preview.png",
+        "bytes": 346707,
+        "git_blob_sha": "af8070868d7c13d16c9e460085d22b7ae55866ed"
+      },
+      {
+        "category": "Test",
+        "path": "GamePICs/Test/Stop_Test-removebg-preview.png",
+        "bytes": 332017,
+        "git_blob_sha": "39139dd94b033f2d46cff3e199b6c2effcae05be"
+      },
+      {
+        "category": "Test",
+        "path": "GamePICs/Test/Test_1P-removebg-preview.png",
+        "bytes": 354060,
+        "git_blob_sha": "9d1f434b15af53fce699ff069a334204ad39db1f"
+      },
+      {
+        "category": "Test",
+        "path": "GamePICs/Test/Test_2P-removebg-preview.png",
+        "bytes": 377096,
+        "git_blob_sha": "b271b394bfb37e85613d656d4d9b80dab2a6dada"
+      },
+      {
+        "category": "Test",
+        "path": "GamePICs/Test/test-removebg-preview.png",
+        "bytes": 320893,
+        "git_blob_sha": "5d6584953be78ceda521431f07af9199e8633e5d"
+      },
+      {
+        "category": "View",
+        "path": "GamePICs/View/Cell_Inspect-removebg-preview.png",
+        "bytes": 345874,
+        "git_blob_sha": "7dbfa582d684d8fec8b86088d29d7f2396b86dca"
+      },
+      {
+        "category": "View",
+        "path": "GamePICs/View/Fit_Map-removebg-preview.png",
+        "bytes": 341698,
+        "git_blob_sha": "0416d8d17e2fcd7896c3a59cd03814294dbbd504"
+      },
+      {
+        "category": "View",
+        "path": "GamePICs/View/Roof_View-removebg-preview.png",
+        "bytes": 380007,
+        "git_blob_sha": "615b3e000f154454bde4a5403a4c312b4d88c921"
+      },
+      {
+        "category": "View",
+        "path": "GamePICs/View/Show_Collision-removebg-preview.png",
+        "bytes": 369854,
+        "git_blob_sha": "974ac04bb039b48c0c6fd6c652d6d1f1bae31da2"
+      },
+      {
+        "category": "View",
+        "path": "GamePICs/View/Show_Effects-removebg-preview.png",
+        "bytes": 366188,
+        "git_blob_sha": "807366ec37e473beb856884b0a0d0750d8d18bde"
+      },
+      {
+        "category": "View",
+        "path": "GamePICs/View/Show_Library-removebg-preview.png",
+        "bytes": 377849,
+        "git_blob_sha": "afee01865e443c73f716ddf688c49f0be75ac26c"
+      },
+      {
+        "category": "View",
+        "path": "GamePICs/View/Show_Panel-removebg-preview.png",
+        "bytes": 351012,
+        "git_blob_sha": "7cfb6293a5e56991c4c267fda15fa48afd64e03a"
+      },
+      {
+        "category": "View",
+        "path": "GamePICs/View/View_Map-removebg-preview.png",
+        "bytes": 379110,
+        "git_blob_sha": "31238988d7e475b16733a4f5d043e3c6c528f313"
+      },
+      {
+        "category": "View",
+        "path": "GamePICs/View/View-removebg-preview.png",
+        "bytes": 337041,
+        "git_blob_sha": "a3433fce1b8a89acfa8e69e8f081d048e25f9424"
+      }
+    ]
+  },
+  "snake_heads": {
+    "status": "candidate_not_registered",
+    "count": 53,
+    "entries": [
+      {
+        "path": "GamePICs/DarkSnake-NeueHeads/BackBildFace01.png",
+        "bytes": 53034,
+        "git_blob_sha": "1b5fe65225f397768bf6466d0db876c9ff5f371c"
+      },
+      {
+        "path": "GamePICs/DarkSnake-NeueHeads/BackFace4.png",
+        "bytes": 42447,
+        "git_blob_sha": "39e513ddd9ff0af847e9ff63bbeaf4f3469d264c"
+      },
+      {
+        "path": "GamePICs/DarkSnake-NeueHeads/Faceback5.png",
+        "bytes": 46918,
+        "git_blob_sha": "87a2d403e4f8d7e38b409b62a356381a8f329011"
+      },
+      {
+        "path": "GamePICs/DarkSnake-NeueHeads/FaceBack6.png",
+        "bytes": 57347,
+        "git_blob_sha": "70a8ad27133733f6dc693dceffa2fe5a2dce94da"
+      },
+      {
+        "path": "GamePICs/DarkSnake-NeueHeads/items5.png",
+        "bytes": 101261,
+        "git_blob_sha": "03103a151e398f98e8b19de555b7cd43cad8d03a"
+      },
+      {
+        "path": "GamePICs/DarkSnake-NeueHeads/items6.png",
+        "bytes": 87211,
+        "git_blob_sha": "2f1011d11374ad3fb2940ca9c47a334bc085efe1"
+      },
+      {
+        "path": "GamePICs/DarkSnake-NeueHeads/ksnip_20250306-154323.png",
+        "bytes": 17303,
+        "git_blob_sha": "c671eed0149d02e6b31ffb4ed2c811070c8c80b3"
+      },
+      {
+        "path": "GamePICs/DarkSnake-NeueHeads/ksnip_20250306-155741.png",
+        "bytes": 39586,
+        "git_blob_sha": "1a8152dbe6798c73bc3e0a92dda1f68dec032177"
+      },
+      {
+        "path": "GamePICs/DarkSnake-NeueHeads/ksnip_20250306-155813.png",
+        "bytes": 49118,
+        "git_blob_sha": "f772cf2be6dc24de74d3ed68cf667697cf6c6bca"
+      },
+      {
+        "path": "GamePICs/DarkSnake-NeueHeads/ksnip_20250412-203554.png",
+        "bytes": 53204,
+        "git_blob_sha": "16ec46899be66103b2da8f9d5ec4fe690ecd0382"
+      },
+      {
+        "path": "GamePICs/DarkSnake-NeueHeads/ksnip_20250412-203611.png",
+        "bytes": 57323,
+        "git_blob_sha": "2dd0105fd4c77fabb0fcd2031df3e23f60010b70"
+      },
+      {
+        "path": "GamePICs/DarkSnake-NeueHeads/ksnip_20250412-203633.png",
+        "bytes": 58179,
+        "git_blob_sha": "deeeab2150ae95f0bfd87fd30075d70276fe873b"
+      },
+      {
+        "path": "GamePICs/DarkSnake-NeueHeads/ksnip_20250412-203648.png",
+        "bytes": 49811,
+        "git_blob_sha": "bd4bb1d92ee7f776658ec009e772398335e1d1d9"
+      },
+      {
+        "path": "GamePICs/DarkSnake-NeueHeads/ksnip_20250412-203742.png",
+        "bytes": 42977,
+        "git_blob_sha": "547f60b3db12fa5512851bda87ff587a1c367172"
+      },
+      {
+        "path": "GamePICs/DarkSnake-NeueHeads/ksnip_20250412-203755.png",
+        "bytes": 38449,
+        "git_blob_sha": "de26563b3b78fdcd5716fe74df6336628e09b75b"
+      },
+      {
+        "path": "GamePICs/DarkSnake-NeueHeads/ksnip_20250412-203820.png",
+        "bytes": 68726,
+        "git_blob_sha": "595e1094524c7829aff701ede88b1601a070f8f7"
+      },
+      {
+        "path": "GamePICs/DarkSnake-NeueHeads/ksnip_20250412-203856.png",
+        "bytes": 44083,
+        "git_blob_sha": "88f16e8fd0dca32987e7b74add61b80d980da05d"
+      },
+      {
+        "path": "GamePICs/DarkSnake-NeueHeads/ksnip_20250412-203919.png",
+        "bytes": 87610,
+        "git_blob_sha": "5de45e63117151fa7a7ebf33ca88458a2feed9b6"
+      },
+      {
+        "path": "GamePICs/DarkSnake-NeueHeads/ksnip_20250412-203935.png",
+        "bytes": 100341,
+        "git_blob_sha": "92a9301b21941edd81f051769689247c868275d0"
+      },
+      {
+        "path": "GamePICs/DarkSnake-NeueHeads/ksnip_20250412-203948.png",
+        "bytes": 105240,
+        "git_blob_sha": "d2b87f38b734ef732140cfa06790e831bd57e01e"
+      },
+      {
+        "path": "GamePICs/DarkSnake-NeueHeads/ksnip_20250412-204001.png",
+        "bytes": 101114,
+        "git_blob_sha": "943de761624f19e90f1411643bb91964ea839322"
+      },
+      {
+        "path": "GamePICs/DarkSnake-NeueHeads/ksnip_20250412-204018.png",
+        "bytes": 93175,
+        "git_blob_sha": "6004091c6c304c9aad6783358b19a4f2e85fc38b"
+      },
+      {
+        "path": "GamePICs/DarkSnake-NeueHeads/ksnip_20250412-204030.png",
+        "bytes": 100216,
+        "git_blob_sha": "cf581538cb7ba54b85b8f812cc84034612bbcee9"
+      },
+      {
+        "path": "GamePICs/DarkSnake-NeueHeads/ksnip_20250412-204043.png",
+        "bytes": 103665,
+        "git_blob_sha": "c0b2efd41249dc500cfcea12033f49d1230bf688"
+      },
+      {
+        "path": "GamePICs/DarkSnake-NeueHeads/ksnip_20250412-204125.png",
+        "bytes": 99292,
+        "git_blob_sha": "17f59229258dfe342f38e7a51baab6293d0345f1"
+      },
+      {
+        "path": "GamePICs/DarkSnake-NeueHeads/ksnip_20250412-204139.png",
+        "bytes": 96231,
+        "git_blob_sha": "8a7e98963fbfd6c4d455f5e12fe7da0969dddc08"
+      },
+      {
+        "path": "GamePICs/DarkSnake-NeueHeads/ksnip_20250412-204151.png",
+        "bytes": 85627,
+        "git_blob_sha": "f68aafec0fa39cfcb3f8d8331c797f3873ebe3cc"
+      },
+      {
+        "path": "GamePICs/DarkSnake-NeueHeads/ksnip_20250412-204217.png",
+        "bytes": 59153,
+        "git_blob_sha": "3ddbb7b7b9d2c1feee18ae2aae2e2acb0df5baec"
+      },
+      {
+        "path": "GamePICs/DarkSnake-NeueHeads/ksnip_20250412-204219.png",
+        "bytes": 55167,
+        "git_blob_sha": "cbcfaa8750d6e9231a4d2252f1e40e62bf486e70"
+      },
+      {
+        "path": "GamePICs/DarkSnake-NeueHeads/ksnip_20250412-204231.png",
+        "bytes": 55214,
+        "git_blob_sha": "23591bd363edb6c68460a3a0209bdb2ab38b2f1a"
+      },
+      {
+        "path": "GamePICs/DarkSnake-NeueHeads/ksnip_20250412-204242.png",
+        "bytes": 41154,
+        "git_blob_sha": "dd06bb788a8d6fbfc9e733e30302e04ec4ef6703"
+      },
+      {
+        "path": "GamePICs/DarkSnake-NeueHeads/ksnip_20250412-204253.png",
+        "bytes": 57633,
+        "git_blob_sha": "9ff8af95e00f1bd51cc4506a9ea9f4b2fbf693c0"
+      },
+      {
+        "path": "GamePICs/DarkSnake-NeueHeads/ksnip_20250412-204302.png",
+        "bytes": 55704,
+        "git_blob_sha": "ef06dd1b899f659c633fbb1f80bbb19b5ef14f6d"
+      },
+      {
+        "path": "GamePICs/DarkSnake-NeueHeads/ksnip_20250412-204326(1).png",
+        "bytes": 59390,
+        "git_blob_sha": "60c4704b6e9c503f768c4727ba47c91d28f8853d"
+      },
+      {
+        "path": "GamePICs/DarkSnake-NeueHeads/ksnip_20250412-204337.png",
+        "bytes": 58475,
+        "git_blob_sha": "15c813934679dc265b582b097cf8cd2e784a5006"
+      },
+      {
+        "path": "GamePICs/DarkSnake-NeueHeads/ksnip_20250412-204349.png",
+        "bytes": 56418,
+        "git_blob_sha": "aabd022a77a5285042fd678596c3eadd5e2fac99"
+      },
+      {
+        "path": "GamePICs/DarkSnake-NeueHeads/ksnip_20250412-204405.png",
+        "bytes": 39354,
+        "git_blob_sha": "9819b38d9c399b9929ef5a55585fd0f706e37596"
+      },
+      {
+        "path": "GamePICs/DarkSnake-NeueHeads/ksnip_20250412-204418.png",
+        "bytes": 41203,
+        "git_blob_sha": "c9351f03f43e5ec5ad9b363260316972640a0948"
+      },
+      {
+        "path": "GamePICs/DarkSnake-NeueHeads/ksnip_20250412-204431 (Kopie).png",
+        "bytes": 54706,
+        "git_blob_sha": "c822695d08c6bd20e362ec0c3a3fba0d63ca5bf8"
+      },
+      {
+        "path": "GamePICs/DarkSnake-NeueHeads/ksnip_20250412-204453.png",
+        "bytes": 54501,
+        "git_blob_sha": "a94b7a62a7d835cee8442141ce165abc886f4456"
+      },
+      {
+        "path": "GamePICs/DarkSnake-NeueHeads/ksnip_20250412-204639.png",
+        "bytes": 73596,
+        "git_blob_sha": "a3371518000b1792fb8677e3a83d073d194a16ae"
+      },
+      {
+        "path": "GamePICs/DarkSnake-NeueHeads/ksnip_20250412-204651.png",
+        "bytes": 68475,
+        "git_blob_sha": "e997bf6d00a1313501c1ec3de1ad8f80aa4cb0ed"
+      },
+      {
+        "path": "GamePICs/DarkSnake-NeueHeads/ksnip_20250412-204701.png",
+        "bytes": 73616,
+        "git_blob_sha": "55e6ca066f27026cf08df3c150f877667763f74f"
+      },
+      {
+        "path": "GamePICs/DarkSnake-NeueHeads/ksnip_20250412-204714.png",
+        "bytes": 62684,
+        "git_blob_sha": "395a01ef3cb1f382c7a730d1ad3317c02b632bb3"
+      },
+      {
+        "path": "GamePICs/DarkSnake-NeueHeads/ksnip_20250412-204727.png",
+        "bytes": 63650,
+        "git_blob_sha": "7f5546072041722e30ce90edb49f26e602850749"
+      },
+      {
+        "path": "GamePICs/DarkSnake-NeueHeads/ksnip_20250412-204807.png",
+        "bytes": 112460,
+        "git_blob_sha": "28c9c512dd4a9f5b7ad8d1c832d41da722d0d06f"
+      },
+      {
+        "path": "GamePICs/DarkSnake-NeueHeads/ksnip_20250412-204821.png",
+        "bytes": 106531,
+        "git_blob_sha": "c45053cd97dc69d353d58283a05d2bef8238e08b"
+      },
+      {
+        "path": "GamePICs/DarkSnake-NeueHeads/ksnip_20250412-204833.png",
+        "bytes": 107733,
+        "git_blob_sha": "209d6e9e8f1bd7f7b7a481e3b8b9c59391a2a009"
+      },
+      {
+        "path": "GamePICs/DarkSnake-NeueHeads/ksnip_20250412-204843.png",
+        "bytes": 108196,
+        "git_blob_sha": "e2ce048ecf089efb218b46d2056cd8ecfbf1d134"
+      },
+      {
+        "path": "GamePICs/DarkSnake-NeueHeads/ksnip_20250412-204854.png",
+        "bytes": 119010,
+        "git_blob_sha": "af4c5f34d1f2ce853a4b1c53faea3c1a9e792a60"
+      },
+      {
+        "path": "GamePICs/DarkSnake-NeueHeads/ksnip_20250412-204907.png",
+        "bytes": 113733,
+        "git_blob_sha": "bc8c68810cccb6267cffd0ae21c7f0a64a65a795"
+      },
+      {
+        "path": "GamePICs/DarkSnake-NeueHeads/ksnip_20250412-204921.png",
+        "bytes": 111249,
+        "git_blob_sha": "2adf572ab78ca22b64794608ebf7408ed917299b"
+      },
+      {
+        "path": "GamePICs/DarkSnake-NeueHeads/ksnip_20250412-204934.png",
+        "bytes": 113544,
+        "git_blob_sha": "1bb4e2262e7661f73986614b24aba1bb06fd6d56"
+      }
+    ]
+  },
+  "snake_bodies": {
+    "status": "candidate_not_registered",
+    "count": 15,
+    "entries": [
+      {
+        "path": "GamePICs/DarkSnake-KörperNeuDesign/items8.png",
+        "bytes": 99866,
+        "git_blob_sha": "2a1f19a5b38b851c8df7347748ba112bcb33a8fd"
+      },
+      {
+        "path": "GamePICs/DarkSnake-KörperNeuDesign/ksnip_20250306-154046.png",
+        "bytes": 20267,
+        "git_blob_sha": "e9dc87626c4d2896be5cd9f0c7e6a64cfd0315b6"
+      },
+      {
+        "path": "GamePICs/DarkSnake-KörperNeuDesign/ksnip_20250306-154121.png",
+        "bytes": 17842,
+        "git_blob_sha": "87f537db8a7d1303864136b57c6449033eb8abc3"
+      },
+      {
+        "path": "GamePICs/DarkSnake-KörperNeuDesign/ksnip_20250306-154352.png",
+        "bytes": 40436,
+        "git_blob_sha": "916736a69b203495a02f35df7e3caa5de1348d3e"
+      },
+      {
+        "path": "GamePICs/DarkSnake-KörperNeuDesign/ksnip_20250306-154402.png",
+        "bytes": 46938,
+        "git_blob_sha": "4ddd7824be5ecd2a68d0729dd42ad3df65655d5c"
+      },
+      {
+        "path": "GamePICs/DarkSnake-KörperNeuDesign/ksnip_20250306-154416.png",
+        "bytes": 52270,
+        "git_blob_sha": "149b8de1b003e3416134c56c6e58a78470ae5c8b"
+      },
+      {
+        "path": "GamePICs/DarkSnake-KörperNeuDesign/ksnip_20250306-154535.png",
+        "bytes": 22933,
+        "git_blob_sha": "1c242eacbfa064f90c76690329a9d0e5a78e9d66"
+      },
+      {
+        "path": "GamePICs/DarkSnake-KörperNeuDesign/ksnip_20250306-154551.png",
+        "bytes": 25268,
+        "git_blob_sha": "51ca28e03e31b5d2bb43efe928c1ab8a5d567581"
+      },
+      {
+        "path": "GamePICs/DarkSnake-KörperNeuDesign/ksnip_20250306-155147.png",
+        "bytes": 73646,
+        "git_blob_sha": "3a384ae2a5ed6de7547c2924d1d1b3ce5a86b2ae"
+      },
+      {
+        "path": "GamePICs/DarkSnake-KörperNeuDesign/ksnip_20250306-155225.png",
+        "bytes": 102619,
+        "git_blob_sha": "7b8173d7fbb4e94dffee5e8ac05147b48374940d"
+      },
+      {
+        "path": "GamePICs/DarkSnake-KörperNeuDesign/ksnip_20250306-155231.png",
+        "bytes": 18348,
+        "git_blob_sha": "61caf7c13c99c6992bad28730dafe446785b4aa5"
+      },
+      {
+        "path": "GamePICs/DarkSnake-KörperNeuDesign/ksnip_20250412-204548.png",
+        "bytes": 65133,
+        "git_blob_sha": "89cbf63a887fc72769ddac1c8c78af0e673701b1"
+      },
+      {
+        "path": "GamePICs/DarkSnake-KörperNeuDesign/ksnip_20250412-204600.png",
+        "bytes": 67865,
+        "git_blob_sha": "871b638205eb4bebf42fda45cbe989b9a95f573b"
+      },
+      {
+        "path": "GamePICs/DarkSnake-KörperNeuDesign/ksnip_20250412-204614.png",
+        "bytes": 69363,
+        "git_blob_sha": "354a7d0df882ee4475010f9cbd068b1816bc7ffe"
+      },
+      {
+        "path": "GamePICs/DarkSnake-KörperNeuDesign/ksnip_20250412-204627.png",
+        "bytes": 67936,
+        "git_blob_sha": "fca7e9a7d08f9c2afcf6877718479927bcda132d"
+      }
+    ]
+  },
+  "frostage": {
+    "original_source": "GamePICs/Incoming/Frost_Tiles/",
+    "runtime_directory": "Dark_Snake/assets/graphics/frostage/",
+    "runtime_catalog": "Dark_Snake/assets/graphics/frostage/catalog.json",
+    "original_png_count": 175,
+    "runtime_png_count": 175,
+    "import_script": "scripts/frostage_catalog.py",
+    "catalog_status": "bundled_and_selectable_in_editor",
+    "gameplay_status": "Gameplay implementation differs by asset group; enemies/items/projectiles/AoE are not automatically functional."
+  }
+}
