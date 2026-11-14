@@ -167,3 +167,61 @@ def test_scroll_reaches_last_thumbnail_and_respects_viewport(library):
     assert surface.get_at(sample)[:3] == (44, 156, 232)
     assert _click(view, position)
     assert chosen == ["stone_29"]
+
+
+def test_embedded_search_owns_text_input_only_when_focused(library, monkeypatch):
+    modal, chosen, favorites, _ = library
+    modal.close()
+    text_input = []
+    monkeypatch.setattr(pygame.key, "start_text_input", lambda: text_input.append("start"))
+    monkeypatch.setattr(pygame.key, "stop_text_input", lambda: text_input.append("stop"))
+    bounds = pygame.Rect(5, 70, 230, 480)
+    view = TileLibrary(modal.tiles, favorites, bounds, modal.font, chosen.append, embedded=True)
+    view.open()
+
+    text = pygame.event.Event(pygame.TEXTINPUT, text="galactic_stern")
+    view.handle_event(text)
+    assert not view._query and not text_input
+    assert view.panel == bounds and not view.close_rect.width
+
+    assert not _click(view, view.search_rect.center)
+    assert view.search_focused and text_input == ["start"]
+    view.handle_event(text)
+    assert view.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_RETURN))
+    assert chosen == ["galactic_stern"] and not view.search_focused
+    assert text_input == ["start", "stop"]
+
+    view.focus_search()
+    assert not view.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_ESCAPE))
+    assert not view.search_focused and text_input[-2:] == ["start", "stop"]
+
+
+def test_embedded_resize_retains_query_favorites_and_scroll(library):
+    modal, chosen, favorites, _ = library
+    view = TileLibrary(modal.tiles, favorites, pygame.Rect(5, 70, 220, 385),
+                       modal.font, chosen.append, embedded=True)
+    view.open()
+    favorites.append("stone_09")
+    _click(view, view.search_rect.center)
+    view.handle_event(pygame.event.Event(pygame.TEXTINPUT, text="stone"))
+    view.handle_event(pygame.event.Event(pygame.MOUSEWHEEL, y=-2, pos=view.list_rect.center))
+    before = view._scroll
+    assert before > 0
+
+    resized = pygame.Rect(22, 90, 278, 485)
+    view.set_bounds(resized)
+    assert view.panel == resized and resized.contains(view.list_rect)
+    assert view.search_focused and view._query == "stone" and view._scroll == before
+    assert favorites == ["stone_09"]
+    view.handle_event(pygame.event.Event(pygame.MOUSEWHEEL, y=-50, pos=view.list_rect.center))
+    assert _click(view, _row_position(view, "tile", "stone_29"))
+    assert chosen == ["stone_29"]
+
+
+def test_narrow_library_keeps_numeric_tile_suffix_distinguishable(library):
+    view, _, _, _ = library
+    width = 112
+    first = view._fit_tile_label("boneshard_frostpath_full_1_0", width)
+    second = view._fit_tile_label("boneshard_frostpath_full_1_1", width)
+    assert first.endswith("1_0") and second.endswith("1_1")
+    assert all(view.font.size(label)[0] <= width for label in (first, second))

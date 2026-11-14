@@ -21,19 +21,10 @@ from modules import resources, roof_render
 from modules.enums import Direction, GameState
 from modules.game import Game
 from modules.graphic_objects import GraphicObject
-from modules.level_editor import CELL_SIZE, MAP_RECT
 from modules.level_playtest import PLAYER_COLORS
 from modules.roof_settings import RoofVisibility
 
-
-def click_editor_button(game, label):
-    rect, = [rect for name, rect, _ in game.level_editor.buttons if name == label]
-    pygame.event.post(pygame.event.Event(pygame.MOUSEBUTTONDOWN, pos=rect.center, button=1))
-    game.handle_events()
-
-
-def editor_pixel(x, y):
-    return MAP_RECT.x + x * CELL_SIZE + CELL_SIZE // 2, MAP_RECT.y + y * CELL_SIZE + CELL_SIZE // 2
+from test_level_studio import button, cell
 
 
 @pytest.mark.parametrize("players", [1, 2])
@@ -43,11 +34,11 @@ def test_bundled_demo_drives_snakes_through_opaque_arch_with_windows(tmp_path, m
     pygame.event.clear()
     editor = game.level_editor
     editor.toggle()
-    click_editor_button(game, "Dach-Demo")
+    button(game, editor, "Dach-Demo")
     assert not editor.dirty and not list((tmp_path / "levels").glob("*.json"))
     assert editor.roofs == {(20, 11): GraphicObject("frostage_roof_005", 5, 3)}
 
-    click_editor_button(game, f"Test {players}P")
+    button(game, editor, f"Test {players}P")
     session = editor.playtest
     assert session.player_count == players
     assert tuple(player.cell for player in session.players) == ((22, 15), (22, 17))[:players]
@@ -83,8 +74,8 @@ def test_bundled_demo_drives_snakes_through_opaque_arch_with_windows(tmp_path, m
             assert x == 22 and player.blocked is None and player.health == 100
             if y not in (11, 12):
                 continue
-            px, py = editor_pixel(x, y)
-            pos = px + 3, py + 3
+            px, py = cell(editor, x, y)
+            pos = px + 2, py + 2
             shown, hidden = with_windows.get_at(pos), without_windows.get_at(pos)
             assert shown != hidden
             assert shown[:3] != PLAYER_COLORS[index]
@@ -93,7 +84,7 @@ def test_bundled_demo_drives_snakes_through_opaque_arch_with_windows(tmp_path, m
             )
             observed_under_roof.add(index)
         # Behind neither window the same roof art stays over the map.
-        edge = editor_pixel(24, 13)
+        edge = cell(editor, 24, 13)
         assert with_windows.get_at(edge) == without_windows.get_at(edge)
 
     assert observed_under_roof == set(range(players))

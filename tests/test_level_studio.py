@@ -15,7 +15,7 @@ import pygame
 pygame.init()
 pygame.display.set_mode((1, 1))
 
-from config import GRID_HEIGHT, GRID_WIDTH
+from config import GRID_HEIGHT, GRID_SIZE, GRID_WIDTH
 from modules import resources
 from modules.enums import GameState
 from modules.game import Game
@@ -26,6 +26,22 @@ from modules.frostage_assets import frostage_assets
 from modules.graphic_objects import GraphicObject
 from modules.level_effects import CellEffects, DamageField, SlowField
 from modules.level_playtest import COLLISION_COLORS
+
+
+BUTTON_SECTIONS = {
+    label: section
+    for section, labels in {
+        "Datei": ("Neu", "Öffnen", "Speichern", "Welten", "Undo", "Redo", "Für Classic wählen", "Classic-Standard"),
+        "Bauen": ("Rand", "Mittelfeld", "Objekt verschieben", "Objektgröße", "Auf Dachebene", "Tile-Bibliothek"),
+        "Ebenen": ("Boden", "Objekte", "Dach / Foreground", "Nur Grafik", "Grafik + Kollision",
+                   "Nur Kollision", "WALL", "BARRIER"),
+        "Effekte": ("Schaden", "Slow", "Effektwerte", "Dachwerte"),
+        "Ansicht": ("Karte einpassen", "Bibliothek ein/aus", "Panel ein/aus", "Zelle untersuchen", "Dachansicht",
+                    "Kollision ein/aus", "Effekte ein/aus"),
+        "Testen": ("Vorschau starten", "Test 1P", "Test 2P", "Dach-Demo"),
+    }.items()
+    for label in labels
+}
 
 
 @pytest.fixture
@@ -58,13 +74,17 @@ def click(game, pos, button=1):
 
 
 def button(game, editor, label):
+    if not any(name == label for name, _, _ in editor.buttons):
+        section = BUTTON_SECTIONS[label]
+        section_rect, = [rect for name, rect, _ in editor.buttons if name == section]
+        click(game, section_rect.center)
     rect, = [rect for name, rect, _ in editor.buttons if name == label]
     click(game, rect.center)
 
 
-def cell(col, row):
-    return (layout.TOOLBAR_W + col * layout.CELL_SIZE + layout.CELL_SIZE // 2,
-            layout.MAP_TOP + row * layout.CELL_SIZE + layout.CELL_SIZE // 2)
+def cell(editor, col, row):
+    return (editor.camera.board_rect.left + col * editor.camera.cell_size + editor.camera.cell_size // 2,
+            editor.camera.board_rect.top + row * editor.camera.cell_size + editor.camera.cell_size // 2)
 
 
 def test_effect_settings_paint_and_save_both_independent_effects(studio):
@@ -84,28 +104,28 @@ def test_effect_settings_paint_and_save_both_independent_effects(studio):
 
     spot = (4, 3)
     button(game, editor, "Schaden")
-    click(game, cell(*spot))
+    click(game, cell(editor, *spot))
     button(game, editor, "Slow")
-    click(game, cell(*spot))
+    click(game, cell(editor, *spot))
     both = CellEffects(damage=DamageField(17, 0.5, 1.5), slow=SlowField(75))
     assert editor.effects == {spot: both}
     assert editor.map[3][4] is None and not editor.collisions
     game.draw()
-    left = layout.TOOLBAR_W + spot[0] * layout.CELL_SIZE
-    top = layout.MAP_TOP + spot[1] * layout.CELL_SIZE
+    left = editor.camera.board_rect.left + spot[0] * editor.camera.cell_size
+    top = editor.camera.board_rect.top + spot[1] * editor.camera.cell_size
     assert game.screen.get_at((left + 4, top + 3))[:3] == EFFECT_COLORS["damage"]
-    assert game.screen.get_at((left + 4, top + layout.CELL_SIZE - 5))[:3] == EFFECT_COLORS["slow"]
+    assert game.screen.get_at((left + 4, top + editor.camera.cell_size - 5))[:3] == EFFECT_COLORS["slow"]
     button(game, editor, "Effekte ein/aus")
     game.draw()
     assert game.screen.get_at((left + 4, top + 3))[:3] != EFFECT_COLORS["damage"]
     assert editor.effects == {spot: both}
     button(game, editor, "Nur Grafik")
-    click(game, cell(*spot))
-    click(game, cell(*spot), button=3)
+    click(game, cell(editor, *spot))
+    click(game, cell(editor, *spot), button=3)
     assert editor.effects == {spot: both}
 
     button(game, editor, "Slow")
-    click(game, cell(*spot), button=3)
+    click(game, cell(editor, *spot), button=3)
     assert editor.effects == {spot: CellEffects(damage=both.damage)}
     key(game, pygame.K_z, pygame.KMOD_CTRL)
     assert editor.effects == {spot: both}
@@ -128,9 +148,9 @@ def test_editor_2p_effect_test_updates_hp_and_returns_to_unsaved_map(studio, mon
     x, y = GRID_WIDTH // 2, GRID_HEIGHT // 2
     spot = (x + 1, y)
     button(game, editor, "Schaden")
-    click(game, cell(*spot))
+    click(game, cell(editor, *spot))
     button(game, editor, "Slow")
-    click(game, cell(*spot))
+    click(game, cell(editor, *spot))
     draft = editor.effects.copy()
     profile_before = {path.relative_to(profile): path.read_bytes()
                       for path in profile.rglob("*") if path.is_file()}
@@ -166,9 +186,9 @@ def test_editor_1p_damage_repeats_while_wall_blocks_and_stops_on_exit(studio, mo
     key(game, pygame.K_F2)
     x, y = GRID_WIDTH // 2, GRID_HEIGHT // 2
     button(game, editor, "Schaden")
-    click(game, cell(x + 1, y))
+    click(game, cell(editor, x + 1, y))
     button(game, editor, "Nur Kollision")
-    click(game, cell(x + 2, y))
+    click(game, cell(editor, x + 2, y))
     clock = [100.0]
     monkeypatch.setattr("modules.game.time.monotonic", lambda: clock[0])
     button(game, editor, "Test 1P")
@@ -198,13 +218,13 @@ def test_collision_tools_keep_graphics_and_walls_independent(studio):
     spot = (4, 3)
 
     button(game, editor, "Grafik + Kollision")
-    click(game, cell(*spot))
+    click(game, cell(editor, *spot))
     assert editor.map[3][4] == first and editor.collisions == {spot: "WALL"}
     editor.current_tile = second
     button(game, editor, "Nur Grafik")
-    click(game, cell(*spot))
+    click(game, cell(editor, *spot))
     assert editor.map[3][4] == second and editor.collisions == {spot: "WALL"}
-    click(game, cell(*spot), button=3)
+    click(game, cell(editor, *spot), button=3)
     assert editor.map[3][4] is None and editor.collisions == {spot: "WALL"}
 
     key(game, pygame.K_z, pygame.KMOD_CTRL)
@@ -217,13 +237,13 @@ def test_collision_tools_keep_graphics_and_walls_independent(studio):
     assert editor.map[3][4] == first and editor.collisions == {spot: "WALL"}
 
     button(game, editor, "Nur Kollision")
-    click(game, cell(*spot), button=3)
+    click(game, cell(editor, *spot), button=3)
     assert editor.collisions == {} and editor.map[3][4] == first
     button(game, editor, "BARRIER")
-    click(game, cell(*spot))
+    click(game, cell(editor, *spot))
     assert editor.collisions == {spot: "BARRIER"} and editor.map[3][4] == first
     button(game, editor, "WALL")
-    click(game, cell(5, 3))
+    click(game, cell(editor, 5, 3))
     assert editor.dirty
     assert editor.save_map()
     assert not editor.dirty
@@ -238,7 +258,7 @@ def test_collision_tools_keep_graphics_and_walls_independent(studio):
     assert reopened.level_editor.load_map("Wandlabor")
     assert reopened.level_editor.collisions == {spot: "BARRIER", (5, 3): "WALL"}
     reopened.draw()
-    outline = (layout.TOOLBAR_W + 5 * layout.CELL_SIZE + 1, layout.MAP_TOP + 3 * layout.CELL_SIZE + 1)
+    outline = (editor.camera.board_rect.left + 5 * editor.camera.cell_size + 1, editor.camera.board_rect.top + 3 * editor.camera.cell_size + 1)
     assert reopened.screen.get_at(outline)[:3] == COLLISION_COLORS["WALL"]
     button(reopened, reopened.level_editor, "Kollision ein/aus")
     reopened.draw()
@@ -250,9 +270,9 @@ def test_combined_wall_stroke_undo_redo_and_clear_affect_both_layers(studio):
     game, editor, _ = studio
     key(game, pygame.K_F2)
     button(game, editor, "Grafik + Kollision")
-    start, end = cell(3, 5), cell(4, 5)
+    start, end = cell(editor, 3, 5), cell(editor, 4, 5)
     send(game, pygame.event.Event(pygame.MOUSEBUTTONDOWN, pos=start, button=1),
-         pygame.event.Event(pygame.MOUSEMOTION, pos=end, rel=(layout.CELL_SIZE, 0), buttons=(1, 0, 0)),
+         pygame.event.Event(pygame.MOUSEMOTION, pos=end, rel=(editor.camera.cell_size, 0), buttons=(1, 0, 0)),
          pygame.event.Event(pygame.MOUSEBUTTONUP, pos=end, button=1))
     assert editor.map[5][3:5] == [editor.current_tile] * 2
     assert editor.collisions == {(3, 5): "WALL", (4, 5): "WALL"}
@@ -271,7 +291,7 @@ def test_collision_only_edits_use_discard_guard_and_f2_exits_test_first(studio):
     assert editor.save_map()
     original = (profile / "levels" / "Wand.json").read_bytes()
     button(game, editor, "Nur Kollision")
-    click(game, cell(4, 3))
+    click(game, cell(editor, 4, 3))
     assert editor.dirty and all(tile is None for tile in editor.map[3])
     button(game, editor, "Test 1P")
     assert editor.playtest is not None
@@ -291,7 +311,7 @@ def test_saved_wall_is_playable_but_classic_background_keeps_original_movement(s
     key(game, pygame.K_F2)
     assert editor.new_map("Classic-Hintergrund")
     button(game, editor, "Grafik + Kollision")
-    click(game, cell(*wall))
+    click(game, cell(editor, *wall))
     assert editor.save_map()
     button(game, editor, "Für Classic wählen")
     key(game, pygame.K_F2)
@@ -325,10 +345,10 @@ def test_editor_playtest_hits_walls_via_game_frames_and_returns_to_unsaved_draft
     center_x, center_y = GRID_WIDTH // 2, GRID_HEIGHT // 2
     assert editor.new_map("Nur im Speicher")
     button(game, editor, "Nur Kollision")
-    click(game, cell(center_x + 2, center_y))
+    click(game, cell(editor, center_x + 2, center_y))
     if player_count == 2:
         button(game, editor, "BARRIER")
-        click(game, cell(center_x + 2, center_y + 2))
+        click(game, cell(editor, center_x + 2, center_y + 2))
     before = deepcopy((editor.map, editor.collisions, editor.undo_stack))
     profile_before = {path.relative_to(profile): path.read_bytes()
                       for path in profile.rglob("*") if path.is_file()}
@@ -381,7 +401,7 @@ def test_world_studio_organizes_drafts_and_reloads_order(studio):
     key(game, pygame.K_F2)
     for index, name in enumerate(("Anfang", "Arena")):
         assert editor.new_map(name)
-        click(game, cell(index, 0))
+        click(game, cell(editor, index, 0))
         assert editor.save_map()
     originals = {path.name: path.read_bytes() for path in (profile / "levels").glob("*.json")}
 
@@ -443,7 +463,7 @@ def test_world_tree_open_respects_draft_discard_guard(studio):
     assert editor.new_map("Gespeichert")
     assert editor.save_map()
     assert editor.new_map("In Arbeit")
-    click(game, cell(1, 0))
+    click(game, cell(editor, 1, 0))
     button(game, editor, "Welten")
     tree = editor.world_tree
     level = tree.library.level_for_draft("Gespeichert")
@@ -463,7 +483,7 @@ def test_tile_library_search_selects_original_key_for_painting(studio):
     game.draw()
     key(game, pygame.K_RETURN)
     assert editor.current_tile == tile and not editor.dialog_open
-    click(game, cell(2, 2))
+    click(game, cell(editor, 2, 2))
     assert editor.map[2][2] == tile
 
 
@@ -484,33 +504,33 @@ def test_frostage_objects_are_selected_and_edited_as_whole_footprints(studio):
     anchor = (5, 4)
     inside = (5, 9)
     button(game, editor, "Nur Kollision")
-    click(game, cell(*inside))
+    click(game, cell(editor, *inside))
     button(game, editor, "Schaden")
-    click(game, cell(*inside))
+    click(game, cell(editor, *inside))
     collision_before = editor.collisions.copy()
     effects_before = editor.effects.copy()
     button(game, editor, "Nur Grafik")
 
     # Rendering the cursor preview may not change the stored draft.
-    send(game, pygame.event.Event(pygame.MOUSEMOTION, pos=cell(*anchor), rel=(0, 0), buttons=(0, 0, 0)))
+    send(game, pygame.event.Event(pygame.MOUSEMOTION, pos=cell(editor, *anchor), rel=(0, 0), buttons=(0, 0, 0)))
     game.draw()
     assert not editor.objects
-    top_left = (layout.MAP_RECT.left + anchor[0] * layout.CELL_SIZE,
-                layout.MAP_RECT.top + anchor[1] * layout.CELL_SIZE)
+    top_left = (editor.camera.board_rect.left + anchor[0] * editor.camera.cell_size,
+                editor.camera.board_rect.top + anchor[1] * editor.camera.cell_size)
     assert game.screen.get_at(top_left)[:3] == layout.COLOR_SELECT
 
     item = GraphicObject(asset.id, 1, 10)
-    click(game, cell(*anchor))
+    click(game, cell(editor, *anchor))
     assert editor.objects == {anchor: item}
     button(game, editor, "Grafik + Kollision")
-    click(game, cell(6, GRID_HEIGHT - 1))
+    click(game, cell(editor, 6, GRID_HEIGHT - 1))
     assert editor.objects == {anchor: item}
     assert editor.collisions == collision_before
     button(game, editor, "Nur Grafik")
 
     button(game, editor, "Objekt verschieben")
-    click(game, cell(*inside))
-    click(game, cell(8, 10))
+    click(game, cell(editor, *inside))
+    click(game, cell(editor, 8, 10))
     moved = (8, 5)
     assert editor.objects == {moved: item}
     key(game, pygame.K_z, pygame.KMOD_CTRL)
@@ -518,7 +538,7 @@ def test_frostage_objects_are_selected_and_edited_as_whole_footprints(studio):
     key(game, pygame.K_y, pygame.KMOD_CTRL)
     assert editor.objects == {moved: item}
 
-    click(game, cell(8, 13), button=3)
+    click(game, cell(editor, 8, 13), button=3)
     assert not editor.objects
     assert editor.collisions == collision_before and editor.effects == effects_before
     key(game, pygame.K_z, pygame.KMOD_CTRL)
@@ -540,17 +560,17 @@ def test_frostage_custom_footprint_renders_in_both_playtests(studio):
     key(game, pygame.K_RETURN)
     assert not editor.dialog_open
     anchor = (3, 3)
-    click(game, cell(*anchor))
+    click(game, cell(editor, *anchor))
     assert editor.objects == {anchor: GraphicObject(asset.id, 6, 2)}
 
-    point = (layout.MAP_RECT.left + (anchor[0] + 3) * layout.CELL_SIZE,
-             layout.MAP_RECT.top + (anchor[1] + 1) * layout.CELL_SIZE)
+    point = (editor.camera.board_rect.left + (anchor[0] + 3) * editor.camera.cell_size,
+             editor.camera.board_rect.top + (anchor[1] + 1) * editor.camera.cell_size)
     for player_count in (1, 2):
         button(game, editor, f"Test {player_count}P")
         assert editor.playtest.player_count == player_count
         game.draw()
         assert game.screen.get_at(point) != editor._preview_background.get_at(
-            (point[0] - layout.MAP_RECT.left, point[1] - layout.MAP_RECT.top))
+            (point[0] - editor.camera.board_rect.left, point[1] - editor.camera.board_rect.top))
         key(game, pygame.K_ESCAPE)
         assert editor.playtest is None
     assert editor.objects == {anchor: GraphicObject(asset.id, 6, 2)}
@@ -587,7 +607,7 @@ def test_creates_two_named_drafts_and_reopens_first_from_keyboard(studio):
     assert editor.dialog_open
     text(game, "Level_001")
     key(game, pygame.K_RETURN)
-    click(game, cell(0, 0))
+    click(game, cell(editor, 0, 0))
     key(game, pygame.K_s, pygame.KMOD_CTRL)
     first = deepcopy(editor.map)
     original = (profile / "levels" / "Level_001.json").read_bytes()
@@ -596,7 +616,7 @@ def test_creates_two_named_drafts_and_reopens_first_from_keyboard(studio):
     button(game, editor, "Neu")
     text(game, "Pilzwelt_01")
     key(game, pygame.K_RETURN)
-    click(game, cell(1, 0))
+    click(game, cell(editor, 1, 0))
     button(game, editor, "Speichern")
     assert editor.name == "Pilzwelt_01" and not editor.dirty
     assert (profile / "levels" / "Pilzwelt_01.json").is_file()
@@ -623,7 +643,7 @@ def test_creates_two_named_drafts_and_reopens_first_from_keyboard(studio):
     # An explicit save updates the currently loaded draft only.
     second_path = profile / "levels" / "Pilzwelt_01.json"
     second_original = second_path.read_bytes()
-    click(game, cell(2, 0))
+    click(game, cell(editor, 2, 0))
     key(game, pygame.K_s, pygame.KMOD_CTRL)
     assert not editor.dirty
     assert (profile / "levels" / "Level_001.json").read_bytes() != original
@@ -634,7 +654,7 @@ def test_dirty_close_and_switch_require_confirmation(studio):
     game, editor, _ = studio
     key(game, pygame.K_F2)
     editor.new_map("Erster")
-    click(game, cell(1, 0))
+    click(game, cell(editor, 1, 0))
     before = deepcopy(editor.map)
 
     key(game, pygame.K_F2)
@@ -649,7 +669,7 @@ def test_dirty_close_and_switch_require_confirmation(studio):
     assert editor.name == "Zweiter"
     assert editor.map[0][1] is None and not editor.undo_stack
 
-    click(game, cell(1, 0))
+    click(game, cell(editor, 1, 0))
     key(game, pygame.K_TAB)
     assert editor.active and editor.dialog_open and not game.admin_panel.active
     key(game, pygame.K_v)
@@ -659,7 +679,7 @@ def test_dirty_close_and_switch_require_confirmation(studio):
 def test_window_close_keeps_dirty_level_until_confirmed(studio):
     game, editor, profile = studio
     key(game, pygame.K_F2)
-    click(game, cell(0, 0))
+    click(game, cell(editor, 0, 0))
 
     send(game, pygame.event.Event(pygame.QUIT))
     assert editor.active and editor.dialog_open and editor.dirty
@@ -678,9 +698,9 @@ def test_invalid_level_preserves_open_draft_and_undo_history(studio, bad_data):
     game, editor, profile = studio
     key(game, pygame.K_F2)
     editor.new_map("Gut")
-    click(game, cell(0, 0))
+    click(game, cell(editor, 0, 0))
     assert editor.save_map()
-    click(game, cell(1, 0))
+    click(game, cell(editor, 1, 0))
     editor.undo()
     before = deepcopy((editor.map, editor.undo_stack, editor.redo_stack))
     (profile / "levels" / "Kaputt.json").write_text(bad_data, encoding="utf-8")
@@ -715,7 +735,7 @@ def test_legacy_is_readable_and_standard_classic_does_not_load_it(studio):
     assert legacy.read_bytes() == old_bytes
 
     key(game, pygame.K_F2)
-    click(game, cell(1, 0))
+    click(game, cell(editor, 1, 0))
     key(game, pygame.K_s, pygame.KMOD_CTRL)
     assert editor.dialog_open
     text(game, "Alte_Karte")
@@ -728,14 +748,14 @@ def test_classic_explicit_selection_copies_saved_draft_and_can_be_cleared(studio
     game, editor, _ = studio
     key(game, pygame.K_F2)
     editor.new_map("Arena")
-    click(game, cell(0, 0))
+    click(game, cell(editor, 0, 0))
     assert editor.save_map()
     saved = deepcopy(editor.map)
     assert game.classic_level_name is None
 
     button(game, editor, "Für Classic wählen")
     assert game.classic_level_name == "Arena"
-    click(game, cell(1, 0))
+    click(game, cell(editor, 1, 0))
     assert editor.dirty and editor.map != saved
     game.start_game(1)
     assert game.level_map == saved and game.level_map is not editor.map
@@ -756,7 +776,7 @@ def test_visual_preview_leaves_round_files_and_edit_history_intact(studio):
     round_before = (game.game_state, game.score, game.lives, game.background, game.level_map)
     key(game, pygame.K_F2)
     editor.new_map("Vorschaukarte")
-    click(game, cell(0, 0))
+    click(game, cell(editor, 0, 0))
     before = deepcopy((editor.map, editor.undo_stack, editor.redo_stack))
     profile_before = {path.relative_to(profile): path.read_bytes()
                       for path in profile.rglob("*") if path.is_file()}
@@ -765,9 +785,9 @@ def test_visual_preview_leaves_round_files_and_edit_history_intact(studio):
     assert editor.preview_active and editor.active
     assert (game.game_state, game.score, game.lives, game.background, game.level_map) == round_before
     game.draw()
-    default_pixel = (2 * layout.GRID_SIZE + layout.GRID_SIZE // 2, layout.GRID_SIZE // 2)
-    assert game.screen.get_at(cell(2, 0)) == game.default_background_surface.get_at(default_pixel)
-    click(game, cell(1, 0))
+    default_pixel = (2 * GRID_SIZE + GRID_SIZE // 2, GRID_SIZE // 2)
+    assert game.screen.get_at(cell(editor, 2, 0)) == game.default_background_surface.get_at(default_pixel)
+    click(game, cell(editor, 1, 0))
     key(game, pygame.K_ESCAPE)
 
     assert not editor.preview_active and editor.active and editor.dirty
@@ -782,9 +802,9 @@ def test_tile_drag_overwrite_erase_and_border_have_undo_redo(studio):
     game, editor, _ = studio
     key(game, pygame.K_F2)
     first, second = list(editor.tiles)[:2]
-    a, b = cell(0, 0), cell(1, 0)
+    a, b = cell(editor, 0, 0), cell(editor, 1, 0)
     send(game, pygame.event.Event(pygame.MOUSEBUTTONDOWN, pos=a, button=1),
-         pygame.event.Event(pygame.MOUSEMOTION, pos=b, rel=(layout.CELL_SIZE, 0), buttons=(1, 0, 0)),
+         pygame.event.Event(pygame.MOUSEMOTION, pos=b, rel=(editor.camera.cell_size, 0), buttons=(1, 0, 0)),
          pygame.event.Event(pygame.MOUSEBUTTONUP, pos=b, button=1))
     assert editor.map[0][:2] == [first, first]
     key(game, pygame.K_z, pygame.KMOD_CTRL)
@@ -800,7 +820,7 @@ def test_tile_drag_overwrite_erase_and_border_have_undo_redo(studio):
     editor.undo()
     assert editor.map[0][:2] == [first, second]
 
-    last = cell(GRID_WIDTH - 1, GRID_HEIGHT - 1)
+    last = cell(editor, GRID_WIDTH - 1, GRID_HEIGHT - 1)
     assert game.screen.get_rect().collidepoint(last)
     click(game, last)
     assert editor.map[-1][-1] == second
@@ -811,42 +831,125 @@ def test_tile_drag_overwrite_erase_and_border_have_undo_redo(studio):
     assert editor.map == before_border
 
 
-def test_palette_scroll_reaches_last_tile_and_favorites_are_selectable(studio):
+def test_embedded_library_search_and_favorites_paint_from_the_same_tile_selection(studio):
     game, editor, _ = studio
     key(game, pygame.K_F2)
-    first, second = list(editor._visible_tiles())[:2]
-    assert editor.current_tile == first[0]
-    click(game, second[1].center)
-    assert editor.current_tile == second[0]
+    library = editor.tile_library
+    assert library.embedded and library.panel == editor.layout.library
 
-    palette = layout.PALETTE_RECT
-    send(game, pygame.event.Event(pygame.MOUSEWHEEL, x=0, y=-10000, pos=layout.MAP_RECT.center))
-    assert editor.tile_scroll_offset == 0
-    send(game, pygame.event.Event(pygame.MOUSEWHEEL, x=0, y=-10000, pos=palette.center))
-    assert editor.tile_scroll_offset < 0
+    # A catalogue row near the end is accessible through the permanently visible search.
     last_tile = next(reversed(editor.tiles))
-    rect = dict(editor._visible_tiles())[last_tile]
-    assert palette.contains(rect)
-    assert 0 <= palette.bottom - rect.bottom < rect.height
+    click(game, library.search_rect.center)
+    text(game, f"{last_tile}.png")
+    rect, = [rect for row, rect in library._visible_rows() if row.kind == "tile" and row.target == last_tile]
     click(game, rect.center, button=3)
     assert editor.favorites == [last_tile]
-    click(game, editor._favorite_rect(0).center)
+    key(game, pygame.K_RETURN)
     assert editor.current_tile == last_tile
-    click(game, cell(0, 0))
+    assert not editor.dialog_open and not library.search_focused
+    click(game, library.clear_rect.center)
+    favorite, = [rect for row, rect in library._visible_rows() if row.kind == "category" and row.target == "favorites"]
+    click(game, favorite.center)
+    rect, = [rect for row, rect in library._visible_rows() if row.kind == "tile" and row.target == last_tile]
+    click(game, rect.center)
+    assert editor.current_tile == last_tile
+    click(game, cell(editor, 0, 0))
     assert editor.map[0][0] == last_tile
 
 
 def test_undo_ends_an_active_paint_stroke_before_more_mouse_motion(studio):
     game, editor, _ = studio
     key(game, pygame.K_F2)
-    a, b = cell(0, 0), cell(1, 0)
+    a, b = cell(editor, 0, 0), cell(editor, 1, 0)
     send(game, pygame.event.Event(pygame.MOUSEBUTTONDOWN, pos=a, button=1))
     assert editor.map[0][0] == editor.current_tile
 
     key(game, pygame.K_z, pygame.KMOD_CTRL)
-    send(game, pygame.event.Event(pygame.MOUSEMOTION, pos=b, rel=(layout.CELL_SIZE, 0),
+    send(game, pygame.event.Event(pygame.MOUSEMOTION, pos=b, rel=(editor.camera.cell_size, 0),
                                   buttons=(1, 0, 0)),
          pygame.event.Event(pygame.MOUSEBUTTONUP, pos=b, button=1))
     assert editor.map[0][:2] == [None, None]
     key(game, pygame.K_y, pygame.KMOD_CTRL)
     assert editor.map[0][:2] == [editor.current_tile, None]
+
+
+def test_zoom_pan_and_collapsing_sidebars_keep_edits_in_grid_coordinates(studio):
+    game, editor, _ = studio
+    key(game, pygame.K_F2)
+    assert editor.layout.library.width and editor.layout.inspector.width
+    before = editor.layout.viewport.width
+    button(game, editor, "Bibliothek ein/aus")
+    button(game, editor, "Panel ein/aus")
+    assert editor.layout.library.width == editor.layout.inspector.width == 0
+    assert editor.layout.viewport.width > before
+    button(game, editor, "Bibliothek ein/aus")
+    button(game, editor, "Panel ein/aus")
+    assert editor.layout.viewport.width == before
+
+    target = (23, 15)
+    focus = cell(editor, *target)
+    initial_cell_size = editor.camera.cell_size
+    send(game, pygame.event.Event(pygame.MOUSEWHEEL, x=0, y=3, pos=focus))
+    assert editor.camera.cell_size > initial_cell_size
+    assert editor.camera.cell_at(focus) == target
+    previous_board = editor.camera.board_rect.copy()
+    send(game, pygame.event.Event(pygame.MOUSEBUTTONDOWN, pos=focus, button=2),
+         pygame.event.Event(pygame.MOUSEMOTION, pos=(focus[0] + 50, focus[1] + 18), rel=(50, 18),
+                            buttons=(0, 1, 0)),
+         pygame.event.Event(pygame.MOUSEBUTTONUP, pos=(focus[0] + 50, focus[1] + 18), button=2))
+    assert editor.camera.board_rect != previous_board
+    assert not editor.dirty
+
+    pos = cell(editor, *target)
+    assert editor.camera.cell_at(pos) == target
+    click(game, pos)
+    assert editor.map[target[1]][target[0]] == editor.current_tile
+    click(game, editor.layout.library.center)
+    assert sum(tile is not None for row in editor.map for tile in row) == 1
+    key(game, pygame.K_z, pygame.KMOD_CTRL)
+    assert not editor.dirty
+    button(game, editor, "Karte einpassen")
+    assert editor.camera.cell_size == initial_cell_size
+
+
+def test_editor_window_resizes_and_restores_the_fixed_classic_display(studio, monkeypatch):
+    game, editor, _ = studio
+    classic_size = game.screen.get_size()
+    game.start_game(1)
+    original_body = game.snake.copy()
+    set_display_mode = pygame.display.set_mode
+    display_requests = []
+
+    def record_display_mode(size, flags=0):
+        display_requests.append((size, flags))
+        return set_display_mode(size, flags)
+
+    monkeypatch.setattr(pygame.display, "set_mode", record_display_mode)
+    key(game, pygame.K_F2)
+    assert editor.active
+    assert display_requests[-1] == (classic_size, pygame.RESIZABLE)
+
+    set_display_mode((1100, 710), pygame.RESIZABLE)
+    send(game, pygame.event.Event(pygame.WINDOWSIZECHANGED, x=1100, y=710))
+    assert game.screen.get_size() == editor.layout.bounds.size == (1100, 710)
+    assert editor.camera.viewport == editor.layout.viewport
+    game.draw()
+
+    key(game, pygame.K_F2)
+    assert not editor.active
+    assert game.screen.get_size() == classic_size
+    assert display_requests[-1] == (classic_size, 0)
+    assert game.game_state == GameState.GAME and game.snake == original_body
+
+
+def test_releasing_a_brush_over_the_inspector_ends_the_map_stroke(studio):
+    game, editor, _ = studio
+    key(game, pygame.K_F2)
+    start = cell(editor, 3, 5)
+    next_cell = cell(editor, 4, 5)
+    inspector = editor.layout.inspector.center
+    send(game, pygame.event.Event(pygame.MOUSEBUTTONDOWN, pos=start, button=1),
+         pygame.event.Event(pygame.MOUSEBUTTONUP, pos=inspector, button=1),
+         pygame.event.Event(pygame.MOUSEMOTION, pos=next_cell, rel=(0, 0), buttons=(0, 0, 0)))
+    assert editor.map[5][3] == editor.current_tile
+    assert editor.map[5][4] is None

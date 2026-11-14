@@ -23,6 +23,9 @@ class EffectSettings:
         self.field = 0
         self.select_all = True
         self.error = ""
+        self.set_bounds(bounds)
+
+    def set_bounds(self, bounds):
         self.panel = pygame.Rect(0, 0, min(500, bounds.width - 40), 322)
         self.panel.center = bounds.center
 

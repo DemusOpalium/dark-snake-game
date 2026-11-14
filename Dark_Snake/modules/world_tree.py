@@ -22,13 +22,7 @@ class WorldTree:
         self.open_draft = open_draft
         self.ask_name = ask_name
         self.close = close
-        self.panel = pygame.Rect(0, 0, min(bounds.width - 32, 1050), min(bounds.height - 42, 720))
-        self.panel.center = bounds.center
-        column_width = (self.panel.width - 58) // 2
-        top = self.panel.y + 96
-        height = (self.panel.bottom - 123 - top) // ROW_HEIGHT * ROW_HEIGHT
-        self.design = pygame.Rect(self.panel.x + 18, top, column_width, height)
-        self.order = self.design.move(column_width + 22, 0)
+        self.set_bounds(bounds)
         self.library = None
         self.selected_level = None
         self.target_world = None
@@ -36,6 +30,15 @@ class WorldTree:
         self.design_offset = self.order_offset = 0
         self.dragged_level = None
         self.message = ""
+
+    def set_bounds(self, bounds):
+        self.panel = pygame.Rect(0, 0, min(bounds.width - 32, 1050), min(bounds.height - 42, 720))
+        self.panel.center = bounds.center
+        column_width = (self.panel.width - 58) // 2
+        top = self.panel.y + 96
+        height = (self.panel.bottom - 123 - top) // ROW_HEIGHT * ROW_HEIGHT
+        self.design = pygame.Rect(self.panel.x + 18, top, column_width, height)
+        self.order = self.design.move(column_width + 22, 0)
 
     def open(self, current_draft):
         self.library = WorldLibrary.load()

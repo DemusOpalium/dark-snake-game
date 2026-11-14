@@ -17,6 +17,9 @@ class RoofSettingsEditor:
         self.field = 0
         self.select_all = True
         self.error = ""
+        self.set_bounds(bounds)
+
+    def set_bounds(self, bounds):
         self.panel = pygame.Rect(0, 0, min(520, bounds.width - 40), 307)
         self.panel.center = bounds.center
         self.toggle = pygame.Rect(self.panel.x + 20, self.panel.y + 36, self.panel.width - 40, 26)

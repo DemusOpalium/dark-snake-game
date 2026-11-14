@@ -25,18 +25,18 @@ def test_roof_tools_edit_only_the_selected_layer_and_save_undo_redo(studio):
     anchor = (5, 5)
     target = (10, 10)
     ground = editor.current_tile
-    click(game, cell(*anchor))
+    click(game, cell(editor, *anchor))
     button(game, editor, "Nur Kollision")
-    click(game, cell(*anchor))
+    click(game, cell(editor, *anchor))
     select_from_library(game, editor, OBJECT)
-    click(game, cell(*anchor))
+    click(game, cell(editor, *anchor))
     item = GraphicObject(OBJECT, *editor.frost_assets[OBJECT].cells)
     assert editor.objects == {anchor: item}
 
     select_from_library(game, editor, ROOF)
     assert editor.graphic_layer == "roof"
     button(game, editor, "Grafik + Kollision")
-    click(game, cell(*anchor))
+    click(game, cell(editor, *anchor))
     roof = GraphicObject(ROOF, *editor.frost_assets[ROOF].cells)
     assert editor.roofs == {anchor: roof}
     assert editor.collisions == {anchor: "WALL"}
@@ -44,10 +44,10 @@ def test_roof_tools_edit_only_the_selected_layer_and_save_undo_redo(studio):
     assert editor.objects == {anchor: item}
 
     button(game, editor, "Objekt verschieben")
-    click(game, cell(6, 6))
-    click(game, cell(11, 11))
+    click(game, cell(editor, 6, 6))
+    click(game, cell(editor, 11, 11))
     assert editor.roofs == {target: roof}
-    click(game, cell(*target))
+    click(game, cell(editor, *target))
     button(game, editor, "Objektgröße")
     text(game, "6x3")
     key(game, pygame.K_RETURN)
@@ -59,7 +59,7 @@ def test_roof_tools_edit_only_the_selected_layer_and_save_undo_redo(studio):
     assert not editor.show_roofs
     button(game, editor, "Dach / Foreground")
     assert editor.show_roofs
-    click(game, cell(15, 12), 3)
+    click(game, cell(editor, 15, 12), 3)
     assert not editor.roofs
     key(game, pygame.K_z, pygame.KMOD_CTRL)
     assert editor.roofs == {target: resized}
@@ -85,7 +85,7 @@ def test_legacy_roof_transfer_is_explicit_and_reversible(studio):
     assert editor.objects == {anchor: roof} and not editor.roofs
 
     button(game, editor, "Auf Dachebene")
-    click(game, cell(9, 9))
+    click(game, cell(editor, 9, 9))
     assert editor.roofs == {anchor: roof} and not editor.objects
     assert editor.collisions == collision and editor.dirty
     key(game, pygame.K_z, pygame.KMOD_CTRL)
