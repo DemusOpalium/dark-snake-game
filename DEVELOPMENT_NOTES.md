@@ -279,6 +279,15 @@ Bei 900×620 ist die Karte in der Gesamtansicht kleiner. Mit Zoom und eingeklapp
 3. Vor **Anwenden** die markierten Felder und Überschreibungen prüfen. **Abbrechen** verwirft die Vorschau. **Strg+Z** nimmt den angewendeten Rand in einem Schritt zurück, **Strg+Y** stellt ihn wieder her.
 4. **Bauen → Mittelfeld** füllt weiterhin nur die Fläche innerhalb des Randes. Der Rand-Builder arbeitet mit Einzelkacheln aus der Bodenebene. FrostAge-Grafikobjekte und Dächer werden über ihre jeweiligen Ebenen platziert. Kollisions- und Effektfelder behalten beim Anwenden des Randes ihre Werte.
 
+## World Studio · Eigene Schaltflächen unter Windows prüfen
+
+1. **Level Studio** öffnen. **File**, **Build**, **Layers**, **Effects**, **View**, **Test** und **Learn** anklicken. Die eingebetteten Schriftzüge sind Englisch. Deutsche Hinweise stehen beim Überfahren in der Statusleiste. Hilfe und Werkzeuge ohne eindeutige Vorlage behalten eine Textschaltfläche.
+2. **File** öffnen und **New**, **Save**, **Open**, **Undo** und **Redo** prüfen. Undo und Redo werden gedimmt, solange die jeweilige Aktion leer ist.
+3. **Build → Rand** öffnen. **Border Left**, **Border Right**, **Border Top** und **Border Bottom** wirken auf ihre jeweilige Seite. Die separate Kachelauswahl je Seite und die Vorschau bleiben wie in #168. **Test → Roof Demo** und **Test 1P/2P** prüfen den Weg durch den Dachbogen.
+4. Die EXE bei kleiner Fenstergröße und maximiert ausprobieren. Werkzeuge umbrechen, wenn die Breite für eine Zeile fehlt. Mausrad über der Karte und mittlere Maustaste bedienen weiterhin Zoom und Kartenposition.
+
+48 geprüfte PNGs liegen mit ihren stabilen Action-IDs im [Laufzeitkatalog](Dark_Snake/assets/graphics/editor_ui/catalog.json). Die [Asset-Legende](ASSET_GUIDE.md) nennt die restlichen Motive und die nächsten Integrationsschritte. Die vollständige DE/EN-Umschaltung und die Freigabe weiterer Grafiken gehören zu den folgenden Arbeitspaketen.
+
 ## Vorgeschlagene nächste Phase
 
 1. Audio und Ebenen unter Windows 11 mit echten Ausgabegeräten prüfen.
