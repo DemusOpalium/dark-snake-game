@@ -1,14 +1,17 @@
 """Tile-based editor for independent level drafts."""
 
+from collections.abc import Callable
+from dataclasses import dataclass
 import time
 
 import pygame
 
 from config import GRID_HEIGHT, GRID_WIDTH
 from modules.border_builder_ui import BorderBuilderUI
+from modules.editor_buttons import BUTTON_HEIGHT, MAX_ART_WIDTH, EditorButtons
 from modules.editor_layout import MapCamera, StudioLayout
 from modules.editor_sidebar import StudioSidebar
-from modules.effect_settings import EFFECT_COLORS, EffectSettings, draw_effect_overlay
+from modules.effect_settings import EffectSettings, draw_effect_overlay
 from modules.frostage_assets import frostage_assets
 from modules.graphic_objects import (GraphicObject, can_place_graphic_object, draw_graphic_object,
                                      draw_graphic_objects, object_anchor_at, place_graphic_object)
@@ -17,7 +20,7 @@ from modules.level_drafts import (COLLISION_TYPES, LevelDocument, legacy_map_exi
                                   load_level_document, normalize_draft_name, read_legacy_map,
                                   read_level_file, suggest_draft_name, write_draft)
 from modules.level_effects import CellEffects, DamageField, SlowField
-from modules.level_playtest import COLLISION_COLORS, LevelPlaytest, draw_collision_overlay
+from modules.level_playtest import LevelPlaytest, draw_collision_overlay
 from modules.resources import find_asset
 from modules.roof_editor_settings import RoofSettingsEditor
 from modules.roof_render import draw_roof_objects
@@ -37,7 +40,11 @@ COLOR_MUTED = (162, 180, 200)
 COLOR_SELECT = (118, 214, 246)
 COLOR_FRAME = (61, 87, 111)
 COLOR_GRID = (47, 62, 79)
-NAVIGATION = ("Datei", "Bauen", "Ebenen", "Effekte", "Ansicht", "Testen", "Lernen", "Hilfe")
+NAVIGATION = (
+    ("nav_file", "Datei"), ("nav_build", "Bauen"), ("nav_layers", "Ebenen"),
+    ("nav_effects", "Effekte"), ("nav_view", "Ansicht"), ("nav_test", "Testen"),
+    ("nav_learn", "Lernen"), ("nav_help", "Hilfe"),
+)
 
 PLACEMENT_TOOLS = (
     ("graphics", "Nur Grafik", 96, "Grafik"),
@@ -48,6 +55,13 @@ EFFECT_TOOLS = (("damage", "Schaden"), ("slow", "Slow"))
 GRAPHIC_LAYERS = (("ground", "Boden", 70), ("objects", "Objekte", 74), ("roof", "Dach / Foreground", 151))
 ERASE_LABELS = {mode: description for mode, _, _, description in PLACEMENT_TOOLS}
 ERASE_LABELS.update({"damage": "Schaden", "slow": "Slow"})
+
+@dataclass(frozen=True, slots=True)
+class EditorControl:
+    id: str
+    label: str
+    rect: pygame.Rect
+    action: Callable
 
 
 def _empty_map():
@@ -109,15 +123,17 @@ class LevelEditor:
         self.world_tree = None
         self.font = pygame.font.SysFont("Segoe UI", 16)
         self.title_font = pygame.font.SysFont("Segoe UI", 19, bold=True)
+        self.button_art = EditorButtons(self.font)
         self.layout = StudioLayout(game.screen.get_size())
         self.camera = MapCamera(self.layout.viewport)
-        self.sidebar = StudioSidebar(self.font)
-        self.section = "Bauen"
+        self.sidebar = StudioSidebar(self.font, self.button_art)
+        self.section = "nav_build"
         self.show_library = self.show_inspector = True
         self.inspect_mode = False
         self.inspected_cell = None
         self.info = ""
-        self.buttons = self._make_buttons()
+        self._button_pointer = None
+        self.resize(game.screen.get_size())
 
     @property
     def dirty(self):
@@ -132,9 +148,15 @@ class LevelEditor:
         return self.tile_library is not None and self.tile_library.search_focused
 
     def resize(self, size):
-        self.layout = StudioLayout(size, show_library=self.show_library, show_inspector=self.show_inspector)
-        self.camera.set_viewport(self.layout.viewport)
+        self._layout_controls(size)
         self._reset_pointer()
+
+    def _layout_controls(self, size=None):
+        size = self.layout.bounds.size if size is None else size
+        self.buttons, header_height = self._make_buttons(size[0])
+        self.layout = StudioLayout(size, show_library=self.show_library, show_inspector=self.show_inspector,
+                                   header_height=header_height)
+        self.camera.set_viewport(self.layout.viewport)
         if self.tile_library is not None and self.show_library:
             self.tile_library.set_bounds(self.layout.library)
         for panel in (self.world_tree, self.effect_settings, self.roof_settings_editor):
@@ -142,16 +164,17 @@ class LevelEditor:
                 panel.set_bounds(self.layout.bounds)
         if self.border_builder is not None:
             self.border_builder.set_bounds(self._border_bounds())
-        self.buttons = self._make_buttons()
 
     def _set_section(self, section):
         self.section = section
-        panel = {"Ebenen": "layers", "Effekte": "properties", "Lernen": "learn", "Hilfe": "help"}.get(section)
+        panel = {"nav_layers": "layers", "nav_effects": "properties",
+                 "nav_learn": "learn", "nav_help": "help"}.get(section)
         if panel:
             self.sidebar.show(panel)
             if not self.show_inspector:
                 self._toggle_sidebar("inspector")
-        self.buttons = self._make_buttons()
+                return
+        self._layout_controls()
 
     def _toggle_sidebar(self, name):
         if name == "library":
@@ -179,57 +202,91 @@ class LevelEditor:
     def _reset_pointer(self):
         self._stroke_button = self._pan_button = self._hover_cell = None
         self._space_held = False
+        self._button_pointer = None
 
-    def _make_buttons(self):
+    def _make_buttons(self, window_width):
         buttons = []
+        if self.border_builder is not None:
+            return buttons, 54
+        tool_width = 160 if window_width < 1440 else MAX_ART_WIDTH
 
-        def row(controls, x, y):
-            for label, action in controls:
-                width = max(56, self.font.size(label)[0] + 18)
-                buttons.append((label, pygame.Rect(x, y, width, BTN_H), action))
-                x += width + 5
+        def rows(controls, x, y, *, navigation=False):
+            height = 0
+            for action_id, label, action in controls:
+                width, button_height = self.button_art.preferred_size(action_id, label)
+                if navigation:
+                    width, button_height = min(width, 148), 36
+                else:
+                    width = min(width, tool_width)
+                width = min(width, max(1, window_width - 24))
+                if x + width > window_width - 12 and x > 12:
+                    x, y, height = 12, y + height + 5, 0
+                buttons.append(EditorControl(action_id, label, pygame.Rect(x, y, width, button_height), action))
+                height = max(height, button_height)
+                x += width + 6
+            return y + height
 
+        nav = tuple((key, label, lambda key=key: self._set_section(key)) for key, label in NAVIGATION)
+        tool_top = rows(nav, 166, 7, navigation=True) + 8
         if self.playtest is not None:
-            controls = (("Test beenden", self.stop_playtest), ("Kollision ein/aus", self._toggle_collision_overlay),
-                        ("Effekte ein/aus", self._toggle_effect_overlay), ("Karte einpassen", self._fit_map))
+            controls = (("test_stop", "Test beenden", self.stop_playtest),
+                        ("view_collision", "Kollision ein/aus", self._toggle_collision_overlay),
+                        ("view_effects", "Effekte ein/aus", self._toggle_effect_overlay),
+                        ("view_fit_map", "Karte einpassen", self._fit_map))
+            buttons.clear()
         elif self.preview_active:
-            controls = (("Vorschau beenden", self.stop_sim), ("Karte einpassen", self._fit_map))
+            controls = (("preview_stop", "Vorschau beenden", self.stop_sim),
+                        ("view_fit_map", "Karte einpassen", self._fit_map))
+            buttons.clear()
         else:
-            row(((label, lambda label=label: self._set_section(label)) for label in NAVIGATION), 166, 8)
             controls = self._section_tools()
-        row(controls, 12, 48)
-        return buttons
+        tool_bottom = rows(controls, 12, tool_top)
+        # Keep the map in place when switching tools, including on compact windows.
+        per_row = max(1, (window_width - 18) // (tool_width + 6))
+        tool_rows = (8 + per_row - 1) // per_row
+        return buttons, max(tool_bottom, tool_top + tool_rows * (BUTTON_HEIGHT + 5) - 5) + 8
 
     def _section_tools(self):
-        if self.section == "Datei":
-            return (("Neu", self.new_map), ("Öffnen", self.load_map), ("Speichern", self.save_map),
-                    ("Welten", self.open_world_tree), ("Undo", self.undo), ("Redo", self.redo),
-                    ("Für Classic wählen", self.select_for_classic), ("Classic-Standard", self.select_classic_default))
-        if self.section == "Bauen":
-            return (("Rand", self.set_border), ("Mittelfeld", self.fill_middle),
-                    ("Objekt verschieben", self._toggle_object_move), ("Objektgröße", self._open_object_size),
-                    ("Auf Dachebene", self._toggle_roof_transfer), ("Tile-Bibliothek", self.open_tile_library))
-        if self.section == "Ebenen":
+        if self.section == "nav_file":
+            return (("file_new", "Neu", self.new_map), ("file_open", "Öffnen", self.load_map),
+                    ("file_save", "Speichern", self.save_map), ("file_worlds", "Welten", self.open_world_tree),
+                    ("file_undo", "Undo", self.undo), ("file_redo", "Redo", self.redo),
+                    ("file_use_classic", "Für Classic wählen", self.select_for_classic),
+                    ("file_classic_default", "Classic-Standard", self.select_classic_default))
+        if self.section == "nav_build":
+            return (("build_border", "Rand", self.set_border), ("build_middle", "Mittelfeld", self.fill_middle),
+                    ("build_move_objects", "Objekt verschieben", self._toggle_object_move),
+                    ("build_object_size", "Objektgröße", self._open_object_size),
+                    ("build_transfer_roof", "Auf Dachebene", self._toggle_roof_transfer),
+                    ("build_tile_library", "Tile-Bibliothek", self.open_tile_library))
+        if self.section == "nav_layers":
             return (
-                *((label, lambda layer=layer: self._set_graphic_layer(layer)) for layer, label, _ in GRAPHIC_LAYERS),
-                *((label, lambda mode=mode: self._set_placement_mode(mode))
+                *((f"layer_{layer}", label, lambda layer=layer: self._set_graphic_layer(layer))
+                  for layer, label, _ in GRAPHIC_LAYERS),
+                *((("layer_collision" if mode == "collision" else f"tool_{mode}"), label,
+                   lambda mode=mode: self._set_placement_mode(mode))
                   for mode, label, _, _ in PLACEMENT_TOOLS),
-                *((kind, lambda kind=kind: self._set_collision_type(kind)) for kind in COLLISION_TYPES),
+                *((f"collision_{kind.lower()}", kind, lambda kind=kind: self._set_collision_type(kind))
+                  for kind in COLLISION_TYPES),
             )
-        if self.section == "Effekte":
-            return (*((label, lambda mode=mode: self._set_placement_mode(mode)) for mode, label in EFFECT_TOOLS),
-                    ("Effektwerte", self.open_effect_settings), ("Dachwerte", self.open_roof_settings))
-        if self.section == "Ansicht":
-            return (("Karte einpassen", self._fit_map),
-                    ("Bibliothek ein/aus", lambda: self._toggle_sidebar("library")),
-                    ("Panel ein/aus", lambda: self._toggle_sidebar("inspector")),
-                    ("Zelle untersuchen", self.toggle_inspect_mode),
-                    ("Kollision ein/aus", self._toggle_collision_overlay),
-                    ("Effekte ein/aus", self._toggle_effect_overlay),
-                    ("Dachansicht", self._toggle_roof_overlay))
-        if self.section == "Testen":
-            return (("Vorschau starten", self.start_sim), ("Test 1P", lambda: self.start_playtest(1)),
-                    ("Test 2P", lambda: self.start_playtest(2)), ("Dach-Demo", self.load_roof_demo))
+        if self.section == "nav_effects":
+            return (*((f"effect_{mode}", label, lambda mode=mode: self._set_placement_mode(mode))
+                      for mode, label in EFFECT_TOOLS),
+                    ("effect_values", "Effektwerte", self.open_effect_settings),
+                    ("roof_settings", "Dachwerte", self.open_roof_settings))
+        if self.section == "nav_view":
+            return (("view_fit_map", "Karte einpassen", self._fit_map),
+                    ("view_library", "Bibliothek ein/aus", lambda: self._toggle_sidebar("library")),
+                    ("view_panel", "Panel ein/aus", lambda: self._toggle_sidebar("inspector")),
+                    ("view_cell", "Zelle untersuchen", self.toggle_inspect_mode),
+                    ("view_collision", "Kollision ein/aus", self._toggle_collision_overlay),
+                    ("view_effects", "Effekte ein/aus", self._toggle_effect_overlay),
+                    ("view_roof", "Dachansicht", self._toggle_roof_overlay))
+        if self.section == "nav_test":
+            return (("test_preview", "Vorschau starten", self.start_sim),
+                    ("test_player_1", "Test 1P", lambda: self.start_playtest(1)),
+                    ("test_player_2", "Test 2P", lambda: self.start_playtest(2)),
+                    ("test_roof_demo", "Dach-Demo", self.load_roof_demo))
         return ()
 
     def _set_placement_mode(self, mode):
@@ -645,13 +702,13 @@ class LevelEditor:
         self._reset_pointer()
         self._blur_library()
         self._stroke_button = None
-        self.buttons = self._make_buttons()
+        self._layout_controls()
         self.info = "Visuelle Vorschau der Karte"
 
     def stop_sim(self):
         self.preview_active = False
         self._preview_background = None
-        self.buttons = self._make_buttons()
+        self._layout_controls()
         self.info = "Vorschau beendet"
 
     def start_playtest(self, player_count):
@@ -665,13 +722,13 @@ class LevelEditor:
         self._stop_object_move()
         self._reset_pointer()
         self._blur_library()
-        self.buttons = self._make_buttons()
+        self._layout_controls()
         self.info = "Leveltest gestartet"
 
     def stop_playtest(self):
         self.playtest = None
         self._preview_background = None
-        self.buttons = self._make_buttons()
+        self._layout_controls()
         self.info = "Leveltest beendet · Entwurf unverändert"
 
     def handle_event(self, event, actions=()):
@@ -692,6 +749,7 @@ class LevelEditor:
             return
         if event.type == pygame.MOUSEMOTION:
             self._hover_cell = self._map_cell(event.pos)
+            self._button_pointer = event.pos
         if self.playtest is not None:
             if event.type == pygame.KEYDOWN and event.key in (pygame.K_ESCAPE, pygame.K_F2):
                 self.stop_playtest()
@@ -780,11 +838,12 @@ class LevelEditor:
                 action()
 
     def _handle_click(self, pos, button):
+        self._button_pointer = pos
         if button == 1:
-            for _, rect, action in self.buttons:
-                if rect.collidepoint(pos):
-                    if self._button_available(action):
-                        action()
+            for control in self.buttons:
+                if control.rect.collidepoint(pos):
+                    if self._button_available(control.id):
+                        control.action()
                     return
         if self.preview_active or self.playtest is not None or button not in (1, 3):
             return
@@ -944,8 +1003,9 @@ class LevelEditor:
             self._toggle_sidebar("library")
         self._ensure_library()
         tile = self.current_tile if self.current_tile in self.tiles else None
-        self.border_builder = BorderBuilderUI(tile, self._border_bounds())
+        self.border_builder = BorderBuilderUI(tile, self._border_bounds(), self.button_art)
         self._dialog = {"kind": "border"}
+        self._layout_controls()
 
     def _border_bounds(self):
         return self.layout.viewport.union(self.layout.inspector) if self.show_inspector else self.layout.viewport
@@ -991,6 +1051,7 @@ class LevelEditor:
         if self.border_builder is not None:
             self._blur_library()
             self.border_builder = None
+            self._layout_controls()
         if self._dialog["kind"] in ("name", "effects", "roof_settings"):
             pygame.key.stop_text_input()
         self.effect_settings = None
@@ -1140,33 +1201,37 @@ class LevelEditor:
         self._draw_text(screen, label, (rect.x + 8, rect.centery - self.font.get_height() // 2),
                         max_width=rect.width - 15)
 
-    def _button_available(self, action):
-        if self.playtest is not None:
-            return action in (self.stop_playtest, self._toggle_collision_overlay, self._toggle_effect_overlay,
-                              self._fit_map)
-        return not self.preview_active or action in (self.stop_sim, self._fit_map)
+    def _button_available(self, action_id):
+        if action_id == "file_undo":
+            return bool(self.undo_stack)
+        if action_id == "file_redo":
+            return bool(self.redo_stack)
+        if action_id == "tool_combined":
+            return self.graphic_layer != "roof"
+        return True
 
-    def _tool_outline(self, label):
-        if label == self.section or (label == "Zelle untersuchen" and self.inspect_mode):
-            return COLOR_SELECT
-        if label == self.collision_type:
-            return COLLISION_COLORS[label]
-        if label == "Kollision ein/aus" and self.show_collisions:
-            return COLOR_SELECT
-        if label == "Effekte ein/aus" and self.show_effects:
-            return COLOR_SELECT
-        if label == "Objekt verschieben" and self._moving_objects:
-            return COLOR_SELECT
-        if label == "Auf Dachebene" and self._transferring_roof:
-            return COLOR_SELECT
-        if label == "Dachansicht" and self.show_roofs:
-            return COLOR_SELECT
-        if any(label == name and self.graphic_layer == layer for layer, name, _ in GRAPHIC_LAYERS):
-            return COLOR_SELECT
-        if (self.placement_mode, label) in EFFECT_TOOLS:
-            return EFFECT_COLORS[self.placement_mode]
-        if any(mode == self.placement_mode and label == name for mode, name, _, _ in PLACEMENT_TOOLS):
-            return COLOR_SELECT
+    def _control_state(self, action_id):
+        toggles = {
+            "view_cell": self.inspect_mode, "view_library": self.show_library,
+            "view_panel": self.show_inspector, "view_collision": self.show_collisions,
+            "view_effects": self.show_effects, "view_roof": self.show_roofs,
+            "build_move_objects": self._moving_objects, "build_transfer_roof": self._transferring_roof,
+        }
+        mode = self.placement_mode
+        layer = f"layer_{self.graphic_layer}" if mode in ("graphics", "combined") else None
+        selected = {
+            "graphics": "tool_graphics", "combined": "tool_combined", "collision": "layer_collision",
+            "damage": "effect_damage", "slow": "effect_slow",
+        }[mode]
+        return {
+            "active": action_id == self.section or toggles.get(action_id, False),
+            "selected": action_id in (layer, selected, f"collision_{self.collision_type.lower()}"),
+            "enabled": self._button_available(action_id),
+        }
+
+    def _hovered_control(self):
+        if self._button_pointer is not None and not self.dialog_open:
+            return next((control for control in self.buttons if control.rect.collidepoint(self._button_pointer)), None)
         return None
 
     def draw(self, screen):
@@ -1175,15 +1240,16 @@ class LevelEditor:
         screen.fill(COLOR_BG)
         pygame.draw.rect(screen, COLOR_BTN, self.layout.header)
         screen.blit(self.title_font.render("WORLD STUDIO", True, COLOR_TEXT), (12, 11))
-        for label, rect, action in self.buttons:
-            if self._button_available(action):
-                self._draw_button(screen, label, rect, self._tool_outline(label))
+        hovered = self._hovered_control()
+        for control in self.buttons:
+            self.button_art.draw(screen, control.id, control.label, control.rect,
+                                 hovered=control is hovered, **self._control_state(control.id))
         if self.show_library:
             self.tile_library.draw(screen, self.current_tile)
         if self.show_inspector:
             self.sidebar.draw(screen, self.layout.inspector, self)
         self._draw_map(screen)
-        self._draw_status(screen)
+        self._draw_status(screen, hovered)
         if self.dialog_open:
             if self._dialog["kind"] == "border":
                 self.border_builder.draw(screen, self.map, self.tiles, self._draw_text, self._draw_button)
@@ -1201,7 +1267,7 @@ class LevelEditor:
             else:
                 self._draw_dialog(screen)
 
-    def _draw_status(self, screen):
+    def _draw_status(self, screen, hovered):
         status = self.layout.status
         pygame.draw.rect(screen, COLOR_BTN, status)
         pygame.draw.line(screen, COLOR_FRAME, status.topleft, (status.right, status.top))
@@ -1248,6 +1314,10 @@ class LevelEditor:
                 hint = f"Links platziert · Rechts löscht {ERASE_LABELS[self.placement_mode]} · Mausrad zoomt"
         self._draw_text(screen, summary, (12, status.top + 4), max_width=status.width - 24)
         message = self.info if not self.preview_active and self.playtest is None and self.info else hint
+        if hovered is not None:
+            message = self.button_art.hint(hovered.id, hovered.label)
+            if not self._button_available(hovered.id):
+                message = f"{message} · Derzeit nicht verfügbar"
         self._draw_text(screen, message, (12, status.top + 25), COLOR_MUTED, max_width=status.width - 24)
 
     def _draw_map(self, screen):

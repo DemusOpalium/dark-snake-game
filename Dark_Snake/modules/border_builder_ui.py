@@ -38,14 +38,17 @@ class _Slot:
 class BorderBuilderUI:
     """Hold uncommitted brush choices and show their effect on the current floor."""
 
-    def __init__(self, tile, bounds):
+    def __init__(self, tile, bounds, button_art=None):
         self.plan = BorderPlan()
+        self.button_art = button_art
         self._last_tile = tile
         self._side_tiles = {}
         self._corner_tiles = {}
         self._target = None
         self._hover_cell = None
         self._hover_slot = None
+        self._pointer = None
+        self._show_corners = True
         self._thumbnail_size = None
         self._thumbnails = {}
         self._swatches = {}
@@ -63,9 +66,10 @@ class BorderBuilderUI:
         right_width = self.panel.width * 44 // 100
         control_width = self.panel.width - right_width - 45
         control_x, preview_x = x + 14, self.panel.right - right_width - 14
-        self.all_button = pygame.Rect(control_x, y + 65, control_width, 28)
-        self.side_rows = self._slots(SIDES, control_x, y + 102, control_width)
-        self.corner_rows = self._slots(CORNERS, control_x, y + 241, control_width)
+        self.all_button = pygame.Rect(control_x, y + 59, min(186, control_width), 38)
+        self.side_rows = self._slots(SIDES, control_x, y + 100, control_width, sides=True)
+        self.corners_button = pygame.Rect(control_x, y + 228, min(186, control_width), 36)
+        self.corner_rows = self._slots(CORNERS, control_x, y + 267, control_width)
         self.cancel_button = pygame.Rect(x + 14, self.panel.bottom - 46, 116, 30)
         self.apply_button = pygame.Rect(self.panel.right - 133, self.panel.bottom - 46, 119, 30)
         self._preview_frame = pygame.Rect(preview_x, y + 65, right_width, self.panel.height - 251)
@@ -74,20 +78,27 @@ class BorderBuilderUI:
         self.preview_rect.center = self._preview_frame.center
         self._hover_cell = None
         self._hover_slot = None
+        self._pointer = None
 
     @staticmethod
-    def _slots(keys, x, y, width):
+    def _slots(keys, x, y, width, *, sides=False):
         slot_width = (width - 8) // 2
         slots = {}
         for index, key in enumerate(keys):
             row, column = divmod(index, 2)
-            left, top = x + column * (slot_width + 8), y + row * 54
-            slots[key] = _Slot(
-                (left, top),
-                pygame.Rect(left, top + 19, 42, 29),
-                pygame.Rect(left + 47, top + 19, slot_width - 47, 29),
-            )
+            left = x + column * (slot_width + 8)
+            if sides:
+                top = y + row * 64
+                slots[key] = _Slot((left, top), pygame.Rect(left, top, slot_width - 25, 34),
+                                   pygame.Rect(left, top + 35, slot_width, 26))
+            else:
+                top = y + row * 51
+                slots[key] = _Slot((left, top), pygame.Rect(left, top + 18, 42, 27),
+                                   pygame.Rect(left + 47, top + 18, slot_width - 47, 27))
         return slots
+
+    def _visible_rows(self):
+        return (self.side_rows, self.corner_rows) if self._show_corners else (self.side_rows,)
 
     def _choose(self, key):
         self._target = key
@@ -147,8 +158,9 @@ class BorderBuilderUI:
             if event.key in (pygame.K_RETURN, pygame.K_KP_ENTER) and self._has_changes(level_map):
                 return "apply"
         if event.type == pygame.MOUSEMOTION:
+            self._pointer = event.pos
             self._hover_slot = next(
-                (key for rows in (self.side_rows, self.corner_rows)
+                (key for rows in self._visible_rows()
                  for key, slot in rows.items() if slot.choose.collidepoint(event.pos)),
                 None,
             )
@@ -167,7 +179,13 @@ class BorderBuilderUI:
         if self.all_button.collidepoint(event.pos):
             self._toggle_all()
             return None
-        for rows in (self.side_rows, self.corner_rows):
+        if self.corners_button.collidepoint(event.pos):
+            self._show_corners = not self._show_corners
+            if not self._show_corners and self._target in CORNERS:
+                self._target = None
+                self._message = ""
+            return None
+        for rows in self._visible_rows():
             for key, slot in rows.items():
                 if slot.toggle.collidepoint(event.pos):
                     self._toggle(key)
@@ -186,12 +204,17 @@ class BorderBuilderUI:
         text(screen, "Seiten einzeln wählen und die Änderung vor dem Anwenden prüfen.", (left, y + 34), MUTED,
              max_width=self.panel.width - 28)
         all_on = all(key in self.plan.sides for key in SIDES)
-        button(screen, "Gesamter Rand", self.all_button, ACCENT if all_on else None)
+        self._draw_art(screen, "border_all", "Gesamter Rand", self.all_button, button, active=all_on)
         self._draw_slots(screen, self.side_rows, self.plan.sides, tile_images, text, button)
-        text(screen, "Ecken · optional", (left, y + 216), ACCENT)
-        self._draw_slots(screen, self.corner_rows, self.plan.corners, tile_images, text, button)
-        text(screen, "Automatische Ecken: Oben/Unten zuerst.", (left, y + 347), MUTED,
-             max_width=self.all_button.width)
+        self._draw_art(screen, "border_corner", "Ecken", self.corners_button, button,
+                       selected=self._show_corners)
+        text(screen, "Einblenden" if not self._show_corners else "Ausblenden",
+             (self.corners_button.right + 7, self.corners_button.y + 10), MUTED,
+             max_width=self._preview_frame.left - self.corners_button.right - 15)
+        if self._show_corners:
+            self._draw_slots(screen, self.corner_rows, self.plan.corners, tile_images, text, button)
+        text(screen, "Automatische Ecken · Oben/Unten zuerst", (left, y + 366), MUTED,
+             max_width=self._preview_frame.left - left - 8)
 
         preview = {(cell.x, cell.y): cell for cell in self.plan.preview(level_map)}
         self._draw_preview(screen, level_map, tile_images, preview, text)
@@ -203,9 +226,30 @@ class BorderBuilderUI:
             text(screen, "Anwenden", (self.apply_button.x + 8, self.apply_button.y + 5), MUTED)
 
         usable = self.apply_button.left - self.cancel_button.right - 20
-        text(screen, self._message or self._slot_detail() or "Nur Boden-Grafik · Strg+Z macht rückgängig.",
+        text(screen, self._message or self._slot_detail() or self._art_hint()
+             or "Nur Boden-Grafik · Strg+Z macht rückgängig.",
              (self.cancel_button.right + 9, self.cancel_button.y + 6), ACCENT if self._message else MUTED,
              max_width=usable)
+
+    def _draw_art(self, screen, action_id, label, rect, button, *, active=False, selected=False):
+        hovered = self._pointer is not None and rect.collidepoint(self._pointer)
+        if self.button_art is not None:
+            self.button_art.draw(screen, action_id, label, rect, active=active, selected=selected,
+                                 hovered=hovered)
+        else:
+            button(screen, label, rect, ACCENT if active or selected or hovered else None)
+
+    def _art_hint(self):
+        if self._pointer is None:
+            return None
+        if self.all_button.collidepoint(self._pointer):
+            return "Alle vier Randseiten gemeinsam ein- oder ausschalten."
+        if self.corners_button.collidepoint(self._pointer):
+            return "Optionale Eckgrafiken ein- oder ausblenden."
+        for key, slot in self.side_rows.items():
+            if slot.toggle.collidepoint(self._pointer):
+                return f"{LABELS[key]} · Diese Randseite ein- oder ausschalten."
+        return None
 
     def _slot_detail(self):
         key = self._hover_slot
@@ -220,9 +264,14 @@ class BorderBuilderUI:
 
     def _draw_slots(self, screen, rows, choices, tile_images, text, button):
         for key, slot in rows.items():
-            text(screen, LABELS[key], slot.label_pos, TEXT)
             tile = choices.get(key)
-            button(screen, "An" if tile else "Aus", slot.toggle, ACCENT if tile else None)
+            if key in SIDES:
+                self._draw_art(screen, f"border_{key}", LABELS[key], slot.toggle, button, active=bool(tile))
+                text(screen, "An" if tile else "Aus", (slot.toggle.right + 3, slot.toggle.y + 9),
+                     ACCENT if tile else MUTED)
+            else:
+                text(screen, LABELS[key], slot.label_pos, TEXT)
+                button(screen, "An" if tile else "Aus", slot.toggle, ACCENT if tile else None)
             pygame.draw.rect(screen, (29, 43, 62), slot.choose, border_radius=5)
             highlighted = key in (self._target, self._hover_slot)
             pygame.draw.rect(screen, ACCENT if highlighted else STROKE, slot.choose,
@@ -237,13 +286,13 @@ class BorderBuilderUI:
                     label = "Wartet"
             if key == self._target:
                 label = "Links wählen"
-            label_x = slot.choose.x + 5
+            label_x, label_y = slot.choose.x + 5, slot.choose.y + 4
             if swatch_tile in tile_images and key != self._target:
                 if swatch_tile not in self._swatches:
                     self._swatches[swatch_tile] = pygame.transform.scale(tile_images[swatch_tile], (19, 19))
-                screen.blit(self._swatches[swatch_tile], (label_x, slot.choose.y + 5))
+                screen.blit(self._swatches[swatch_tile], (label_x, label_y))
                 label_x += 24
-            text(screen, label, (label_x, slot.choose.y + 5), TEXT if tile else MUTED,
+            text(screen, label, (label_x, label_y), TEXT if tile else MUTED,
                  max_width=slot.choose.right - label_x - 4)
 
     def _draw_preview(self, screen, level_map, tile_images, preview, text):

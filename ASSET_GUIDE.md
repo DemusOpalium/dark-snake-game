@@ -1,7 +1,7 @@
 # 🐍 DARK SNAKE – Asset-Legende für Menschen und Coding-Agenten
-**Bestandsprüfung:** 14.11.2026, Git-Commit `6e1e5c8e8ee6` nach PR #166. **Keine Umstrukturierung oder Grafik-Integration durch dieses Dokument.**
+**Stand vom 14.11.2026 · World Studio nach PR #168 mit Editor-Button-Integration**
 
-> **Kurzregel:** `Dark_Snake/assets/` = Spiel-/EXE-Laufzeitdaten. `GamePICs/` = Entwürfe, Originale, Uploads, Screenshots und zukünftige Spielgrafiken. Eine Datei im Repository ist **nicht automatisch im Spiel eingebunden**.
+> `Dark_Snake/assets/` enthält die Spiel- und EXE-Laufzeitdaten. `GamePICs/` enthält Originale, Entwürfe und Referenzen. Die passenden Laufzeitkataloge dokumentieren die tatsächlich verwendeten Dateien.
 
 ## Verbindliche Wege
 
@@ -12,7 +12,8 @@
 | `Dark_Snake/assets/` | Laufzeitgrafiken, Levelvorlagen, Audio und Kataloge | **Ja**, `--add-data "Dark_Snake/assets;assets"` |
 | `Dark_Snake/assets/graphics/frostage/` | 175 importierte FrostAge-PNGs plus `catalog.json` | **Ja** |
 | `GamePICs/Incoming/Frost_Tiles/` | 175 unveränderte FrostAge-Originale + Importhinweise | **Nein**, nicht direkt |
-| `GamePICs/Build/`, `File/`, `Effects/`, `Layers/` usw. | 81 **neu hochgeladene, englisch beschriftete Editor-Button-Bilder** in elf Gruppen (inkl. `EditorBigs/`) | **Nein**, noch nicht importiert |
+| `Dark_Snake/assets/graphics/editor_ui/` | 48 geprüfte Editor-Button-PNGs mit stabilen Action-IDs und Herkunftsnachweis | **Ja** |
+| `GamePICs/Build/`, `File/`, `Effects/`, `Layers/` usw. | Alle 81 Originale der englisch beschrifteten Editor-Button-Grafiken | 48 bytegleiche Kopien unter `editor_ui/` |
 | `GamePICs/DarkSnake-NeueHeads/` | 53 neue Head-Kandidaten / Rohentwürfe | **Nein**, noch nicht registriert |
 | `GamePICs/DarkSnake-KörperNeuDesign/` | 15 Body-Kandidaten / Rohentwürfe | **Nein**, noch nicht registriert |
 | `GamePICs/` (weitere Bilder) | Projekt-Screenshots, Referenzen, Konzeptgrafiken; einige in README verlinkt | Nur wenn separat in `assets/` importiert |
@@ -21,60 +22,57 @@
 | `.github/workflows/` | Windows-Build, CodeQL, Release-Automation | Nein |
 | `ROADMAP.md` | Verwirklicht / geplant und Reihenfolge | Nein |
 
-**Zählbasis:** Das Repository enthält im Stand dieses Audits 344 Dateien unter `GamePICs/` (rund 119,8 MB) und 1.017 Dateien unter `Dark_Snake/assets/` (rund 125,2 MB, jeweils unkomprimierte Git-Dateigrößen). Der [JSON-Snapshot](GamePICs/asset_inventory.json) enthält **alle 81 neuen Button-Dateipfade** und **alle 68 neuen Kopf-/Körperdateipfade** samt Git-Blob-SHA und Dateigröße. Für den FrostAge-Import ist `catalog.json` das maßgebliche Laufzeitverzeichnis.
+Der datierte Staging-Snapshot enthält alle 81 Button-Dateipfade und alle 68 Kopf-/Körperdateipfade samt Git-Blob-SHA und Größe. Für den aktuellen Einsatz gelten die beiden Laufzeitkataloge. [Staging-Snapshot](GamePICs/asset_inventory.json) · [Editor-Buttons](Dark_Snake/assets/graphics/editor_ui/catalog.json) · [FrostAge](Dark_Snake/assets/graphics/frostage/catalog.json)
 
-## Die 81 Editor-Buttons: elf Ordner
+## Die 48 eingebundenen Editor-Grafiken
 
-| Originalordner | Dateien | Einsatz |
-| --- | ---: | --- |
-| `Build` | 14 | Bauen, Rand links/rechts/oben/unten, Ecke, Mittelfeld, verschieben, Größe, Favoriten, Suche, Tile-Bibliothek |
-| `Building Blocks` | 7 | Größere Kategorien: Ground Tile, Wall, Barrier, Roof, Lighting, Events |
-| `EditorBigs` | 8 | Große Alternativdesigns: Ceiling, Collision, Damage, Events, Light, Roof, Slow, Floor Object |
-| `Effects` | 5 | Damage, Slow, Effektwerte und Dachwerte |
-| `File` | 9 | Neu, Öffnen, Speichern, Welten, Undo/Redo, Classic-Auswahl |
-| `General` | 5 | Allgemeine Konzepte: Settings, Language, About, Exit |
-| `Layers` | 9 | Boden, Objekte, Dach, Kollision, Sichtbarkeit, Layer Lock, Ebenen |
-| `Learn` | 5 | Lernmodus, Beispiel, Guided Build (teilweise **geplant**) |
-| `Miscellaneos` | 4 | Künftige Truhe, Coin/Item, D20 |
-| `Test` | 6 | Vorschau, 1P, 2P, Dach-Demo, Test-Ende |
-| `View` | 9 | Einpassen, Panel/Bibliothek, Zell-Inspektion, Overlays |
+Der Katalog dokumentiert für jede Action-ID den Originalpfad, den Laufzeitdateinamen, die nativen Abmessungen, die sichtbare Fläche und den SHA-256-Wert. Die PNGs belegen zusammen 16.881.238 Byte. Beim Rendern kann der vollständig transparente Außenbereich ausgespart werden. Das Bild behält sein Seitenverhältnis und den englischen Schriftzug. Deutsche Hinweise gehören zur Action-ID und können später gemeinsam mit den Ersatzbeschriftungen übersetzt werden. [Editor-Button-Katalog](Dark_Snake/assets/graphics/editor_ui/catalog.json)
 
-**Bildstatus:** Diese Button-Grafiken sind **benannte, gestaltete, ausgeschnittene Entwürfe mit teils englischem Schriftzug**. Es sind **keine** reinen textfreien `icon_id`-Icons. Die ältere Blueprint-JSON beschreibt abstrakte Icon-IDs; diese Namen dürfen **nicht ohne geprüfte Zuordnung** als Dateipfade interpretiert werden.
-
-**Beispiele für überprüfbare Kandidaten** (Mapping nur geplant, **keine** aktuelle Spiel-Verknüpfung):
-
-| Funktion / action id | Bildquelle |
+| Bereich | Zuordnung der vorhandenen Aktionen zu den Grafik-IDs |
 | --- | --- |
-| Speichern / `file_save` | `GamePICs/File/Save-removebg-preview.png` |
-| Boden / `layer_ground` | `GamePICs/Layers/Ground-removebg-preview.png` |
-| Objekte / `layer_objects` | `GamePICs/Layers/Objects-removebg-preview.png` |
-| Dach / `layer_roof` | `GamePICs/Layers/Roof-removebg-preview.png` |
-| WALL / `collision_wall` | `GamePICs/Building Blocks/Wall-removebg-preview.png` |
-| BARRIER / `collision_barrier` | `GamePICs/Building Blocks/Barrier-removebg-preview.png` |
-| Schaden / `effect_damage` | `GamePICs/Effects/Damage-removebg-preview.png` |
-| Slow / `effect_slow` | `GamePICs/Effects/Slow-removebg-preview.png` |
-| Rand links / `border_left` | `GamePICs/Build/Border_Left-removebg-preview.png` (**Rand-Builder noch geplant**) |
-| Rand oben / `border_top` | `GamePICs/Build/Border_Top-removebg-preview.png` (**Rand-Builder noch geplant**) |
-| Dachwerte / `roof_settings` | `GamePICs/Effects/Roof_Value-removebg-preview.png` |
-| Test 1P / `test_player_1` | `GamePICs/Test/Test_1P-removebg-preview.png` |
-| Karte einpassen / `view_fit_map` | `GamePICs/View/Fit_Map-removebg-preview.png` |
+| Hauptnavigation (7) | Datei `nav_file`, Bauen `nav_build`, Ebenen `nav_layers`, Effekte `nav_effects`, Ansicht `nav_view`, Testen `nav_test`, Lernen `nav_learn` |
+| Datei (8) | Neu `file_new`, Öffnen `file_open`, Speichern `file_save`, Welten `file_worlds`, Undo `file_undo`, Redo `file_redo`, Für Classic wählen `file_use_classic`, Classic-Standard `file_classic_default` |
+| Bauen (4) | Mittelfeld `build_middle`, Objekt verschieben `build_move_objects`, Objektgröße `build_object_size`, Tile-Bibliothek `build_tile_library` |
+| Rand-Builder (6) | Linke, rechte, obere und untere Seite `border_left`, `border_right`, `border_top`, `border_bottom`, Gesamter Rand `border_all`, Eckgrafiken `border_corner` |
+| Ebenen und Kollision (7) | Boden `layer_ground`, Objekte `layer_objects`, Dach `layer_roof`, Kollision `layer_collision`, Effekte `layer_effects`, WALL `collision_wall`, BARRIER `collision_barrier` |
+| Effekt- und Dachwerkzeuge (4) | Schaden `effect_damage`, Slow `effect_slow`, Effektwerte `effect_values`, Dachwerte `roof_settings` |
+| Ansicht (7) | Karte einpassen `view_fit_map`, Bibliothek `view_library`, Arbeitsbereich `view_panel`, Zelle untersuchen `view_cell`, Kollision `view_collision`, Effekte `view_effects`, Dachansicht `view_roof` |
+| Testen (5) | Vorschau starten `test_preview`, Test 1P `test_player_1`, Test 2P `test_player_2`, Dach-Demo `test_roof_demo`, Test beenden `test_stop` |
 
-Die **vollständige** Zuordnung zwischen tatsächlichen Menüaktionen und Grafiken gehört in einen **separaten Integrations-PR**. Ein rein ähnlicher Name reicht nicht als Prüfung. `EditorBigs` sind große Kategoriegrafiken und nicht automatisch Ersatz für kleine Aktionsbuttons.
+Hilfe, der Einstieg **Rand**, **Vorschau beenden**, **Auf Dachebene** und weitere Aktionen ohne passendes Motiv behalten lesbare Textschaltflächen. **Border (All)** befindet sich bei der Auswahl aller Seiten im Rand-Builder. **Lernen** führt zur vorhandenen Dach-Demo.
 
-## FrostAge: Bereits integriert ≠ voll spielmechanisch aktiviert
+## Die 33 reservierten Editor-Grafiken
 
-- `GamePICs/Incoming/Frost_Tiles/`: **175 ursprüngliche PNGs**, darunter 126 Flächen-/Objekt-/Dachgrafiken, 11 AoE, 12 Menübuttons, 8 Gegner, 5 Items und 13 Projektile. Der Ordner ist **Staging**.
+Die Dateinamen stehen ohne den gemeinsamen Suffix `-removebg-preview.png` in der Tabelle. Die Quelldateien und ihre exakten Pfade stehen im Inventar. [Staging-Snapshot](GamePICs/asset_inventory.json)
+
+| Ordner | Reserviert | Grund |
+| --- | --- | --- |
+| `Build` (3) | `Build_Symbol_Text`, `Favorite`, `Search` | Alternative Navigation. Favoriten und Suche haben bereits eine Kategorieliste und ein Eingabefeld. |
+| `Building Blocks` (5) | `Building_Blocks`, `Event_-_Triggers`, `Ground_Tile`, `Lighting`, `Roof_-_Foreground` | Kategorietitel, zusätzliche Entwürfe für vorhandene Ebenen und geplante Werkzeuge für Licht und Trigger. |
+| `EditorBigs` (8) | `Ceiling`, `Collision`, `Damage`, `Events`, `floor_object`, `Light`, `Roof`, `Slow` | Alternative Großformate für eine spätere Gestaltung. |
+| `General` (5) | `About`, `De-En_Language`, `Exit`, `General`, `Settings` | Konzepte für eigene Studio-Aktionen und Sprachwechsel. Der Editor verwendet seine bestehenden Dialoge sowie F2 und Esc zum Schließen. |
+| `Layers` (3) | `All_Layers`, `Lock_layers`, `Show_Hide` | Vorgesehen für den Layer Explorer mit Sichtbarkeit, Sperren und Ansichtsmodi. |
+| `Learn` (4) | `Examples`, `Guided_Build`, `Learn_Tutorial`, `My_FIrst_LvL` | Vorgesehen für den geführten Kurs und weitere Beispiele. |
+| `Miscellaneos` (4) | `Chest`, `Coin_-_Item`, `Miscellaneous`, `Random_D20` | Konzepte für spätere platzierbare Interaktionen und Events. |
+| `View` (1) | `View_Map` | Die vorhandenen Aktionen heißen Karte einpassen und Vorschau starten. |
+
+## FrostAge-Laufzeitkatalog und nächste Spielprofile
+
+- `GamePICs/Incoming/Frost_Tiles/` enthält **175 ursprüngliche PNGs**, darunter 126 Flächen-/Objekt-/Dachgrafiken, 11 AoE, 12 Menübuttons, 8 Gegner, 5 Items und 13 Projektile.
 - `scripts/frostage_catalog.py --write` baut das Laufzeitpaket `Dark_Snake/assets/graphics/frostage/` aus dem Originalbestand; `--check` kontrolliert die Zuordnung. **Nicht manuell per Drag-and-drop Originale in die Laufzeitbibliothek umbenennen.**
 - `Dark_Snake/modules/frostage_assets.py` lädt Asset-Metadaten aus `catalog.json` und Grafiken bei Bedarf. **Das ist der maßgebliche Katalog.**
-- World Studio kann Grafikobjekte platzieren; **Roof/Foreground und Dach-Sichtfenster sind seit PR #154 spielbar**. Das Hauptmenü nutzt FrostAge-Buttonassets.
-- Die neuen FrostAge-Gegner/Items/Projektile/AoE sind **nicht allein durch den PNG-Import als individuelle neue Spielmechanik implementiert**. Datenprofile, Spawns, Kollisionen, Treffer und Tests sind eigene Arbeitspakete.
-- Grafik, Render-Ebene, Kollision und Schaden sind **vier getrennte Eigenschaften**. Ein Feuerbild löst nicht automatisch einen Damage-Effekt aus.
+- World Studio kann Grafikobjekte platzieren. Roof/Foreground und Dach-Sichtfenster sind seit PR #154 spielbar. Das Hauptmenü nutzt FrostAge-Buttons.
+- **8 Gegnerbilder** können eigene Profile mit stabiler ID, Ausrichtung, Bewegung, HP, Schaden, Projektil und Spawn erhalten. Die vorhandenen Regeln von `NormalEnemy` und `BolbuEnemy` sowie die Boss-Klassen sind Ausgangspunkte.
+- **13 Projektilbilder** brauchen Profile für Tempo, Lebensdauer, Richtung, Schaden und Trefferverhalten. Dafür die vorhandenen Rasterprojektile sowie Feuerball-, Boss- und Bolbu-Projektile wiederverwenden. Eine Animation braucht ausdrücklich definierte Einzelbilder und Reihenfolge.
+- **11 AoE-Bilder** lassen sich gezielt Schadens-, Heilungs- und Debuffzonen zuordnen. Laufzeit, Intervalle und Wirkung kommen aus einem ausdrücklichen Profil auf Basis der bestehenden `AoEZone`-Klassen, des Frost-Prototyps oder der Editor-Effektfelder.
+- **5 Itembilder** brauchen geprüfte Zuordnungen zu `ItemType` und `ITEM_IMAGES` sowie eigene Aufnahme- und Interaktionsregeln. Schlüssel, Truhen und Belohnungen werden bei entsprechender Eignung der Motive in getrennten Gameplay-PRs umgesetzt.
+- Grafik, Render-Ebene, Kollision und Schaden sind getrennte Eigenschaften. Ein reines Grafikobjekt hat die Wirkung seiner Ebene.
 
-## Neue Snake-Heads und Bodies: Noch keine freischaltbaren Skins
+## Neue Köpfe und Körper für die geplante Skin-Galerie
 
-- 53 Dateien liegen unter `GamePICs/DarkSnake-NeueHeads/`, 15 unter `GamePICs/DarkSnake-KörperNeuDesign/`; darunter Roh-Snips und andere Designreferenzen. Noch keine Freigabe aller Dateien als einzelne 30×30-Sprites.
-- `Dark_Snake/modules/customization.py` bietet derzeit **vier fest verdrahtete Kopfoptionen**. Für Bodies liest es `assets/graphics/SnakeBodysBibliothek` per relativem Arbeitsverzeichnis; dieser Pfad ist **nicht** über `modules.resources` aufgelöst und sollte in einem eigenen Fix aktualisiert werden.
-- Nächster **getrennter** Character-/Customization-PR: Quellen sichten, gültige Heads/Bodies auswählen, stabile Skin-IDs vergeben, portable Pfade und Liste/Katalog verwenden, scrollbares responsives Auswahlraster, Live-Vorschau bei Spielgröße und Head/Body-Kombinationsprüfung. Erst danach optional Unlocks über Spielziele; Freischaltungen **noch nicht aktiv**.
+- `GamePICs/DarkSnake-NeueHeads/` enthält 53 Kopfdesigns und `GamePICs/DarkSnake-KörperNeuDesign/` 15 Körperdesigns, darunter Roh-Snips und Referenzen. Die Auswahl geeigneter 30×30-Sprites gehört in einen eigenen PR.
+- Die aktuelle Grafikoption verwendet `ExtendedOptionsMenu`. Sie sucht Ressourcen über `find_asset_directory` und speichert die Auswahl je Spieler. Das ältere `CustomizationMenu` hat vier feste Kopfoptionen und lädt Körperbilder aus einem relativen Pfad.
+- Die geplante Galerie übernimmt geprüfte Sprites mit stabilen Skin-IDs, portablen Pfaden, Scrollen und Vorschau in Spielgröße. Kombinationsprüfung und mögliche Freischaltungen durch Spielerfolge folgen mit eigenen Tests.
 
 ## Agenten-Regeln für jede künftige Asset-Aufgabe
 
@@ -93,15 +91,16 @@ Die **vollständige** Zuordnung zwischen tatsächlichen Menüaktionen und Grafik
 
 - **Windows-Build:** Das Workflow-Skript `.github/workflows/python-app.yml` bündelt explizit `Dark_Snake/assets` (und Python-/Modulcode), **nicht den Ordner `GamePICs`**. Staging/Referenzbilder gelangen deshalb nicht allein durch das Hochladen in die EXE.
 - **GitHub-Quellcode-Download / Clone:** Hier bleiben `GamePICs`-Originale dagegen Teil des Repositorys. **Nur Verschieben in einen anderen Ordner desselben Repositorys spart keinen Clone-/ZIP-Speicher.** Erst eine bewusste Trennung in externe Quelldaten, sparsamen Checkout oder Git-LFS-Konzept kann langfristig helfen. Kein Git-Verlauf-Rewrite ohne separate Planung.
-- **Praktischer Beschluss:** Erst **Dokumentation und Kennzeichnung**, nicht sofort massenhaft umbenennen/löschen. Nach bestätigter Integration mit Messungen über echte Paketgröße oder Ladezeit sprechen.
+- Für die 48 Editor-Buttons kommen rund 16,1 MiB an PNG-Dateien zum Laufzeitbestand hinzu. Beim Laden und Skalieren werden die verwendeten Varianten im Speicher vorgehalten.
 
 ## Projektstatus und nächste Arbeiten
 
-✅ PR #154: Roof/Foreground. ✅ PR #155: neue Editorfenster-/Sidebar-/Kartenkamera-Struktur.  
-✅ PRs #156–#166: neu hochgeladene Grafiken im Repository. **Noch keine Einbindung der 81 Bilder in die Editorsteuerung.**  
-⬜ Rand-Builder, vollständige Ebenensteuerung und Undo-sicheres Löschen.  
-⬜ DE/EN-Hilfe und interaktiver Lernmodus.  
-⬜ Lighting, Events/Trigger, erweiterte FrostAge-Profile, Snake-Skin-Galerie.
+- ✅ PR #154 · Roof/Foreground. ✅ PR #155 · Editorfenster, Seitenleisten und Kartenkamera.
+- ✅ PRs #156–#166 · Originale der Editor-Buttons. ✅ PR #168 · Rand-Builder.
+- 🔧 Editor-Button-Integration · 48 verwendete Grafiken und 33 reservierte Originale.
+- ⬜ Layer Explorer und sicheres Löschen mit Undo/Redo.
+- ⬜ DE/EN-Hilfe und interaktiver Lernmodus.
+- ⬜ Lighting, Events/Trigger, erweiterte FrostAge-Profile, Snake-Skin-Galerie.
 
 **Hinweis:** Ältere `PROJECT_STATE.md` / `DEV_STRUCTURE.md` enthalten Aussagen aus früheren Alpha-Ständen. Für eine Änderung immer **aktuellen Code, Tests und PRs** prüfen, statt alte Statusangaben ungeprüft zu übernehmen.
 

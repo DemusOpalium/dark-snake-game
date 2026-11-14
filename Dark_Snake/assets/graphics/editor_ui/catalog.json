@@ -1,0 +1,629 @@
+{
+  "version": 1,
+  "buttons": {
+    "border_all": {
+      "file": "border_all.png",
+      "source": "GamePICs/Build/Border_all-removebg-preview.png",
+      "sha256": "30f5de2b8f5f44cd54bda2aedc0497e5ec7c3bda9486bbeaa6cf8e6a20f00f1a",
+      "width": 1109,
+      "height": 225,
+      "art_bounds": [
+        6,
+        5,
+        1099,
+        219
+      ]
+    },
+    "border_bottom": {
+      "file": "border_bottom.png",
+      "source": "GamePICs/Build/Border_bottom-removebg-preview.png",
+      "sha256": "9183f72fa68d78d1d78989f7e651e569cd836b7c14fab26501127ce30fed9380",
+      "width": 1171,
+      "height": 213,
+      "art_bounds": [
+        2,
+        1,
+        1167,
+        212
+      ]
+    },
+    "border_corner": {
+      "file": "border_corner.png",
+      "source": "GamePICs/Build/Corner-removebg-preview.png",
+      "sha256": "0c40decd0740f03fd53a64c03e2d04b603d81aaae37d574eca73f347cf3a7b69",
+      "width": 1162,
+      "height": 215,
+      "art_bounds": [
+        5,
+        0,
+        1157,
+        215
+      ]
+    },
+    "border_left": {
+      "file": "border_left.png",
+      "source": "GamePICs/Build/Border_Left-removebg-preview.png",
+      "sha256": "5033fb27de1741869da92451a3bd22e513d7111f64f23f2291a01149507d2c95",
+      "width": 1158,
+      "height": 215,
+      "art_bounds": [
+        0,
+        2,
+        1156,
+        213
+      ]
+    },
+    "border_right": {
+      "file": "border_right.png",
+      "source": "GamePICs/Build/Border_Right-removebg-preview.png",
+      "sha256": "db7e2f7628b8df4d9f8dc309cca5dcf7d757e7db8497d9c9afe85618a2fe2f5f",
+      "width": 1158,
+      "height": 215,
+      "art_bounds": [
+        1,
+        0,
+        1155,
+        213
+      ]
+    },
+    "border_top": {
+      "file": "border_top.png",
+      "source": "GamePICs/Build/Border_Top-removebg-preview.png",
+      "sha256": "d52733de9160401747aaf8e524c6000066f62ec498f9e20384ad3a3ebbad0af2",
+      "width": 1153,
+      "height": 216,
+      "art_bounds": [
+        0,
+        3,
+        1153,
+        213
+      ]
+    },
+    "build_middle": {
+      "file": "build_middle.png",
+      "source": "GamePICs/Build/Middle_Area-removebg-preview.png",
+      "sha256": "dfd23f550d2958bc1710d32f222ddb25639834bdd145c25e468203b240390cb6",
+      "width": 1138,
+      "height": 219,
+      "art_bounds": [
+        4,
+        0,
+        1132,
+        217
+      ]
+    },
+    "build_move_objects": {
+      "file": "build_move_objects.png",
+      "source": "GamePICs/Build/Move_Objects-removebg-preview.png",
+      "sha256": "cccfb4bb54444bf13cab24e7114aecd5e767f03071df973209e9fa2d92a7f90e",
+      "width": 1164,
+      "height": 214,
+      "art_bounds": [
+        5,
+        0,
+        1159,
+        213
+      ]
+    },
+    "build_object_size": {
+      "file": "build_object_size.png",
+      "source": "GamePICs/Build/Object_Size-removebg-preview.png",
+      "sha256": "e0b324c127314da5dc63abec28f671b61e26e786a26d45ad32af4a5d1c896179",
+      "width": 1152,
+      "height": 216,
+      "art_bounds": [
+        0,
+        1,
+        1150,
+        215
+      ]
+    },
+    "build_tile_library": {
+      "file": "build_tile_library.png",
+      "source": "GamePICs/Build/Tile_Library-removebg-preview.png",
+      "sha256": "6331ef8e4f89c1bb8672753bcc028156dae86a41f2308f79bb9b47fe9f51f4f9",
+      "width": 1082,
+      "height": 230,
+      "art_bounds": [
+        1,
+        4,
+        1079,
+        224
+      ]
+    },
+    "collision_barrier": {
+      "file": "collision_barrier.png",
+      "source": "GamePICs/Building Blocks/Barrier-removebg-preview.png",
+      "sha256": "2bf5a8a18046d27865b530cbe377339915ad5ef87b7ee1b7350b99de84e91c45",
+      "width": 1291,
+      "height": 193,
+      "art_bounds": [
+        0,
+        2,
+        1289,
+        191
+      ]
+    },
+    "collision_wall": {
+      "file": "collision_wall.png",
+      "source": "GamePICs/Building Blocks/Wall-removebg-preview.png",
+      "sha256": "4118d002c65e99269fafdd1ada91edb4ba18686bbb63cb7097976395214a356e",
+      "width": 1299,
+      "height": 192,
+      "art_bounds": [
+        5,
+        2,
+        1293,
+        190
+      ]
+    },
+    "effect_damage": {
+      "file": "effect_damage.png",
+      "source": "GamePICs/Effects/Damage-removebg-preview.png",
+      "sha256": "a904213383144e09ebd42acac699b8e640a45e9ffbce17899cfcbe4336842782",
+      "width": 1067,
+      "height": 234,
+      "art_bounds": [
+        3,
+        0,
+        1064,
+        234
+      ]
+    },
+    "effect_slow": {
+      "file": "effect_slow.png",
+      "source": "GamePICs/Effects/Slow-removebg-preview.png",
+      "sha256": "a726950ca65ee18fa91f27c5d2dfde1871fa97ed5d02f7f0ea6117a37315e866",
+      "width": 1094,
+      "height": 228,
+      "art_bounds": [
+        3,
+        3,
+        1090,
+        225
+      ]
+    },
+    "effect_values": {
+      "file": "effect_values.png",
+      "source": "GamePICs/Effects/Effect_Values-removebg-preview.png",
+      "sha256": "479b2dfaf78dc9389f44da72ca6a320cd7add1c3e7cd28aa77fa0cd467fc83de",
+      "width": 1105,
+      "height": 226,
+      "art_bounds": [
+        0,
+        1,
+        1103,
+        224
+      ]
+    },
+    "file_classic_default": {
+      "file": "file_classic_default.png",
+      "source": "GamePICs/File/Classic_Default-removebg-preview.png",
+      "sha256": "525f9e49c2e8d2a2d72f5d0eed982c65b89a36c601c4c1aa7856d73f582ac6a3",
+      "width": 1108,
+      "height": 225,
+      "art_bounds": [
+        7,
+        2,
+        1101,
+        223
+      ]
+    },
+    "file_new": {
+      "file": "file_new.png",
+      "source": "GamePICs/File/New-removebg-preview.png",
+      "sha256": "938bf9f553eebfd51095cfe0460d6b5e406ec0e1e24d54920f9f467e848cf3a7",
+      "width": 1087,
+      "height": 229,
+      "art_bounds": [
+        6,
+        5,
+        1075,
+        220
+      ]
+    },
+    "file_open": {
+      "file": "file_open.png",
+      "source": "GamePICs/File/Open-removebg-preview.png",
+      "sha256": "1a91ef3cac1fe995de48b227fee8379e758b1fef4645b0009792744998df54f1",
+      "width": 1083,
+      "height": 230,
+      "art_bounds": [
+        6,
+        5,
+        1074,
+        220
+      ]
+    },
+    "file_redo": {
+      "file": "file_redo.png",
+      "source": "GamePICs/File/Redo-removebg-preview.png",
+      "sha256": "a005733f757d8c5b9db7c9917b916807dc735b6908b9a47c742a59f5ddd7c6b6",
+      "width": 1121,
+      "height": 222,
+      "art_bounds": [
+        5,
+        2,
+        1114,
+        220
+      ]
+    },
+    "file_save": {
+      "file": "file_save.png",
+      "source": "GamePICs/File/Save-removebg-preview.png",
+      "sha256": "b30acae8a28de6a33b5087cc2a6462daa84590803a857948080cac329baa7a67",
+      "width": 1081,
+      "height": 231,
+      "art_bounds": [
+        0,
+        2,
+        1081,
+        228
+      ]
+    },
+    "file_undo": {
+      "file": "file_undo.png",
+      "source": "GamePICs/File/Undo-removebg-preview.png",
+      "sha256": "4af59d371c206c30753bc1a4c779054ff2c2e1800ca0ea327877fd0aba072603",
+      "width": 1104,
+      "height": 226,
+      "art_bounds": [
+        2,
+        0,
+        1101,
+        225
+      ]
+    },
+    "file_use_classic": {
+      "file": "file_use_classic.png",
+      "source": "GamePICs/File/Use_in_Classic-removebg-preview.png",
+      "sha256": "680d994eb3cbc1795b1414e90578a661b31a62bfb84540bc54c417a1ca1212f4",
+      "width": 1099,
+      "height": 227,
+      "art_bounds": [
+        0,
+        0,
+        1097,
+        227
+      ]
+    },
+    "file_worlds": {
+      "file": "file_worlds.png",
+      "source": "GamePICs/File/Worlds-removebg-preview.png",
+      "sha256": "26738d77cdf7054359f1fdeb440d51fb588cdf3566376287941850f7283982cd",
+      "width": 1099,
+      "height": 227,
+      "art_bounds": [
+        4,
+        1,
+        1092,
+        225
+      ]
+    },
+    "layer_collision": {
+      "file": "layer_collision.png",
+      "source": "GamePICs/Layers/Collision-removebg-preview.png",
+      "sha256": "d024f45aa8451a18367084743606123d706e42b9d18075db70fbc5a02850c23d",
+      "width": 1095,
+      "height": 228,
+      "art_bounds": [
+        0,
+        4,
+        1093,
+        224
+      ]
+    },
+    "layer_effects": {
+      "file": "layer_effects.png",
+      "source": "GamePICs/Layers/Effects-removebg-preview.png",
+      "sha256": "48d2dd7b670dc5d2804ec8edd5ebdb8c8b9d3e72085377aacece942cf00c9027",
+      "width": 1089,
+      "height": 229,
+      "art_bounds": [
+        0,
+        4,
+        1088,
+        225
+      ]
+    },
+    "layer_ground": {
+      "file": "layer_ground.png",
+      "source": "GamePICs/Layers/Ground-removebg-preview.png",
+      "sha256": "bc699470a50337ad9065362e3615aca20d2521bb9563f39b9c10c4c78833288c",
+      "width": 1079,
+      "height": 231,
+      "art_bounds": [
+        1,
+        2,
+        1078,
+        226
+      ]
+    },
+    "layer_objects": {
+      "file": "layer_objects.png",
+      "source": "GamePICs/Layers/Objects-removebg-preview.png",
+      "sha256": "e7dcc718f0cd65e5133742ccd2555264b5d52777d6f7fc9745406cdefc6e82b9",
+      "width": 1051,
+      "height": 237,
+      "art_bounds": [
+        0,
+        1,
+        1050,
+        235
+      ]
+    },
+    "layer_roof": {
+      "file": "layer_roof.png",
+      "source": "GamePICs/Layers/Roof-removebg-preview.png",
+      "sha256": "e8fd10cf71be5e58430829db2143e5ef598f7c9121c902f97996c4730ec80330",
+      "width": 1109,
+      "height": 225,
+      "art_bounds": [
+        0,
+        2,
+        1109,
+        223
+      ]
+    },
+    "nav_build": {
+      "file": "nav_build.png",
+      "source": "GamePICs/Build/Build-removebg-preview.png",
+      "sha256": "f0ed109271cabb6fedb23a64f20441c60e352c6c3ae536149e5c405244f0f4b1",
+      "width": 1171,
+      "height": 213,
+      "art_bounds": [
+        0,
+        0,
+        1171,
+        213
+      ]
+    },
+    "nav_effects": {
+      "file": "nav_effects.png",
+      "source": "GamePICs/Effects/Effects-removebg-preview.png",
+      "sha256": "328cb9db1685644e3ef6df5b54cb4f29c110a92b9cf3d73367432ddbfb308376",
+      "width": 1115,
+      "height": 224,
+      "art_bounds": [
+        0,
+        12,
+        1115,
+        203
+      ]
+    },
+    "nav_file": {
+      "file": "nav_file.png",
+      "source": "GamePICs/File/File-removebg-preview.png",
+      "sha256": "fd7d0d4d40f5bc4a890090df3ecdf812152c4abbf3317c77fa7d927cfb077708",
+      "width": 1126,
+      "height": 221,
+      "art_bounds": [
+        0,
+        9,
+        1126,
+        212
+      ]
+    },
+    "nav_layers": {
+      "file": "nav_layers.png",
+      "source": "GamePICs/Layers/Layers-removebg-preview.png",
+      "sha256": "ff18c15bf2514f19d432a1a8f0984f0d88147df12992824da32ccaaeb6ec4805",
+      "width": 1125,
+      "height": 222,
+      "art_bounds": [
+        0,
+        4,
+        1125,
+        218
+      ]
+    },
+    "nav_learn": {
+      "file": "nav_learn.png",
+      "source": "GamePICs/Learn/Learn-removebg-preview.png",
+      "sha256": "74e59fcb6ed7124dd8d6452b47263b6338bd74f0c579b775b70cb3108455f79c",
+      "width": 1222,
+      "height": 204,
+      "art_bounds": [
+        0,
+        0,
+        1222,
+        204
+      ]
+    },
+    "nav_test": {
+      "file": "nav_test.png",
+      "source": "GamePICs/Test/test-removebg-preview.png",
+      "sha256": "33e6fc64878b427dc85317a02746c5e38b5eb7d3370118f5879b1608c92f8909",
+      "width": 1156,
+      "height": 216,
+      "art_bounds": [
+        0,
+        4,
+        1156,
+        212
+      ]
+    },
+    "nav_view": {
+      "file": "nav_view.png",
+      "source": "GamePICs/View/View-removebg-preview.png",
+      "sha256": "09d210d17de83f35c1b8e677324b71149d5457773d7d9054f0d0240679a2be0f",
+      "width": 1157,
+      "height": 216,
+      "art_bounds": [
+        0,
+        5,
+        1157,
+        211
+      ]
+    },
+    "roof_settings": {
+      "file": "roof_settings.png",
+      "source": "GamePICs/Effects/Roof_Value-removebg-preview.png",
+      "sha256": "1eb5aa599fe997c967408eeafa3135b580fb0f2839b9fec5b9eed4f574b8a325",
+      "width": 1053,
+      "height": 237,
+      "art_bounds": [
+        0,
+        2,
+        1053,
+        235
+      ]
+    },
+    "test_player_1": {
+      "file": "test_player_1.png",
+      "source": "GamePICs/Test/Test_1P-removebg-preview.png",
+      "sha256": "28114f742593d460bb2fc33f63c911f74febcee73ebb4b9825afbc133fd392f7",
+      "width": 1109,
+      "height": 225,
+      "art_bounds": [
+        6,
+        2,
+        1101,
+        220
+      ]
+    },
+    "test_player_2": {
+      "file": "test_player_2.png",
+      "source": "GamePICs/Test/Test_2P-removebg-preview.png",
+      "sha256": "cde77d04ce072d7415ca912d00ba8b0198971f658bcdceb78d6911643c0096ab",
+      "width": 1102,
+      "height": 226,
+      "art_bounds": [
+        5,
+        3,
+        1095,
+        221
+      ]
+    },
+    "test_preview": {
+      "file": "test_preview.png",
+      "source": "GamePICs/Test/Start_Preview-removebg-preview.png",
+      "sha256": "0ab7f52f6a2205599b5afe6e1a3d3c5a83b6fd31410c024d27f6ec6c80aca8cc",
+      "width": 1116,
+      "height": 223,
+      "art_bounds": [
+        3,
+        3,
+        1111,
+        219
+      ]
+    },
+    "test_roof_demo": {
+      "file": "test_roof_demo.png",
+      "source": "GamePICs/Test/Roof_Demo-removebg-preview.png",
+      "sha256": "67f3c0cb84e4c6a5b90c8c5b08f0b724e2668ab207bceb4d4d0dd9749937d5eb",
+      "width": 1118,
+      "height": 223,
+      "art_bounds": [
+        5,
+        4,
+        1110,
+        217
+      ]
+    },
+    "test_stop": {
+      "file": "test_stop.png",
+      "source": "GamePICs/Test/Stop_Test-removebg-preview.png",
+      "sha256": "c1d26a8c1947ab8b289590761e46f161d411011c6ad12e4b579d8aec73ecaaa8",
+      "width": 1123,
+      "height": 222,
+      "art_bounds": [
+        3,
+        3,
+        1118,
+        217
+      ]
+    },
+    "view_cell": {
+      "file": "view_cell.png",
+      "source": "GamePICs/View/Cell_Inspect-removebg-preview.png",
+      "sha256": "0b1c486589a78a5de6defdb31d1aecba2c301f1062f3de2e45c7fbc51a76505e",
+      "width": 1168,
+      "height": 213,
+      "art_bounds": [
+        3,
+        5,
+        1162,
+        207
+      ]
+    },
+    "view_collision": {
+      "file": "view_collision.png",
+      "source": "GamePICs/View/Show_Collision-removebg-preview.png",
+      "sha256": "0bc8e670bebd8b92e8781596a0724038a9e4303dcee029dcea89ef8fe72fa5bd",
+      "width": 1172,
+      "height": 213,
+      "art_bounds": [
+        1,
+        3,
+        1170,
+        210
+      ]
+    },
+    "view_effects": {
+      "file": "view_effects.png",
+      "source": "GamePICs/View/Show_Effects-removebg-preview.png",
+      "sha256": "68349f856d012f2706a792420610b063ee9f2342774885c2ee59077e64303761",
+      "width": 1168,
+      "height": 213,
+      "art_bounds": [
+        3,
+        2,
+        1163,
+        209
+      ]
+    },
+    "view_fit_map": {
+      "file": "view_fit_map.png",
+      "source": "GamePICs/View/Fit_Map-removebg-preview.png",
+      "sha256": "4482b8f47b2cbd9c47ac1bebbe3bc79b8ed82319edbd73997373314828c0a511",
+      "width": 1174,
+      "height": 212,
+      "art_bounds": [
+        0,
+        3,
+        1173,
+        207
+      ]
+    },
+    "view_library": {
+      "file": "view_library.png",
+      "source": "GamePICs/View/Show_Library-removebg-preview.png",
+      "sha256": "35de16125b096d66ef74a6f9bb327adba46ee69dcac5f031f7e8501238ad801b",
+      "width": 1182,
+      "height": 211,
+      "art_bounds": [
+        4,
+        2,
+        1176,
+        209
+      ]
+    },
+    "view_panel": {
+      "file": "view_panel.png",
+      "source": "GamePICs/View/Show_Panel-removebg-preview.png",
+      "sha256": "9d1037ff13a918b246f2a505eed1fb3e01dd35bad7d920c6e264cef4f9d50160",
+      "width": 1169,
+      "height": 213,
+      "art_bounds": [
+        0,
+        2,
+        1169,
+        210
+      ]
+    },
+    "view_roof": {
+      "file": "view_roof.png",
+      "source": "GamePICs/View/Roof_View-removebg-preview.png",
+      "sha256": "73dfccddb4a8a9ee954e61d3f57f181c31ae3cda41b9cc27538dd70774721485",
+      "width": 1155,
+      "height": 216,
+      "art_bounds": [
+        3,
+        3,
+        1150,
+        212
+      ]
+    }
+  }
+}

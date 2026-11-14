@@ -5,6 +5,7 @@ from dataclasses import dataclass
 
 import pygame
 
+from modules.editor_buttons import EditorButtons
 from modules.graphic_objects import object_anchor_at
 
 
@@ -33,6 +34,7 @@ class _Entry:
     detail: str = ""
     action: Callable[[], None] | None = None
     active: bool = False
+    action_id: str | None = None
 
 
 def _tool_name(editor):
@@ -67,8 +69,9 @@ def _art_name(editor, key):
 class StudioSidebar:
     """Present the existing editor tools in one switchable right-hand pane."""
 
-    def __init__(self, font):
+    def __init__(self, font, button_art=None):
         self.font = font
+        self.button_art = button_art if button_art is not None else EditorButtons(font)
         self.tab = "properties"
         self._scroll = 0
         self._hover = None
@@ -99,16 +102,19 @@ class StudioSidebar:
                 _Entry("Slow", f"{editor.slow_brush.percent} % langsamer"),
             ))
             if editing:
-                entries.append(_Entry("Effektwerte öffnen", action=editor.open_effect_settings))
+                entries.append(_Entry("Effektwerte öffnen", action=editor.open_effect_settings,
+                                      action_id="effect_values"))
         elif editor.graphic_layer == "roof":
             visibility = editor.roof_visibility
             status = (f"{visibility.radius:g} Felder · {visibility.transparency} % · "
                       f"weicher Rand {visibility.softness:g}" if visibility.enabled else "Ausgeschaltet")
             entries.append(_Entry("Dach-Sichtfenster", status))
             if editing:
-                entries.append(_Entry("Dachwerte öffnen", action=editor.open_roof_settings))
+                entries.append(_Entry("Dachwerte öffnen", action=editor.open_roof_settings,
+                                      action_id="roof_settings"))
         if editing and (editor._move_anchor is not None or editor._selected_object() is not None):
-            entries.append(_Entry("Objektgröße ändern", action=editor._open_object_size))
+            entries.append(_Entry("Objektgröße ändern", action=editor._open_object_size,
+                                  action_id="build_object_size"))
         return entries
 
     def _layers(self, editor, editing):
@@ -119,23 +125,27 @@ class StudioSidebar:
                 label,
                 action=(lambda layer=layer: editor._set_graphic_layer(layer)) if editing else None,
                 active=mode in ("graphics", "combined") and editor.graphic_layer == layer,
+                action_id=f"layer_{layer}",
             ))
         entries.extend((
             _Entry("Kollisionen", action=(lambda: editor._set_placement_mode("collision")) if editing else None,
-                   active=mode in ("collision", "combined")),
+                   active=mode in ("collision", "combined"), action_id="layer_collision"),
             _Entry("Effekte", action=(lambda: editor._set_placement_mode("damage")) if editing else None,
-                   active=mode in ("damage", "slow")),
+                   active=mode in ("damage", "slow"), action_id="layer_effects"),
         ))
         if not editor.preview_active:
             entries.extend((
                 _Entry(f"Kollisionsmarkierung · {'an' if editor.show_collisions else 'aus'}",
-                       action=editor._toggle_collision_overlay, active=editor.show_collisions),
+                       action=editor._toggle_collision_overlay, active=editor.show_collisions,
+                       action_id="view_collision"),
                 _Entry(f"Effektmarkierung · {'an' if editor.show_effects else 'aus'}",
-                       action=editor._toggle_effect_overlay, active=editor.show_effects),
+                       action=editor._toggle_effect_overlay, active=editor.show_effects,
+                       action_id="view_effects"),
             ))
         if editing:
             entries.append(_Entry(f"Dachansicht · {'an' if editor.show_roofs else 'aus'}",
-                                  action=editor._toggle_roof_overlay, active=editor.show_roofs))
+                                  action=editor._toggle_roof_overlay, active=editor.show_roofs,
+                                  action_id="view_roof"))
         return entries
 
     def _object_entry(self, editor, label, objects, cell):
@@ -149,7 +159,8 @@ class StudioSidebar:
     def _cell(self, editor, editing):
         entries = []
         if editing:
-            entries.append(_Entry("Zellen ansehen", action=editor.toggle_inspect_mode, active=editor.inspect_mode))
+            entries.append(_Entry("Zellen ansehen", action=editor.toggle_inspect_mode,
+                                  active=editor.inspect_mode, action_id="view_cell"))
         cell = editor.inspected_cell
         if cell is None:
             return entries + [_Entry("Keine Zelle ausgewählt", "Wähle „Zellen ansehen“ und klicke auf die Karte.")]
@@ -184,7 +195,8 @@ class StudioSidebar:
                        "Starte den 1P- oder 2P-Test. Mit Standardbelegung fährt W für Spieler 1, ↑ für Spieler 2."),
             ]
             if editing:
-                entries.append(_Entry("Dach-Demo öffnen", action=editor.load_roof_demo))
+                entries.append(_Entry("Dach-Demo öffnen", action=editor.load_roof_demo,
+                                      action_id="test_roof_demo"))
             return entries
         return [
             _Entry("Karte bewegen", "Mausrad zoomt. Ziehe mit der mittleren Maustaste oder Leertaste + Linksklick. "
@@ -233,9 +245,11 @@ class StudioSidebar:
             padding = 8 if entry.action else 0
             title = self._wrap(entry.title, width - 2 * padding - 2)
             detail = self._wrap(entry.detail, width - 2)
-            height = max(28, len(title) * line_height + 10) if entry.action else (
-                (len(title) + len(detail)) * line_height + 4
-            )
+            if entry.action:
+                minimum_height = 38 if entry.action_id else 28
+                height = max(minimum_height, len(title) * line_height + 10)
+            else:
+                height = (len(title) + len(detail)) * line_height + 4
             entries.append((entry, title, detail, pygame.Rect(left, top, width, height)))
             top += height + 6
         max_scroll = max(0, top - 6 - body.height)
@@ -263,9 +277,19 @@ class StudioSidebar:
             self._draw_button(screen, rect, self.tab == key)
             self._text(screen, label, (rect.x + 5, rect.centery - self.font.get_height() // 2))
         screen.set_clip(body.clip(old_clip))
+        hint = None
         for entry, title, detail, local in entries:
             rect = local.move(0, body.top - self._scroll)
             if not rect.colliderect(body):
+                continue
+            if entry.action and entry.action_id:
+                if max_scroll:
+                    rect.width -= 5
+                hovered = self._hover is not None and rect.clip(body).collidepoint(self._hover)
+                self.button_art.draw(screen, entry.action_id, entry.title, rect,
+                                     active=entry.active, hovered=hovered)
+                if hovered:
+                    hint = self.button_art.hint(entry.action_id, entry.title)
                 continue
             if entry.action:
                 self._draw_button(screen, rect, entry.active)
@@ -282,6 +306,21 @@ class StudioSidebar:
             y = body.top + (body.height - height) * self._scroll // max_scroll
             pygame.draw.line(screen, MUTED, (body.right - 2, y), (body.right - 2, y + height), 2)
         screen.set_clip(old_clip)
+        if hint:
+            self._draw_hint(screen, bounds, body, hint)
+
+    def _draw_hint(self, screen, bounds, body, hint):
+        lines = self._wrap(hint, body.width - 16)[:4]
+        height = self.font.get_linesize()
+        box = pygame.Rect(body.x, 0, body.width, len(lines) * height + 12)
+        box.bottom = min(bounds.bottom - 6, self._hover[1] + box.height + 20)
+        if box.collidepoint(self._hover):
+            box.bottom = self._hover[1] - 6
+        box.top = max(bounds.top + 6, box.top)
+        pygame.draw.rect(screen, PANEL, box, border_radius=5)
+        pygame.draw.rect(screen, FOCUS, box, 1, border_radius=5)
+        for index, line in enumerate(lines):
+            self._text(screen, line, (box.x + 8, box.y + 6 + height * index))
 
     def handle_event(self, event, bounds, editor):
         if event.type not in (pygame.MOUSEMOTION, pygame.MOUSEBUTTONDOWN, pygame.MOUSEWHEEL):
@@ -296,7 +335,7 @@ class StudioSidebar:
             max_scroll = self._geometry(bounds, editor)[3]
             self._scroll = max(0, min(max_scroll, self._scroll - event.y * 48))
         elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-            tabs, body, entries, _ = self._geometry(bounds, editor)
+            tabs, body, entries, max_scroll = self._geometry(bounds, editor)
             for key, _, rect in tabs:
                 if rect.collidepoint(position):
                     self.show(key)
@@ -304,6 +343,8 @@ class StudioSidebar:
             if body.collidepoint(position):
                 local_pos = (position[0], position[1] - body.top + self._scroll)
                 for entry, _, _, rect in entries:
+                    if entry.action_id and max_scroll:
+                        rect.width -= 5
                     if entry.action and rect.collidepoint(local_pos):
                         entry.action()
                         break

@@ -8,6 +8,7 @@ from test_level_studio import button, click, key, send, studio, text
 
 from config import GRID_HEIGHT, GRID_WIDTH
 from modules.border_builder_ui import ACCENT, CORNER as CORNER_COLOR, OVERWRITE, UNCHANGED
+from modules.editor_buttons import load_editor_button_catalog
 from modules.graphic_objects import GraphicObject
 from modules.level_drafts import load_level_document, write_draft
 from modules.level_effects import CellEffects, DamageField, SlowField
@@ -206,3 +207,42 @@ def test_invalid_or_unchanged_floor_selection_keeps_preview_uncommitted(studio):
     assert not editor.dialog_open
     assert editor._snapshot() == before
     assert not editor.undo_stack
+
+
+def test_art_hitboxes_keep_side_actions_independent_in_compact_window(studio, monkeypatch):
+    game, editor, _ = studio
+    key(game, pygame.K_F2)
+    editor.current_tile = MIDDLE
+    pygame.display.set_mode((900, 620), pygame.RESIZABLE)
+    send(game, pygame.event.Event(pygame.WINDOWSIZECHANGED, x=900, y=620))
+    builder = open_builder(game, editor)
+    art = {}
+    render = editor.button_art.draw
+
+    def observe(surface, action_id, label, rect, **state):
+        if action_id.startswith("border_"):
+            art[action_id] = (rect.copy(), state)
+        render(surface, action_id, label, rect, **state)
+
+    monkeypatch.setattr(editor.button_art, "draw", observe)
+    game.draw()
+    assert set(art) == {"border_all", "border_corner", "border_left", "border_right",
+                        "border_top", "border_bottom"}
+    assert set(art) <= set(load_editor_button_catalog())
+    for side, slot in builder.side_rows.items():
+        rect, _ = art[f"border_{side}"]
+        assert rect == slot.toggle and not rect.colliderect(slot.choose)
+        assert builder.panel.contains(rect)
+        click(game, rect.center)
+        assert set(builder.plan.sides) == {side}
+        game.draw()
+        assert art[f"border_{side}"][1]["active"]
+        click(game, rect.center)
+        assert not builder.plan.sides
+
+    click(game, art["border_corner"][0].center)
+    click(game, builder.corner_rows["top_left"].toggle.center)
+    assert not builder.plan.corners
+    click(game, art["border_corner"][0].center)
+    click(game, builder.corner_rows["top_left"].toggle.center)
+    assert builder.plan.corners == {"top_left": MIDDLE}

@@ -74,11 +74,11 @@ def click(game, pos, button=1):
 
 
 def button(game, editor, label):
-    if not any(name == label for name, _, _ in editor.buttons):
+    if not any(control.label == label for control in editor.buttons):
         section = BUTTON_SECTIONS[label]
-        section_rect, = [rect for name, rect, _ in editor.buttons if name == section]
+        section_rect, = [control.rect for control in editor.buttons if control.label == section]
         click(game, section_rect.center)
-    rect, = [rect for name, rect, _ in editor.buttons if name == label]
+    rect, = [control.rect for control in editor.buttons if control.label == label]
     click(game, rect.center)
 
 

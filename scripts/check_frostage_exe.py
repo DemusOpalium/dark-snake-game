@@ -1,4 +1,4 @@
-"""Verify the FrostAge catalogue, exact PNG bytes and roof demo inside a PyInstaller EXE."""
+"""Verify the FrostAge art, World Studio buttons and roof demo inside a PyInstaller EXE."""
 
 import argparse
 import hashlib
@@ -10,6 +10,7 @@ from PyInstaller.archive.readers import CArchiveReader
 
 CATALOG_PATH = "assets/graphics/frostage/catalog.json"
 ROOF_DEMO_PATH = "assets/levels/frostage_roof_demo.json"
+EDITOR_UI_DIR = "assets/graphics/editor_ui/"
 EXPECTED_PNG_COUNT = 175
 
 
@@ -29,6 +30,20 @@ def check(executable: Path) -> None:
         digest = hashlib.sha256(archive.extract(names[path])).hexdigest()
         if digest != entry["sha256"]:
             raise ValueError(f"Hash mismatch in EXE: {path}")
+    editor_catalog = EDITOR_UI_DIR + "catalog.json"
+    if editor_catalog not in names:
+        raise ValueError("World Studio button catalogue missing from EXE.")
+    buttons = json.loads(archive.extract(names[editor_catalog]))["buttons"]
+    if not buttons:
+        raise ValueError("World Studio button catalogue is empty.")
+    expected_buttons = {EDITOR_UI_DIR + entry["file"] for entry in buttons.values()}
+    packaged_buttons = {name for name in names if name.startswith(EDITOR_UI_DIR) and name.endswith(".png")}
+    if expected_buttons != packaged_buttons:
+        raise ValueError("Packaged World Studio buttons differ from the catalogue.")
+    for entry in buttons.values():
+        path = EDITOR_UI_DIR + entry["file"]
+        if hashlib.sha256(archive.extract(names[path])).hexdigest() != entry["sha256"]:
+            raise ValueError(f"Hash mismatch in EXE: {path}")
     if ROOF_DEMO_PATH not in names:
         raise ValueError(f"Roof demo missing from {executable.name}.")
     demo = json.loads(archive.extract(names[ROOF_DEMO_PATH]))
@@ -38,9 +53,9 @@ def check(executable: Path) -> None:
     if not {"modules.frostage_assets", "modules.graphic_objects", "modules.roof_render",
             "modules.roof_settings", "modules.roof_editor_settings"} <= pyz.toc.keys():
         raise ValueError("FrostAge runtime modules missing from EXE.")
-    if not {"modules.border_builder", "modules.border_builder_ui"} <= pyz.toc.keys():
-        raise ValueError("World Studio border builder modules missing from EXE.")
-    print(f"Verified catalogue, {len(entries)} FrostAge PNGs and roof demo inside {executable.name}.")
+    if not {"modules.border_builder", "modules.border_builder_ui", "modules.editor_buttons"} <= pyz.toc.keys():
+        raise ValueError("World Studio runtime modules missing from EXE.")
+    print(f"Verified {len(entries)} FrostAge PNGs, {len(buttons)} editor buttons and roof demo inside {executable.name}.")
 
 
 if __name__ == "__main__":
