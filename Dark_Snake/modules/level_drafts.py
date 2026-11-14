@@ -2,6 +2,7 @@
 
 import json
 import os
+from dataclasses import asdict, dataclass, field
 from itertools import count
 from pathlib import Path, PureWindowsPath
 from tempfile import NamedTemporaryFile
@@ -10,6 +11,7 @@ from config import GRID_HEIGHT, GRID_WIDTH
 from modules.graphic_objects import GraphicObject, GraphicObjects, place_graphic_object
 from modules.level_effects import CellEffects, DamageField, EffectCells, SlowField
 from modules.resources import custom_level_path, level_drafts_directory
+from modules.roof_settings import RoofVisibility
 
 
 COLLISION_FORMAT_VERSION = 1
@@ -17,6 +19,17 @@ EFFECT_FORMAT_VERSION = 2
 LEVEL_FORMAT_VERSION = 3
 COLLISION_TYPES = ("WALL", "BARRIER")
 CollisionCells = dict[tuple[int, int], str]
+ROOF_FIELDS = {"roofs", "roof_visibility"}
+
+
+@dataclass(frozen=True, slots=True)
+class LevelDocument:
+    graphics: list
+    collision: CollisionCells = field(default_factory=dict)
+    effects: EffectCells = field(default_factory=dict)
+    objects: GraphicObjects = field(default_factory=dict)
+    roofs: GraphicObjects = field(default_factory=dict)
+    roof_visibility: RoofVisibility = field(default_factory=RoofVisibility)
 
 
 def normalize_draft_name(name: str) -> str:
@@ -136,25 +149,31 @@ def _decode_effects(records) -> EffectCells:
     return effects
 
 
-def _decode_objects(records) -> GraphicObjects:
+def _decode_objects(records, layer="Grafikobjektebene") -> GraphicObjects:
     if not isinstance(records, list):
-        raise ValueError("Ungültige Grafikobjektebene.")
+        raise ValueError(f"Ungültige {layer}.")
     objects = {}
     for record in records:
         if not isinstance(record, dict) or record.keys() != {"x", "y", "asset_id", "width", "height"}:
-            raise ValueError("Ungültiger Eintrag in der Grafikobjektebene.")
+            raise ValueError(f"Ungültiger Eintrag in der {layer}.")
         x, y = record["x"], record["y"]
-        _validate_position(x, y, "Grafikobjektebene")
+        _validate_position(x, y, layer)
         item = GraphicObject(record["asset_id"], record["width"], record["height"])
         if not place_graphic_object(objects, (x, y), item):
-            raise ValueError("Grafikobjekte überlappen sich oder reichen aus der Karte.")
+            raise ValueError(f"Objekte in der {layer} überlappen sich oder reichen aus der Karte.")
     return objects
 
 
-def _decode_level(document) -> tuple[list, CollisionCells, EffectCells, GraphicObjects]:
+def _decode_roof_visibility(settings) -> RoofVisibility:
+    if not isinstance(settings, dict) or settings.keys() != {"enabled", "radius", "transparency", "softness"}:
+        raise ValueError("Ungültige Einstellungen für das Dach-Sichtfenster.")
+    return RoofVisibility(**settings)
+
+
+def _decode_level(document) -> LevelDocument:
     if isinstance(document, list):
         _validate_map(document)
-        return document, {}, {}, {}
+        return LevelDocument(document)
     if not isinstance(document, dict) or type(document.get("version")) is not int:
         raise ValueError("Ungültiges Level-Format.")
     version = document["version"]
@@ -165,7 +184,8 @@ def _decode_level(document) -> tuple[list, CollisionCells, EffectCells, GraphicO
         fields.add("effects")
     if version == LEVEL_FORMAT_VERSION:
         fields.add("objects")
-    if document.keys() != fields or not isinstance(document["collision"], list):
+    allowed = fields | ROOF_FIELDS if version == LEVEL_FORMAT_VERSION else fields
+    if not fields <= document.keys() <= allowed or not isinstance(document["collision"], list):
         raise ValueError("Ungültige Level-Ebenen.")
 
     graphics = document["graphics"]
@@ -179,15 +199,30 @@ def _decode_level(document) -> tuple[list, CollisionCells, EffectCells, GraphicO
         if (x, y) in collision:
             raise ValueError("Doppelte Zelle in der Kollisionsebene.")
         collision[(x, y)] = kind
-    return (graphics, collision, _decode_effects(document.get("effects", [])),
-            _decode_objects(document.get("objects", [])))
+    return LevelDocument(
+        graphics, collision, _decode_effects(document.get("effects", [])),
+        _decode_objects(document.get("objects", [])),
+        _decode_objects(document.get("roofs", []), "Dachebene"),
+        _decode_roof_visibility(document["roof_visibility"]) if "roof_visibility" in document else RoofVisibility(),
+    )
+
+
+def read_level_file(path: Path) -> LevelDocument:
+    """Read a versioned level document from a draft or bundled resource."""
+    return _decode_level(_read_json(path))
+
+
+def load_level_document(name: str) -> LevelDocument:
+    """Read all layers and settings of a named draft."""
+    name = normalize_draft_name(name)
+    matches = _matching_paths(level_drafts_directory(), name)
+    return read_level_file(_existing_draft(matches, name))
 
 
 def read_level_document(name: str) -> tuple[list, CollisionCells, EffectCells, GraphicObjects]:
-    """Read the graphics, collision, effect and graphic object layers of a named draft."""
-    name = normalize_draft_name(name)
-    matches = _matching_paths(level_drafts_directory(), name)
-    return _decode_level(_read_json(_existing_draft(matches, name)))
+    """Read the original four layers of a named draft."""
+    document = load_level_document(name)
+    return document.graphics, document.collision, document.effects, document.objects
 
 
 def read_level_layers(name: str) -> tuple[list, CollisionCells, EffectCells]:
@@ -247,22 +282,23 @@ def _effect_records(effects: EffectCells) -> list[dict]:
     return sorted(records, key=lambda record: (record["y"], record["x"]))
 
 
-def _object_records(objects: GraphicObjects) -> list[dict]:
+def _object_records(objects: GraphicObjects, layer="Grafikobjektebene") -> list[dict]:
     if not isinstance(objects, dict):
-        raise ValueError("Ungültige Grafikobjektebene.")
+        raise ValueError(f"Ungültige {layer}.")
     records = []
     for position, item in objects.items():
         if not isinstance(position, tuple) or len(position) != 2 or not isinstance(item, GraphicObject):
-            raise ValueError("Ungültiger Eintrag in der Grafikobjektebene.")
+            raise ValueError(f"Ungültiger Eintrag in der {layer}.")
         x, y = position
-        _validate_position(x, y, "Grafikobjektebene")
+        _validate_position(x, y, layer)
         records.append({"x": x, "y": y, "asset_id": item.asset_id, "width": item.width, "height": item.height})
-    _decode_objects(records)
+    _decode_objects(records, layer)
     return sorted(records, key=lambda record: (record["y"], record["x"]))
 
 
 def _level_document(graphics: list, collision: CollisionCells, effects: EffectCells | None,
-                    objects: GraphicObjects | None) -> dict:
+                    objects: GraphicObjects | None, roofs: GraphicObjects | None,
+                    roof_visibility: RoofVisibility | None) -> dict:
     if not isinstance(collision, dict):
         raise ValueError("Ungültige Kollisionsebene.")
     for position, kind in collision.items():
@@ -278,16 +314,24 @@ def _level_document(graphics: list, collision: CollisionCells, effects: EffectCe
     if effects is not None:
         document["version"] = EFFECT_FORMAT_VERSION
         document["effects"] = _effect_records(effects)
-    if objects is not None:
+    if objects is not None or roofs is not None or roof_visibility is not None:
         document["version"] = LEVEL_FORMAT_VERSION
         document.setdefault("effects", [])
-        document["objects"] = _object_records(objects)
+        document["objects"] = _object_records(objects) if objects is not None else []
+    if roofs is not None:
+        document["roofs"] = _object_records(roofs, "Dachebene")
+    if roof_visibility is not None:
+        if not isinstance(roof_visibility, RoofVisibility):
+            raise ValueError("Ungültige Einstellungen für das Dach-Sichtfenster.")
+        document["roof_visibility"] = asdict(roof_visibility)
     return document
 
 
 def write_draft(name: str, level_map: list, *, collision: CollisionCells | None = None,
                 effects: EffectCells | None = None,
                 objects: GraphicObjects | None = None,
+                roofs: GraphicObjects | None = None,
+                roof_visibility: RoofVisibility | None = None,
                 replace: bool = False) -> str:
     """Save a draft atomically, retaining existing layers omitted by the caller."""
     name = normalize_draft_name(name)
@@ -297,21 +341,27 @@ def write_draft(name: str, level_map: list, *, collision: CollisionCells | None 
     if replace:
         path = _existing_draft(matches, name)
         previous = _read_json(path)
-        _, previous_collision, previous_effects, previous_objects = _decode_level(previous)
+        previous_level = _decode_level(previous)
         if isinstance(previous, dict):
             if collision is None:
-                collision = previous_collision
+                collision = previous_level.collision
             if effects is None and previous["version"] >= EFFECT_FORMAT_VERSION:
-                effects = previous_effects
+                effects = previous_level.effects
             if objects is None and previous["version"] == LEVEL_FORMAT_VERSION:
-                objects = previous_objects
+                objects = previous_level.objects
+            if roofs is None and "roofs" in previous:
+                roofs = previous_level.roofs
+            if roof_visibility is None and "roof_visibility" in previous:
+                roof_visibility = previous_level.roof_visibility
     else:
         if matches:
             raise FileExistsError(f"Ein Entwurf mit dem Namen „{name}“ existiert bereits.")
         path = directory / f"{name}.json"
 
-    document = (level_map if collision is None and effects is None and objects is None
-                else _level_document(level_map, {} if collision is None else collision, effects, objects))
+    document = (
+        level_map if all(layer is None for layer in (collision, effects, objects, roofs, roof_visibility))
+        else _level_document(level_map, {} if collision is None else collision, effects, objects, roofs, roof_visibility)
+    )
     if not replace:
         directory.mkdir(parents=True, exist_ok=True)
     temporary = None
