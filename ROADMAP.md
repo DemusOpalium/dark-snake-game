@@ -212,7 +212,7 @@
 - ✅ **#142.** Zentraler Katalog, 175 geprüfte Laufzeitgrafiken und platzierbare Multi-Tiles mit Speichern und Undo/Redo.
 - ✅ **#143 · FrostAge Main Menu.** Zwölf Menügrafiken mit vorhandenen Aktionen, pausierte Runden fortsetzen und den Hintergrund proportional an das Fenster anpassen.
 - ✅ **#154 · Roof / Foreground.** Acht Dachgrafiken auf einer eigenen Ebene, Übertragen älterer Dachobjekte und spielbarer Dachbogen mit weichen Sichtfenstern in 1P und 2P.
-- 🔧 **PR A · Editor Layout.** Vergrößerbarer Editor mit Hauptnavigation, integriertem Baukasten, rechtem Arbeitsbereich und zoombarer Karte bei festem Spielraster.
+- ✅ **#155 · PR A · Editor Layout.** Vergrößerbarer Editor mit Hauptnavigation, integriertem Baukasten, rechtem Arbeitsbereich und zoombarer Karte bei festem Spielraster.
 - ⬜ **PR B · Rand-Builder.** Vier Seiten und Ecken getrennt gestalten, Vorschau vor dem Anwenden, Mittelfeld weiter separat füllen.
 - ⬜ **PR C · Layer Explorer.** Ebenenfarben, Sichtbarkeit, Sperren und Vergleich, Zellen-Inspektor mit Objektauswahl, Effektbearbeitung und sicheres Löschen samt Radierer.
 - ⬜ **PR D · Deutsch / English und Hilfe.** Gespeicherte Sprachwahl, vollständige Übersetzung, Tooltips und Werkzeugbeschreibungen.
