@@ -1,13 +1,11 @@
 # 🛣️ ROADMAP.md – Entwicklungsfahrplan
 
-## 2025
-- ✅ Q2: Finales README + Screenshot-Galerie + Dev-Kategorie GitHub
-- 🔜 Q3: Prompt-System aktivieren, Debug-Doku automatisieren
-- 🔜 Q4: Kivy-Portierung testen (Mobile Release optional)
-
-## 2026
-- 🔜 Q1: WebGL / Browser-Testversion
-- 🔜 Q2: Feature Freeze, Vorbereitung auf Public Showcase
+## Historischer Quartalsplan (keine aktuellen Fristen)
+- ✅ 2025 Q2: README und Screenshot-Galerie veröffentlicht; aktuelle Screenshots am 14.11.2026 ergänzt.
+- 💡 2025 Q3: Prompt-System und automatisierte Debug-Dokumentation waren als Idee notiert; aktuellen Restbedarf separat prüfen.
+- 💡 2025 Q4: Optionaler Kivy-/Mobile-Port war angedacht, bisher kein verifizierter Release.
+- ⬜ Browser-/WebGL-Testversion weiterhin offen; der alte Termin 2026 Q1 ist überholt.
+- ⬜ Feature Freeze / Public Showcase weiterhin offen; der alte Termin 2026 Q2 ist überholt.
 
 ---
 
@@ -22,7 +20,7 @@
 
 # 🐍 DARK SNAKE – WORLD 2 GO
 ## Master-Ideenliste · Entwicklungstafel · Roadmap
-**Stand: 11.11.2026**
+**Stand: 14.11.2026 · aktueller `main` nach PR #170**
 
 **Projektziel:** DARK Snake vom klassischen Arcade-Spiel zu einem modularen Spiel mit eigenen Welten, Spezialwaffen, individuellen Bossen, einem Level-Baukasten und dem späteren Adventure-Modus **Mycelium Age** weiterentwickeln.
 
@@ -88,6 +86,8 @@
 - ⬜ Eigene Frostmine als Spezialgegenstand ermöglichen.
 - ⬜ Weitere Spezialgegenstände: Feuer, Gift, Sporen und Myzel.
 - ⬜ Unterschiedliche Projektilarten und Angriffsfunktionen entwickeln.
+- 💡 **Frostburst-Idee (14.11.).** Gerade fliegende Eiskugel, die beim Ablauf oder Treffer acht gerichtete Splitter auslöst; direkter Treffer beispielsweise viermal so stark wie ein Splitter. Trefferintervalle und Mehrfachschaden sicher regeln.
+- 💡 **Tornado-Idee (14.11.).** Rotierendes Projektil mit veränderlicher Größe, kurviger Bewegung, begrenzter Dauer und Kontaktschaden mit Trefferintervall; separate Soundprofile später in Ruhe ergänzen.
 - ⬜ Spezialwaffen unabhängig vom normalen Schuss verwenden.
 - ⬜ Verschiedene Munitionstypen für Spieler und Gegner ermöglichen.
 - ⬜ Spezialwaffen auch für Bossangriffe nutzbar machen.
@@ -127,14 +127,14 @@
 - ✅ PNG-/WebP-Animationsfolgen im EffectManager unterstützt.
 - ✅ Eigene Hintergrundgrafiken können bereits als Effekt eingeblendet werden.
 - ⬜ Bestehende Grafikverwaltung vereinheitlichen.
-- ⬜ Grafiken nach Kategorien und Themen organisieren.
+- 🔧 Grafik-Kataloge für FrostAge und Editor-Buttons vorhanden; übergreifende Vereinheitlichung weiterer Grafiksysteme weiterhin geplant.
 - ⬜ Eigene Effekt- und Grafikpakete ermöglichen.
 - ⬜ Animationen über Einzelbilder oder Spritesheets verwenden.
 - ⬜ Größe, Bildrate, Transparenz und Darstellungsebene einstellen.
-- ⬜ Grafiken möglichst einmal laden und zwischenspeichern.
+- 🔧 Laufzeit-Cache für FrostAge-Grafiken und Editor-Buttons eingeführt; weitere Bilder-/Animationspfade prüfen.
 - ⬜ Wiederholte Skalierung während der Darstellung reduzieren.
 - ⬜ Grafische Effekte unabhängig von Schadens- und Kollisionsberechnungen behandeln.
-- ⬜ Fehlende Grafiken durch sichere Ersatzdarstellungen abfangen.
+- 🔧 Editor-Buttons fallen auf Text zurück, andere Grafiksysteme benötigen weiterhin gesonderte Prüfung.
 - ⬜ Bestehende Grafiken für neue Level und Effekte wiederverwenden.
 - 💡 Animationen später selbst mit geeigneten Grafikprogrammen erstellen.
 - 💡 Wasserfälle, Feuer, Pilzsporen, Portale und andere Umgebungseffekte animieren.
@@ -214,7 +214,9 @@
 - ✅ **#154 · Roof / Foreground.** Acht Dachgrafiken auf einer eigenen Ebene, Übertragen älterer Dachobjekte und spielbarer Dachbogen mit weichen Sichtfenstern in 1P und 2P.
 - ✅ **#155 · PR A · Editor Layout.** Vergrößerbarer Editor mit Hauptnavigation, integriertem Baukasten, rechtem Arbeitsbereich und zoombarer Karte bei festem Spielraster.
 - ✅ **#168 · Rand-Builder.** Vier Seiten und Ecken getrennt gestalten, Vorschau vor dem Anwenden, Mittelfeld weiter separat füllen.
-- 🔧 **Editor-Schaltflächen.** Geprüfte eigene PNGs über feste Action-IDs an vorhandene Werkzeuge binden. Weitere Motive bleiben im Staging.
+- ✅ **#169 · Editor-Schaltflächen.** 48 von 81 eigenen PNGs über Action-IDs in World Studio integriert; fehlende Motive behalten einen Textbutton, 33 Vorlagen bleiben reserviert. 493 Headless-Tests, 30 Smoke-Simulationen und Windows-EXE-Prüfung laut PR abgeschlossen.
+- ✅ **#167 · Asset-Legende.** Trennung von Laufzeitbildern und `GamePICs`-Vorlagen mit Katalogen und Agentenhinweisen dokumentiert.
+- ✅ **#170 · Neue Screenshots.** Aktuelles Titelmenü und World-Studio-Ansicht für README/Galerie hochgeladen (keine neue Gameplayfunktion).
 - ⬜ **PR C · Layer Explorer.** Ebenenfarben, Sichtbarkeit, Sperren und Vergleich, Zellen-Inspektor mit Objektauswahl, Effektbearbeitung und sicheres Löschen samt Radierer.
 - ⬜ **PR D · Deutsch / English und Hilfe.** Gespeicherte Sprachwahl, vollständige Übersetzung, Tooltips und Werkzeugbeschreibungen.
 - ⬜ **PR E · Learning System.** „Mein erstes FrostAge-Level“ mit geprüften Schritten in einer eigenen Übungskarte.
@@ -227,22 +229,24 @@
 - ⬜ Eigene Levels mit ihren Gameplay-Ebenen im Adventure-Modus spielen. Classic separat erhalten.
 - ⬜ Druckplatten, Verzögerung und Schadenszone als Trigger-Arbeitspaket.
 - ⬜ Größerer Spielrahmen um das unveränderte 45×31-Raster und später eine Challenge-Zeitleiste.
+- ⬜ **PR H – World Backgrounds (neue Idee 14.11.).** Vollflächige, dauerhaft gespeicherte Landschaftsbilder unter Boden/Objekten/Kollisionen/Dächern; Galerie, Vorschau, geordnete Render-Ebenen, auswählbare Themen wie Friedhof, Wald, Eis, Wüste, Vulkan und Weltraum. Bestehenden kurzlebigen Spezialbild-Effekt über `Ü` nicht mit der permanenten Hintergrundebene verwechseln.
+- 💡 **Sichtweiten-Mechanik.** Später Nebel- und Dunkelheitsmasken mit spielerbezogenem Radius; Items können die Sichtweite verändern, analog zur bestehenden Dach-Sichtfenster-Idee, aber mit eigenem Rendering.
 - ⬜ Bestehenden Editor grundlegend erweitern.
-- ⬜ Eigenen großen Editor-Bildschirm entwickeln.
+- ✅ Eigenen großen, größenveränderbaren Editor-Bildschirm durch PR #155 umgesetzt.
 - ⬜ Level Studio über die Entwicklerkonsole öffnen.
-- ⬜ Übersichtliche Buttons und Werkzeugleisten erstellen.
+- ✅ Werkzeugleisten und 48 Bild-Buttons für vorhandene Aktionen durch PR #155/#169 umgesetzt; Restmotive und spätere Funktionen offen.
 - ⬜ Kategorien für Hintergrund, Boden, Wände, Objekte, Gegner und Effekte.
-- ⬜ Vorhandene Grafiken als auswählbare Kacheln anzeigen.
+- ✅ 495 Classic-Tiles und 175 FrostAge-Grafiken im Editor-Baukasten auswählbar.
 - ⬜ Eigene Grafiken importieren.
-- ⬜ Grafiken direkt auf der Karte platzieren.
-- ⬜ Wände, Durchgänge und Labyrinthe konstruieren.
+- ✅ Grafikobjekte und FrostAge-Multi-Tiles direkt im Editor platzieren.
+- ✅ Wände, Barrieren, Durchgänge und Randseiten im isolierten Editor-Leveltest mit Vorschau gestalten.
 - ⬜ Objekte verschieben, löschen und verändern.
-- ⬜ Verschiedene Grafik- und Spielebenen bearbeiten.
+- ✅ Boden, Objekte, Roof/Foreground, Kollision und Effektfelder getrennt bearbeiten; Solo/Lock/Vergleich bleiben PR C.
 - ⬜ Animierte Objekte platzieren.
 - ⬜ Boss-Spawns und Seelenschreine platzieren.
 - ⬜ Spieler-Spawnpunkte festlegen.
 - ⬜ Level-Eigenschaften und Spielregeln bearbeiten.
-- ⬜ Benutzerfreundliche Vorschau und Werkzeugauswahl.
+- ✅ Editor-Kartenvorschau, 1P/2P-Leveltests und Werkzeuge vorhanden; weiteres Polishing geplant.
 - ⬜ Bestehende Editorfunktionen erhalten und verbessern.
 
 ---
@@ -253,20 +257,20 @@
 
 - ⬜ Große Hintergrundbilder für vollständige Level ermöglichen.
 - ⬜ Hintergrundbilder mit Grafik-Kacheln kombinieren.
-- ⬜ Visuelle Boden- und Wandgrafiken unabhängig voneinander einsetzen.
-- ⬜ Rasterfelder als echte Hindernisse definieren.
-- ⬜ Wandkollisionen für die Schlange entwickeln.
+- ✅ Boden/Objekt-/Dachgrafik und WALL/BARRIER-Kollision im Editor getrennt, nicht automatisch gekoppelt.
+- ✅ WALL/BARRIER-Zellen blockieren im **isolierten Editor-Leveltest**; nicht als vollständige Classic-Adventure-Kollision ausgeben.
+- ✅ Im isolierten 1P/2P-Leveltest haben WALL/BARRIER eigene Kollisionsregeln; Classic bleibt getrennt.
 - ⬜ Gegnerbewegung an Wände und Hindernisse anpassen.
 - ⬜ Gegenstände nur auf gültigen Feldern erzeugen.
 - ⬜ Durchgänge und erreichbare Bereiche überprüfen.
-- ⬜ Säulen, Mauern und dekorative Elemente verwenden.
+- ✅ Säulen, Mauern und Dachelemente als grafische Objekte verfügbar; Dachbogen-Demo ist spielbar.
 - ⬜ Wasserfälle und animierte Böden ermöglichen.
 - ⬜ Optische 3D-Tiefenwirkung mit 2D-Grafiken erzeugen.
 - ⬜ Löcher und Abgründe als interaktive Spielfeldelemente entwickeln.
 - ⬜ Teleporter, Spezialfelder und später bewegliche Hindernisse ermöglichen.
 - ⬜ Dynamisch wachsende Myzelwände für spätere Pilz-Level vorbereiten.
-- ⬜ Kollision und Grafik voneinander trennen.
-- ⬜ Classic-Randwechsel und neue Adventure-Wandregeln getrennt behandeln.
+- ✅ Grafik-/Kollisionsebenen in World Studio getrennt.
+- ✅ Classic-Randwechsel und isolierter Editor-Wandtest getrennt; zukünftige Adventure-Regeln weiterhin geplant.
 
 ---
 
@@ -275,18 +279,18 @@
 **Ziel:** Levels selbst gestalten und ohne neue Programmierung verwenden.
 
 - ⬜ Beliebig viele eigene Levels erstellen.
-- ⬜ Unfertige Levels als Entwurf speichern.
-- ⬜ Entwürfe jederzeit wieder öffnen und weiterbearbeiten.
+- ✅ Unfertige Levels als benannte JSON-Entwürfe speichern.
+- ✅ Levelentwürfe wieder öffnen und weiterbearbeiten.
 - ⬜ Automatische Zwischensicherung prüfen.
 - ⬜ Fertige Levels gesondert kennzeichnen.
 - ⬜ Levelnamen und Beschreibungen vergeben.
-- ⬜ Leveldaten automatisch als JSON speichern.
+- ✅ Levelentwürfe werden im versionsgeprüften JSON-Format gespeichert.
 - ⬜ Hintergrund, Kollisionen, Objekte und Spawnpunkte gemeinsam speichern.
-- ⬜ Verwendete Grafiken einem Level zuordnen.
-- ⬜ Level direkt aus dem Editor spielbar testen.
-- ⬜ Nach dem Test wieder zum Editor zurückkehren.
-- ⬜ Den bisherigen Bearbeitungsstand beim Test erhalten.
-- ⬜ Normale Spielstände vom Editor-Test trennen.
+- ✅ Grafik-Katalog-IDs und platzierte Objekte mit Levelentwürfen speichern.
+- ✅ Isolierte Leveltests direkt aus World Studio für 1P/2P starten.
+- ✅ Vom isolierten Leveltest zum Editor zurückkehren.
+- ✅ Beim Leveltest bleiben die Editor-Entwurfsdaten erhalten.
+- ✅ Isolierter Leveltest und reguläre Classic-Runde getrennt.
 - ⬜ Fehlerhafte oder unspielbare Karten erkennen.
 - ⬜ Fertige Level als Paket exportieren.
 - ⬜ JSON und benötigte Grafiken an Codex oder Irian übergeben können.
@@ -330,8 +334,8 @@
 - ✅ Entwickler-Simulator bereits vorhanden.
 - ✅ Automatisierte Spielsimulationen möglich.
 - 🔧 Bestehende Tests auf Aussagekraft überprüfen.
-- ⬜ Nicht ausschließlich Abstürze zählen.
-- ⬜ Erwartetes und tatsächliches Spielverhalten vergleichen.
+- ✅ Entwickler-Simulator prüft seit #120 auch definierte Spielregeln statt nur Abstürze; weitere Szenarien offen.
+- ✅ Erste fünf gezielte Spielregelprüfungen seit PR #120; vollständige Szenarioabdeckung weiterhin offen.
 - ⬜ Fehlerhafte Kollisionen erkennen.
 - ⬜ Spieler- und Gegnerverhalten prüfen.
 - ⬜ Bossangriffe und Bossphasen testen.
@@ -344,9 +348,9 @@
 - ⬜ Tests mit reproduzierbaren Zufallswerten durchführen.
 - ⬜ Simulator gegen absichtlich eingebaute Testfehler prüfen.
 - ⬜ Entwicklerberichte verständlicher und ausführlicher gestalten.
-- ⬜ Testberichte direkt im entpackten Spielordner auffindbar machen, sofern beschreibbar.
-- ⬜ Alternativen für schreibgeschützte Installationsordner vorsehen.
-- ⬜ TXT-/JSON-Berichte mit Datum, Version, Szenario und Fehlerdetails erzeugen.
+- ✅ Berichtsexport in den entpackten Spielordner mit Fallback nach User-Datenverzeichnis seit #120 vorgesehen.
+- ✅ Fallback in Benutzer-Datenverzeichnis für nicht beschreibbare Installationsordner vorhanden.
+- ✅ TXT-/JSON-Entwicklerberichte mit Prüfdetails seit PR #120 vorhanden.
 - ⬜ Erfolgreiche, fehlgeschlagene und nicht ausgeführte Prüfungen unterscheiden.
 
 ---
@@ -418,11 +422,11 @@
 - 💡 Freischaltbare Schlangenköpfe/Körper und charakterbezogene Sounds für Treffer, Levelwechsel und Game Over.
 - ✅ `titel2.png` ist bereits als Fenster-Icon eingebunden; EXE-Dateiicon gesondert prüfen.
 - ⬜ Neue, unfertige PNG-Dateien zunächst in `GamePICs/Incoming/` nach Projektilen, Bossen, Gegnern, AoE, Heads, Bodies, Hintergründen und Animationen ablegen.
-- ⬜ Neue Grafiken über `Add file → Upload files` auf GitHub einreichen; aktive Assets erst nach Prüfung gezielt ersetzen.
-- ⬜ Klare, sprechende Dateinamen vergeben und Kategorie, Verwendungszweck, Original-/Zielgröße und gegebenenfalls Frames dokumentieren.
-- ⬜ Originalgrafiken erhalten; Skalierungen durch das Spiel beziehungsweise Build-Werkzeug vorbereiten.
-- ⬜ Transparenz, Zuschnitt und Spielgrößen kontrollieren, bevor Assets live eingebaut werden.
-- ⬜ Codex kann vorbereitete Bilder aus `GamePICs/Incoming/` erst nach explizitem Integrationsauftrag den passenden Ressourcen und Mechaniken zuordnen.
+- ✅ Neue Bilder über GitHub-Uploads gesammelt; 48 geeignete Editorbilder nach Prüfung in separate Runtime-Assets übernommen.
+- 🔧 Stabile Katalog-IDs und Herkunft für 48 Editor-Buttons sowie 175 FrostAge-Grafiken dokumentiert; weitere Rohbilder teils mit `ksnip_`-Namen, noch nicht vollständig geprüft.
+- ✅ Originalbilder bleiben in `GamePICs`; 48 Editor-Grafiken als Laufzeitkopien und skalierte Cache-Darstellung integriert.
+- ✅ PNG-Abmessungen, transparente Bildbereiche und Original-Hashes der 48 integrierten Buttons durch Katalog und Tests geprüft.
+- ✅ FrostAge- und Editorgrafiken über explizite Integrations-PRs eingebunden; neue Gegner-/Projektilmechaniken bleiben offen.
 - 💡 Später optional HTML-Drop-in und PNG-/Paketexport; **vorerst unnötig**, da GitHub-Upload einfacher ist.
 
 ---
@@ -430,7 +434,7 @@
 # 🗺️ ENTWICKLUNGSREIHENFOLGE
 
 **PHASE 1 – AKTUELLE ARBEIT**
-Frost und Simulator 2.0 Schritt 1 auf `main` bestätigt; als Nächstes Windows-Spielprobe und gezielte Grafikprüfung. Eine kleine Level-Studio-Etappe (benannte Entwürfe) darf vorgezogen werden, damit Demus selbstständig Levels gestalten kann.
+✅ Frost und Simulator 2.0 Schritt 1 sowie World Studio nach PR #169 auf `main`: benannte Entwürfe, 1P/2P-Leveltest, Roof/Foreground, Rand-Builder, 48 grafische Buttons. Nächster eigenständiger PR: Layer Explorer (Solo, Sperren, Inspektor, sicheres Löschen). Für die weitere Grafikarbeit gelten die Kataloge; neue Gameplay-Profile werden separat entwickelt.
 
 **PHASE 2 – EFFECT & WEAPON SYSTEM 2.0**
 Gemeinsame Effektarchitektur, Frost, Feuer, Gift, Sporen, Spezialmunition.
@@ -442,7 +446,7 @@ Vier Slots pro Spieler, Item-Icons, frei belegbare Aktivierungstasten.
 Seelenschrein, individuelle Bosstypen, feste AoE-Profile, Kampfphasen.
 
 **PHASE 5 – WORLD STUDIO 3.0**
-Weltbibliothek, Kollision, Damage/Slow, FrostAge-Multi-Tiles, Hauptmenü und Roof / Foreground sind integriert. Der World-Studio-Ausbau beginnt mit Layout, Rand-Builder und Ebenen-Werkzeugen. Sprache, Hilfe, Lernmodus, Beleuchtung und Trigger folgen in eigenen Arbeitspaketen. Projektile, AoE, Gegner, Items und Adventure bleiben eingeplant.
+Weltbibliothek, Kollision, Damage/Slow, FrostAge-Multi-Tiles, Hauptmenü, Roof / Foreground, Editor-Layout, Rand-Builder und **48 grafische Editor-Buttons** sind integriert (#155, #168, #169). Es folgen Layer Explorer (PR C), vollständige Sprache/Hilfe, Lernmodus, Licht/Nebel und Trigger in einzelnen PRs. Der neue **World-Background-Ansatz (PR H, Konzept)** erlaubt später dauerhaft gespeicherte Vollbildlandschaften unter Tiles. Projektile/AoE/Gegner/Items, Freischalt-Skins und Adventure bleiben separate Arbeitspakete.
 
 **PHASE 6 – LEVEL-VERWALTUNG**
 Entwürfe, Level-Bibliothek, JSON, Grafikpakete, Export und Import.
@@ -451,7 +455,7 @@ Entwürfe, Level-Bibliothek, JSON, Grafikpakete, Export und Import.
 Eigene Welten, Pilzgegner, Bossarenen, neue Spielmechaniken.
 
 **PARALLELE DESIGNARBEIT – OHNE SPIELCODE**
-Grafikbibliothek sichten, Heads/Bodies/Projektile/AoE überarbeiten und als `GamePICs/Incoming/` für spätere Integration vorbereiten.
+53 neue Head- und 15 Body-Kandidaten sowie 175 FrostAge-Originale bleiben als vorbereitete Quellen unter `GamePICs/`; Laufzeitkopien nur nach Prüfung in `Dark_Snake/assets`. Separater Skin-Galerie-PR mit scrollbarer Vorschau und späteren Freischaltungen bleibt offen.
 
 **GEPLANTE UI-ERGÄNZUNGEN – IN KLEINEN PRs**
 Titelmenü 2.0 (Gothic Arcade) und GO IN GAME als wiederverwendbaren Übergangsbildschirm entwickeln, sobald Bilder und technische Grundlagen bereitstehen.

@@ -8,7 +8,7 @@ These are real captures from the game and its editor, except for the clearly mar
 
 ## 🎮 Main menu / Hauptmenü
 
-![FrostAge main menu with buttons](GamePICs/FrontUI.png)
+![Current DARK SNAKE title screen with menu buttons, 14 November 2026](GamePICs/DarkSnake%20Titel%20Screen.png)
 
 ## 👹 Boss fight / Bosskampf
 
@@ -16,8 +16,13 @@ These are real captures from the game and its editor, except for the clearly mar
 
 ## 🛠️ World Studio editor / Level-Editor
 
-![World Studio user interface](GamePICs/ui%20editor.png)
+![Current World Studio interface with illustrated controls, 14 November 2026](GamePICs/World%20Studio%20DarkSnake.png)
 
-Screenshots from **13 November 2026**; the project is evolving. / Bilder vom **13. November 2026**, weitere Änderungen folgen.
+**New title screen and editor captures: 14 November 2026.** The boss-fight image and concept illustration are earlier examples. Screenshots are from development builds, not necessarily the 13 November downloadable pre-release. / **Neue Titel- und Editorbilder: 14. November 2026.** Bosskampf und Konzeptbild stammen aus früheren Versionen; die neuen Screenshots zeigen Entwicklungs-Builds.
+
+### Earlier UI snapshots / Frühere UI-Aufnahmen
+
+- [FrostAge main menu — earlier capture / Früheres Hauptmenü](GamePICs/FrontUI.png)
+- [World Studio — earlier capture / Frühere Editor-Ansicht](GamePICs/ui%20editor.png)
 
 [← English README](README.md) · [← Deutsche README](README.de.md) · [Roadmap](ROADMAP.md)

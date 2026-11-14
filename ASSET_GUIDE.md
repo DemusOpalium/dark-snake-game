@@ -1,5 +1,5 @@
 # 🐍 DARK SNAKE – Asset-Legende für Menschen und Coding-Agenten
-**Stand vom 14.11.2026 · World Studio nach PR #168 mit Editor-Button-Integration**
+**Stand vom 14.11.2026 · `main` nach PR #170; 48 Editor-Buttons seit PR #169 integriert**
 
 > `Dark_Snake/assets/` enthält die Spiel- und EXE-Laufzeitdaten. `GamePICs/` enthält Originale, Entwürfe und Referenzen. Die passenden Laufzeitkataloge dokumentieren die tatsächlich verwendeten Dateien.
 
@@ -97,7 +97,10 @@ Die Dateinamen stehen ohne den gemeinsamen Suffix `-removebg-preview.png` in der
 
 - ✅ PR #154 · Roof/Foreground. ✅ PR #155 · Editorfenster, Seitenleisten und Kartenkamera.
 - ✅ PRs #156–#166 · Originale der Editor-Buttons. ✅ PR #168 · Rand-Builder.
-- 🔧 Editor-Button-Integration · 48 verwendete Grafiken und 33 reservierte Originale.
+- ✅ PR #169 · Editor-Button-Integration: 48 Grafiken mit echten Aktionen verbunden, 33 Entwürfe reserviert.
+- ✅ PR #170 · Neue Titelbildschirm- und World-Studio-Screenshots unter `GamePICs/`; in README und Galerie verwendet.
+- ⬜ Nacharbeiten: reale Ansicht der beiden Roof-Buttons `layer_roof` und `view_roof` im Windows-Fenster prüfen; beide Action-IDs stehen bereits im Runtime-Katalog, eine noch fehlende Bildzuordnung ist durch die Dateiliste nicht belegt.
+- ⬜ Neue volle **World-Background-Ebene** nach PR H als separates Konzept, nicht mit dem temporären Hintergrund-Spezialeffekt verwechseln.
 - ⬜ Layer Explorer und sicheres Löschen mit Undo/Redo.
 - ⬜ DE/EN-Hilfe und interaktiver Lernmodus.
 - ⬜ Lighting, Events/Trigger, erweiterte FrostAge-Profile, Snake-Skin-Galerie.
