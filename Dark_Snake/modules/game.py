@@ -26,6 +26,7 @@ from modules.graphics import (
     BOSS_IMG, BOSS_ALT_IMG,
     PORTAL_IMAGES, ITEM_IMAGES,
 )
+from modules.editor_layout import MIN_STUDIO_SIZE
 from modules.level_editor import LevelEditor
 from modules.audio import (
     DEFAULT_MUSIC_TRACK, DEFAULT_MUSIC_VOLUME, DEFAULT_SFX_VOLUME, SOUNDS,
@@ -579,6 +580,30 @@ class Game:
     def _open_level_editor(self):
         self.admin_panel.close()
         self.level_editor.toggle()
+
+    def _set_editor_window(self, entering):
+        if self.headless:
+            return
+        if entering:
+            size = self.level_editor.layout.bounds.size
+            if pygame.display.get_driver() != "dummy":
+                width, height = pygame.display.get_desktop_sizes()[0]
+                available = (width - 24, height - 80)
+                size = tuple(min(value, max(minimum, limit)) for value, minimum, limit in
+                             zip(size, MIN_STUDIO_SIZE, available))
+            self.screen = pygame.display.set_mode(size, pygame.RESIZABLE)
+            self.level_editor.resize(self.screen.get_size())
+        else:
+            self.screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
+
+    def _resize_editor_window(self):
+        if self.headless:
+            return
+        self.screen = pygame.display.get_surface()
+        size = tuple(max(value, minimum) for value, minimum in zip(self.screen.get_size(), MIN_STUDIO_SIZE))
+        if self.screen.get_size() != size:
+            self.screen = pygame.display.set_mode(size, pygame.RESIZABLE)
+        self.level_editor.resize(self.screen.get_size())
 
     def create_additional_ui(self):
         center_x = WINDOW_WIDTH // 2
@@ -1795,12 +1820,15 @@ class Game:
         if editor.active:
             if event.type == pygame.QUIT:
                 editor.request_close(sys.exit)
+            elif event.type in (pygame.VIDEORESIZE, pygame.WINDOWSIZECHANGED):
+                self._resize_editor_window()
             elif key == pygame.K_F2:
                 if editor.playtest is not None:
                     editor.stop_playtest()
                 else:
                     editor.toggle()
-            elif key == pygame.K_TAB and not editor.dialog_open and editor.playtest is None:
+            elif (key == pygame.K_TAB and not editor.dialog_open and editor.playtest is None
+                  and not editor.library_search_focused):
                 if not self._menu_suspended:
                     editor.request_close(self._toggle_admin_panel)
             else:

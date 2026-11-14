@@ -14,7 +14,6 @@ pygame.display.set_mode((1, 1))
 from modules import resources
 from modules.enums import GameState
 from modules.game import Game
-from modules import level_editor as layout
 
 
 def test_editor_saves_loads_and_draws_from_other_working_directory(tmp_path, monkeypatch):
@@ -32,7 +31,7 @@ def test_editor_saves_loads_and_draws_from_other_working_directory(tmp_path, mon
     game.handle_events()
     assert editor.active
     editor.new_map("Auswärts")
-    pos = (layout.TOOLBAR_W + 1, layout.MAP_TOP + 1)
+    pos = editor.camera.board_rect.left + 1, editor.camera.board_rect.top + 1
     pygame.event.post(pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=pos))
     pygame.event.post(pygame.event.Event(pygame.MOUSEBUTTONUP, button=1, pos=pos))
     game.handle_events()
