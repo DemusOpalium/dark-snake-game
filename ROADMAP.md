@@ -210,9 +210,9 @@
 - ✅ **#124.** Damage und Slow mit Trefferintervall, HP- und Tempoanzeige im isolierten Spieltest.
 - ✅ **#125–#141.** Eingang der 175 FrostAge-PNGs als Originaldateien.
 - ✅ **#142.** Zentraler Katalog, 175 geprüfte Laufzeitgrafiken und platzierbare Multi-Tiles mit Speichern und Undo/Redo.
-- 🔧 **PR 1 · FrostAge Main Menu.** Zwölf Menügrafiken mit vorhandenen Aktionen, pausierte Runden fortsetzen und den Hintergrund proportional an das Fenster anpassen.
+- ✅ **#143 · FrostAge Main Menu.** Zwölf Menügrafiken mit vorhandenen Aktionen, pausierte Runden fortsetzen und den Hintergrund proportional an das Fenster anpassen.
+- 🔧 **Roof / Foreground.** Acht vorhandene Dachgrafiken auf einer eigenen Ebene platzieren und bestehende Dachobjekte gezielt verschieben können. Weiche Sichtfenster mit spielbarem Dachbogen im 1P- und 2P-Leveltest prüfen.
 - ⬜ **PR 2 · World Studio UI.** Vergrößerbarer Editor mit integriertem Katalog, Werkzeugleisten, rechtem Eigenschaftenpanel, Zoom, Ebenenauswahl, Tooltips und deutscher Hilfe. Stamp Builder als eigenen Schritt einplanen.
-- ⬜ **PR 3 · Roof / Foreground.** Acht vorhandene Dachgrafiken auf einer eigenen Ebene platzieren und bestehende Dachobjekte gezielt verschieben können. Weiche Sichtfenster im 1P- und 2P-Leveltest prüfen.
 - ⬜ **PR 4 · Lighting & Atmosphere.** Helligkeit, platzierbare und spielergebundene Lichtquellen, Flackern, Nebel und Schattenflächen speichern und laden. Darstellung und HUD mit mehreren Lichtquellen bei 1350×930 prüfen.
 - ⬜ **Danach.** 13 Projektil- und 11 AoE-Grafiken über bestehende Treffer- und Effektsysteme mit Profilen und sichtbaren Beispielen im Leveltest.
 - ⬜ Acht FrostAge-Gegner mit Richtungsdarstellung, konfigurierbaren Angriffen, sicheren Editor-Spawns und Tests.
@@ -435,7 +435,7 @@ Vier Slots pro Spieler, Item-Icons, frei belegbare Aktivierungstasten.
 Seelenschrein, individuelle Bosstypen, feste AoE-Profile, Kampfphasen.
 
 **PHASE 5 – WORLD STUDIO 3.0**
-Weltbibliothek, Kollision, Damage/Slow und die FrostAge-Multi-Tiles sind integriert. Es folgen FrostAge-Hauptmenü, World-Studio-Oberfläche, Roof/Foreground und Lighting & Atmosphere. Projektile und AoE, Gegner, Items und Adventure folgen danach.
+Weltbibliothek, Kollision, Damage/Slow, FrostAge-Multi-Tiles und Hauptmenü sind integriert. Roof / Foreground kommt vor der erweiterten World-Studio-Oberfläche und Lighting & Atmosphere. Projektile und AoE, Gegner, Items und Adventure folgen danach.
 
 **PHASE 6 – LEVEL-VERWALTUNG**
 Entwürfe, Level-Bibliothek, JSON, Grafikpakete, Export und Import.
