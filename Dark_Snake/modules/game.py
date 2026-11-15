@@ -9,6 +9,9 @@
 import pygame, sys, random, time, os, datetime, json
 from functools import lru_cache
 from math import sqrt, atan2, cos, sin, pi
+from pathlib import Path
+from tempfile import NamedTemporaryFile
+
 from pygame.math import Vector2
 
 from modules.enums import GameState, Direction, ItemType
@@ -41,6 +44,7 @@ from modules.main_menu import FrostAgeMenu, load_frostage_background
 from modules.resources import asset_path, user_data_path
 from modules.roof_render import draw_roof_objects
 from modules.roof_settings import RoofVisibility
+from modules.studio_locale import DEFAULT_STUDIO_LANGUAGE, normalize_studio_language
 from modules.customization import CustomizationMenu
 from modules.enemies import NormalEnemy
 from modules.bolbu_enemy import BolbuEnemy
@@ -458,11 +462,13 @@ class Game:
         self.settings = {
             'initial_speed': START_SPEED,
             'fullscreen': False,
+            'studio_language': DEFAULT_STUDIO_LANGUAGE,
             'sfx_volume': DEFAULT_SFX_VOLUME,
             'bg_music_volume': DEFAULT_MUSIC_VOLUME,
             'music_track': DEFAULT_MUSIC_TRACK,
             'difficulty': 1.0,
             'field_scale': 1.0,
+            'studio_erase_all_layers': True,
             'snake_design': 0,
             'custom_head_p1': None,
             'custom_body_p1': None,
@@ -662,20 +668,38 @@ class Game:
                 music_volume = saved.get('bg_music_volume', saved.get('music_volume'))
                 self.settings['bg_music_volume'] = normalize_volume(music_volume, DEFAULT_MUSIC_VOLUME)
                 self.settings['sfx_volume'] = normalize_volume(self.settings['sfx_volume'], DEFAULT_SFX_VOLUME)
+                self.settings['studio_language'] = normalize_studio_language(self.settings['studio_language'])
         except FileNotFoundError:
             pass
         except (OSError, ValueError) as exc:
             record_event(f"Einstellungen konnten nicht geladen werden: {exc}")
 
     def save_settings(self):
+        saved = True
+        temporary = None
         try:
-            with open(user_data_path("settings.json"), "w", encoding="utf-8") as file:
+            path = Path(user_data_path("settings.json"))
+            with NamedTemporaryFile(mode="w", encoding="utf-8", dir=path.parent,
+                                    prefix=".settings-", suffix=".tmp", delete=False) as file:
+                temporary = Path(file.name)
                 json.dump(self.settings, file, ensure_ascii=False, indent=2)
-        except OSError as exc:
+                file.flush()
+                os.fsync(file.fileno())
+            temporary.replace(path)
+            temporary = None
+        except (OSError, TypeError, ValueError) as exc:
+            saved = False
             self.add_achievement("Einstellungen konnten nicht gespeichert werden")
             record_event(f"Einstellungen konnten nicht gespeichert werden: {exc}")
+        finally:
+            if temporary is not None:
+                try:
+                    temporary.unlink(missing_ok=True)
+                except OSError as exc:
+                    record_event(f"Temporäre Einstellungsdatei konnte nicht entfernt werden: {exc}")
         set_music_volume(self.settings['bg_music_volume'])
         set_sound_volume(self.settings['sfx_volume'])
+        return saved
 
     def start_game(self, players):
         self.player_count = players

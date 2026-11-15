@@ -49,6 +49,8 @@ def studio(tmp_path, monkeypatch):
     profile = tmp_path / "profile"
     monkeypatch.setattr(resources, "DATA_DIR", profile)
     monkeypatch.chdir(tmp_path)
+    profile.mkdir()
+    (profile / "settings.json").write_text('{"studio_language": "de"}', encoding="utf-8")
     game = Game()
     pygame.event.clear()
     return game, game.level_editor, profile
@@ -74,18 +76,20 @@ def click(game, pos, button=1):
 
 
 def erase_cell(game, editor, position):
+    # These tests exercise selective edits within one layer.
+    if editor.right_click_erase_all:
+        editor.toggle_right_click_erase()
     click(game, position, button=3)
-    assert editor._dialog["kind"] == "delete"
-    key(game, pygame.K_RETURN)
     assert not editor.dialog_open
 
 
 def button(game, editor, label):
-    if not any(control.label == label for control in editor.buttons):
-        section = BUTTON_SECTIONS[label]
+    localized_label = editor.tr(label)
+    if not any(control.label == localized_label for control in editor.buttons):
+        section = editor.tr(BUTTON_SECTIONS[label])
         section_rect, = [control.rect for control in editor.buttons if control.label == section]
         click(game, section_rect.center)
-    rect, = [control.rect for control in editor.buttons if control.label == label]
+    rect, = [control.rect for control in editor.buttons if control.label == localized_label]
     click(game, rect.center)
 
 

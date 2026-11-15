@@ -204,7 +204,7 @@ Bei vier Randrichtungen und beiden Köpfen bleibt der Rastertakt gleich. Bei ein
 
 ## World Studio – Wände malen und testen
 
-1. Mit **F2** einen Entwurf öffnen. Oben **Nur Grafik**, **Grafik + Kollision** oder **Nur Kollision** und bei Bedarf **WALL** oder **BARRIER** wählen. Linksklick malt die gewählten Ebenen. Rechtsklick löscht die Ebenen des aktuellen Werkzeugs. Im Modus **Nur Grafik** bleibt eine übermalte oder freigeräumte Wand erhalten.
+1. Mit **F2** einen Entwurf öffnen. Oben **Nur Grafik**, **Grafik + Kollision** oder **Nur Kollision** und bei Bedarf **WALL** oder **BARRIER** wählen. Linksklick malt die gewählten Ebenen. Wer beim Löschen nur Grafik entfernen und die Wand erhalten will, stellt **Build → Rechtsklick: Aktiv** ein und wählt die Grafikebene.
 2. **Kollision ein/aus** steuert die sichtbaren Umrisse. Orange zeigt WALL, Blau zeigt BARRIER. Das Umschalten ändert nur die Anzeige. Undo/Redo nimmt einen zusammenhängenden Mausstrich auf den bearbeiteten Ebenen gemeinsam zurück.
 3. **Test 1P** oder **Test 2P** startet den Wandtest mit dem aktuellen Entwurf im Speicher. Die Schlangen beginnen auf freien Feldern mit einem freien Nachbarfeld. Die normale Belegung für Richtungen gilt, standardmäßig WASD für P1 und Pfeiltasten für P2. Vor WALL und BARRIER bleibt die Schlange auf ihrer Zelle und kann in eine freie Richtung abbiegen.
 4. Mit **Esc**, **F2** oder **Test beenden** zur Bearbeitung zurückkehren. Der Test verwendet kurze Testschlangen für Rasterbewegung und Kollision. Entwurfsänderungen und Undo/Redo bleiben im Editor. **Speichern** schreibt die Karte ausdrücklich auf die Festplatte.
@@ -214,7 +214,7 @@ Formatversion 1 speichert Grafik und Kollision als getrennte Felder. Die Kollisi
 ## World Studio – Damage und Slow testen
 
 1. Mit **F2** einen Entwurf öffnen. Über **Effektwerte** den Schaden (1–100 HP), das Trefferintervall (0,1–60 s) und optional die maximale Dauer eines Kontakts (0,1–600 s) einstellen. Ein leeres Dauerfeld bedeutet, dass der Schaden bei dauerhaftem Kontakt weiter wiederholt wird. Für Slow stehen 10, 25, 50, 75 und 90 Prozent zur Wahl.
-2. **Schaden** oder **Slow** auswählen und mit Linksklick auf dem Raster malen. Rechtsklick löscht den gewählten Effekt. Beide Effekte können dieselbe Zelle belegen. Grafik, Kollision und der jeweils andere Effekt bleiben beim Löschen erhalten. **Effekte ein/aus** steuert die Editor-Markierungen. Undo/Redo und **Speichern** erfassen die Effektfelder.
+2. **Schaden** oder **Slow** auswählen und mit Linksklick auf dem Raster malen. Beide Effekte können dieselbe Zelle belegen. Über den Zelleninspektor lässt sich einer der beiden gezielt löschen. **Effekte ein/aus** steuert die Editor-Markierungen. Undo/Redo und **Speichern** erfassen die Effektfelder.
 3. Ein Schadensfeld eine Zelle rechts vom Start malen und zwei Felder rechts eine WALL setzen. **Test 1P** starten. Beim Betreten sinken die HP um den eingestellten Betrag. Vor der Wand stehen bleiben, um das Intervall und die optionale Dauer zu beobachten. Mit WASD ausweichen und erneut auf das Feld fahren. In **Test 2P** gilt derselbe Ablauf getrennt für beide Spieler.
 4. Eine Reihe Slow-Felder neben den Start malen. Der Test zeigt die HP und das verbleibende Tempo je Spieler. 75 Prozent Slow lässt 25 Prozent Tempo übrig. Sobald der Kopf das Feld verlässt, gilt wieder das normale Tempo. Eine Zelle hat einen Slow-Wert. Erneutes Malen ersetzt ihn.
 
@@ -257,7 +257,7 @@ PR #142 hat die Multi-Tiles als dekorative Objekte eingeführt. Das FrostAge-Hau
 1. `DARK-Snake.exe` starten, **Level Studio** öffnen und unter **Testen** auf **Dach-Demo** klicken. Die mitgelieferte Karte öffnet sich als Entwurf. Unter **Datei → Speichern** lässt sich eine eigene Kopie anlegen.
 2. **Test 1P** wählen. Die Schlange steht zwischen zwei Säulen. Bei Standardbelegung fährt **W** nach oben durch den mittleren Durchgang. **Test 2P** wiederholt den Versuch mit **W** für Spieler 1 und **↑** für Spieler 2. Über **Esc** geht es zurück zur Karte.
 3. Im Durchgang verdeckt der Bogen die Schlangenköpfe teilweise. Unter **Effekte → Dachwerte** lassen sich Sichtfenster, Radius, Transparenz und Randweichheit ändern. Für den Vergleich das Sichtfenster ausschalten und den Leveltest erneut starten. Die Säulen blockieren weiterhin nur ihre eigenen Kollisionsfelder.
-4. Im **Baukasten** links nach **FrostAge Dach** suchen und das Motiv mit Linksklick platzieren. **Build → Move Object** wählt ein Dach und anschließend sein Ziel. Rechtsklick öffnet die Löschbestätigung. **Build → Move to Roof** und ein Klick auf ein bereits unter **Objekte** liegendes Dach übertragen es. Undo und Redo erfassen Platzierung, Verschieben, Löschen, Ebenenwechsel und Dachwerte.
+4. Im **Baukasten** links nach **FrostAge Dach** suchen und das Motiv mit Linksklick platzieren. **Build → Move Object** wählt ein Dach und anschließend sein Ziel. Mit **Rechtsklick: Aktiv** auf der Dachebene lässt es sich gezielt löschen. **Build → Move to Roof** und ein Klick auf ein bereits unter **Objekte** liegendes Dach übertragen es. Undo und Redo erfassen Platzierung, Verschieben, Löschen, Ebenenwechsel und Dachwerte.
 
 Der isolierte 1P-/2P-Leveltest verwendet die Kollisionsfelder der Karte. Im regulären Classic-Spiel zeigt **Für Classic wählen** beim nächsten Start die Bodenkacheln und die Dachebene eines gespeicherten Entwurfs. Dort wirkt das Dach auch über Gegnern, Bossen und Projektilen. Classic verwendet seine üblichen Kollisions- und Effektregeln. **Classic-Standard** kehrt zur Standardkarte zurück.
 
@@ -270,7 +270,7 @@ Levelformat 3 speichert Dächer und Sichtfenster-Einstellungen getrennt von Graf
 3. Unter **Ansicht → Zelle untersuchen** eine Zelle anklicken und rechts die vorhandenen Daten lesen. **Esc** beendet die Auswahl. Die bestehenden Einstellungen für Damage, Slow und Dächer stehen unter **Effekte** und im Eigenschaftenpanel.
 4. **Testen → Dach-Demo** laden und **Test 1P** sowie **Test 2P** spielen. **F2** beendet zuerst den Test und anschließend den Editor. Beim Schließen erscheint bei Änderungen der vorhandene Dialog. Die normale Spielansicht kehrt zu 1350×930 zurück.
 
-Bei 900×620 ist die Karte in der Gesamtansicht kleiner. Mit Zoom und eingeklappten Seitenleisten bleiben Zellwerkzeuge bedienbar. Die aktuellen Schritte zur Ebenenbearbeitung stehen im Abschnitt zum Layer Explorer. **Lernen** führt zur spielbaren Dach-Demo. Der geführte Kurs und DE/EN folgen in eigenen Paketen.
+Bei 900×620 ist die Karte in der Gesamtansicht kleiner. Mit Zoom und eingeklappten Seitenleisten bleiben Zellwerkzeuge bedienbar. Die aktuellen Schritte zur Ebenenbearbeitung stehen im Abschnitt zum Layer Explorer. **Lernen** führt zur spielbaren Dach-Demo. Der geführte Kurs bleibt ein eigenes Arbeitspaket.
 
 ## World Studio · Rand-Builder ausprobieren
 
@@ -281,19 +281,27 @@ Bei 900×620 ist die Karte in der Gesamtansicht kleiner. Mit Zoom und eingeklapp
 
 ## World Studio · Eigene Schaltflächen unter Windows prüfen
 
-1. **Level Studio** öffnen. **File**, **Build**, **Layers**, **Effects**, **View**, **Test**, **Learn** und **Help** anklicken. Die eingebetteten Schriftzüge sind Englisch. Deutsche Hinweise stehen beim Überfahren in der Statusleiste. Werkzeuge ohne eindeutige Vorlage behalten eine Textschaltfläche.
+1. **Level Studio** öffnen. **File**, **Build**, **Layers**, **Effects**, **View**, **Test**, **Learn** und **Help** anklicken. Die eingebetteten Schriftzüge sind Englisch. Die Hinweise erscheinen in der gewählten Sprache. Werkzeuge ohne eigene Grafik verwenden eine Textschaltfläche.
 2. **File** öffnen und **New**, **Save**, **Open**, **Undo** und **Redo** prüfen. Undo und Redo werden gedimmt, solange die jeweilige Aktion leer ist.
 3. **Build → Border Builder** öffnen. **Border Left**, **Border Right**, **Border Top** und **Border Bottom** wirken auf ihre jeweilige Seite. Die separate Kachelauswahl je Seite und die Vorschau bleiben wie in #168. **Test → Roof Demo** und **Test 1P/2P** prüfen den Weg durch den Dachbogen.
 4. Die EXE bei kleiner Fenstergröße und maximiert ausprobieren. Werkzeuge umbrechen, wenn die Breite für eine Zeile fehlt. Mausrad über der Karte und mittlere Maustaste bedienen weiterhin Zoom und Kartenposition.
 
-55 geprüfte PNGs liegen mit ihren stabilen Action-IDs im [Laufzeitkatalog](Dark_Snake/assets/graphics/editor_ui/catalog.json). Die [Asset-Legende](ASSET_GUIDE.md) nennt die restlichen Motive und die nächsten Integrationsschritte. Die vollständige DE/EN-Umschaltung und die Freigabe weiterer Grafiken gehören zu den folgenden Arbeitspaketen.
+56 geprüfte PNGs liegen mit ihren stabilen Action-IDs im [Laufzeitkatalog](Dark_Snake/assets/graphics/editor_ui/catalog.json). Die [Asset-Legende](ASSET_GUIDE.md) nennt die restlichen Motive und die nächsten Integrationsschritte.
+
+## World Studio · Sprache, Hilfe und Werkzeuge
+
+1. Oben im Editor **DE/EN Language** anklicken. Tooltips, Hilfetexte, Dialoge und Statusmeldungen wechseln sofort. Ein neues Profil startet auf Englisch. Die Wahl liegt zusammen mit den anderen Spieleinstellungen in `settings.json`. Entwurf, Ebenenansicht und Bearbeitungsverlauf bleiben beim Wechsel erhalten.
+2. Rechts **Help** für Erklärungen zu Ebenen, Werkzeugen, Kollision und Dachfunktion öffnen. **Learn** führt durch kurze Übungen mit der Dach-Demo, Entwürfen und den vorhandenen 1P-/2P-Leveltests.
+3. FrostAge-Boden- oder Wandgrafik aus dem Baukasten wählen. Linke Maustaste über der Karte ziehen. Größere Pinselmotive platzieren in ihren vorhandenen Rastermaßen. Dekorationen, Dächer und frei skalierte Grafikobjekte werden mit je einem Klick gesetzt.
+4. Mit Rechtsklick oder Ziehen sichtbare und entsperrte Grafik-, Kollisions- und Effektfelder an der Mausposition entfernen. **Build → Rechtsklick** schaltet zwischen allen bearbeitbaren Ebenen und der aktiven Ebene um. Eine mehrteilige Grafik wird vollständig gelöscht. Kollisions- und Effektfelder außerhalb der getroffenen Zellen bleiben erhalten. Der Zelleninspektor erlaubt weiterhin die gezielte, bestätigte Löschung einzelner Einträge. **Strg+Z** nimmt den gesamten Zug zurück, **Strg+Y** stellt ihn wieder her.
+5. Die Sprache bei 900×620 und maximiert prüfen, einen Entwurf speichern und nach einem Neustart erneut öffnen. Die Dach-Demo in **Test (1P)** und **Test (2P)** ausprobieren und danach zu Classic zurückkehren. Vollbild mit Wiederherstellung der Fenstergröße ist als separater Folge-PR geplant.
 
 ## World Studio · Layer Explorer unter Windows prüfen
 
 1. **Level Studio → Layers** öffnen. Für Boden, Objekte, Dach, Kollision und Effekte jeweils **Sichtbar** oder **Verdeckt** sowie **Offen** oder **Gesperrt** wählen. Ebenenauswahl und Sichtbarkeit sind unabhängig. Ein verdecktes Dach bleibt bei der Auswahl verdeckt.
 2. **Solo** an einer Ebene probieren. **Solo beenden** stellt die vorherige Sichtbarkeit wieder her. **Alle Ebenen anzeigen** blendet jede Ebene ein. Verdeckte und gesperrte Ebenen sind vor der Kartenbearbeitung geschützt, einschließlich Rand-Builder, Ebenenübertragung und betroffener Undo-/Redo-Schritte. **Graphics + Collision** malt nur, wenn beide beteiligten Ebenen bearbeitbar sind.
 3. Im Reiter **Zelle** den Inspektor aktivieren und eine Rasterstelle anklicken. Vorhandene Kollisionsarten sowie Damage- und Slow-Werte lassen sich einzeln ändern. Bei Objekten und Dächern führt die Auswahl zum bestehenden Verschiebe- und Größenwerkzeug.
-4. Ein Rechtsklick auf ein Element bereitet das Löschen vor und markiert es rot. **Abbrechen** oder **Esc** lässt die Karte unverändert, **Löschen** oder **Enter** entfernt das markierte Element. **Build → Radierer** löscht nach ausdrücklicher Aktivierung mit Linksklick oder Ziehen auf der aktiven Ebene. Eine Grafik mit mehreren Feldern wird vollständig entfernt. **Strg+Z** nimmt einen kompletten Löschvorgang zurück.
+4. **Build → Radierer** löscht mit Linksklick oder Ziehen auf der aktiven Ebene. Rechtsklick löscht nach der eingestellten Ebenenauswahl direkt. Der Zelleninspektor markiert ein einzelnes Löschziel rot und fragt nach Bestätigung.
 5. **Test → Roof Demo → Test (1P)/(2P)** ausprobieren. Editor-Sperren und Solo gelten für die Bearbeitung. Die Vorschau und der Spieltest verwenden die Karte mit ihrer Dachtransparenz. Die Ansichtsoptionen werden in der Editor-Sitzung geführt. Das Leveldateiformat bleibt bei Version 3.
 
 ### Normaler Gegner-Spawn · separater Bugfix

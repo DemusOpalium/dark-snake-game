@@ -8,6 +8,7 @@ import pygame
 from modules.editor_buttons import EditorButtons
 from modules.editor_layers import LAYER_COLORS, LAYER_LABELS
 from modules.graphic_objects import object_anchor_at
+from modules.studio_locale import StudioLocale
 
 
 PANEL = (24, 33, 48)
@@ -65,12 +66,14 @@ def _tool_name(editor):
     }[editor.placement_mode]
 
 
-def _damage_detail(damage):
+def _damage_detail(damage, tr):
     def seconds(value):
-        return format(value, "g").replace(".", ",") + " s"
+        return format(value, "g").replace(".", tr(",")) + " s"
 
-    duration = "Keine Zeitgrenze" if damage.duration is None else f"Dauer {seconds(damage.duration)}"
-    return f"{damage.amount} HP je {seconds(damage.interval)} · {duration}"
+    duration = (tr("Keine Zeitgrenze") if damage.duration is None
+                else tr("Dauer {duration}", duration=seconds(damage.duration)))
+    return tr("{amount} HP je {interval} · {duration}", amount=damage.amount,
+              interval=seconds(damage.interval), duration=duration)
 
 
 def _art_name(editor, key):
@@ -81,9 +84,10 @@ def _art_name(editor, key):
 class StudioSidebar:
     """Present the existing editor tools in one switchable right-hand pane."""
 
-    def __init__(self, font, button_art=None):
+    def __init__(self, font, button_art=None, *, translate=None):
         self.font = font
         self.button_art = button_art if button_art is not None else EditorButtons(font)
+        self.tr = translate if translate is not None else StudioLocale("de")
         self.tab = "properties"
         self._scroll = 0
         self._hover = None
@@ -97,35 +101,38 @@ class StudioSidebar:
 
     def _properties(self, editor, editing):
         mode = editor.placement_mode
-        layer = LAYER_LABELS[editor.active_layer]
-        entries = [_Entry("Aktives Werkzeug", f"{_tool_name(editor)} · {layer}")]
+        layer = self.tr(LAYER_LABELS[editor.active_layer])
+        entries = [_Entry(self.tr("Aktives Werkzeug"), f"{self.tr(_tool_name(editor))} · {layer}")]
         if editing and editor.layer_locked(editor.active_layer):
-            entries.append(_Entry("Bearbeitung gesperrt", "Die aktive Ebene im Layer Explorer entsperren."))
+            entries.append(_Entry(self.tr("Bearbeitung gesperrt"),
+                                  self.tr("Die aktive Ebene im Layer Explorer entsperren.")))
         elif editing and not editor.layer_visible(editor.active_layer):
-            entries.append(_Entry("Ebene ausgeblendet", "Die aktive Ebene im Layer Explorer einblenden."))
+            entries.append(_Entry(self.tr("Ebene ausgeblendet"),
+                                  self.tr("Die aktive Ebene im Layer Explorer einblenden.")))
         item = editor._selected_object()
         has_tile = editor.graphic_layer == "ground" and editor.current_tile in editor.tiles
         if mode in ("graphics", "combined") and (has_tile or item is not None):
             size = f" · {item.width} × {item.height}" if item is not None else ""
-            entries.append(_Entry("Gewählte Grafik", f"{_art_name(editor, editor.current_tile)}{size}"))
+            entries.append(_Entry(self.tr("Gewählte Grafik"), f"{_art_name(editor, editor.current_tile)}{size}"))
         if mode in ("damage", "slow"):
             entries.extend((
-                _Entry("Schaden", _damage_detail(editor.damage_brush)),
-                _Entry("Slow", f"{editor.slow_brush.percent} % langsamer"),
+                _Entry(self.tr("Schaden"), _damage_detail(editor.damage_brush, self.tr)),
+                _Entry(self.tr("Slow"), self.tr("{percent} % langsamer", percent=editor.slow_brush.percent)),
             ))
             if editing:
-                entries.append(_Entry("Effektwerte öffnen", action=editor.open_effect_settings,
+                entries.append(_Entry(self.tr("Effektwerte öffnen"), action=editor.open_effect_settings,
                                       action_id="effect_values"))
         elif editor.graphic_layer == "roof":
             visibility = editor.roof_visibility
-            status = (f"{visibility.radius:g} Felder · {visibility.transparency} % · "
-                      f"weicher Rand {visibility.softness:g}" if visibility.enabled else "Ausgeschaltet")
-            entries.append(_Entry("Dach-Sichtfenster", status))
+            status = (self.tr("{radius:g} Felder · {alpha} % · weicher Rand {softness:g}",
+                              radius=visibility.radius, alpha=visibility.transparency, softness=visibility.softness)
+                      if visibility.enabled else self.tr("Ausgeschaltet"))
+            entries.append(_Entry(self.tr("Dach-Sichtfenster"), status))
             if editing:
-                entries.append(_Entry("Dachwerte öffnen", action=editor.open_roof_settings,
+                entries.append(_Entry(self.tr("Dachwerte öffnen"), action=editor.open_roof_settings,
                                       action_id="roof_settings"))
         if editing and (editor._move_anchor is not None or editor._selected_object() is not None):
-            entries.append(_Entry("Objektgröße ändern", action=editor._open_object_size,
+            entries.append(_Entry(self.tr("Objektgröße ändern"), action=editor._open_object_size,
                                   action_id="build_object_size"))
         return entries
 
@@ -135,19 +142,20 @@ class StudioSidebar:
             if editor.solo_layer is not None:
                 layer = editor.solo_layer
                 entries.append(_Entry(
-                    "Solo · " + LAYER_LABELS[layer],
-                    controls=(_Control("layer_exit_solo", "Solo beenden",
+                    "Solo · " + self.tr(LAYER_LABELS[layer]),
+                    controls=(_Control("layer_exit_solo", self.tr("Solo beenden"),
                                        lambda layer=layer: editor.toggle_layer_solo(layer),
-                                       "Die vorherige Sichtbarkeit wiederherstellen."),),
+                                       self.tr("Die vorherige Sichtbarkeit wiederherstellen.")),),
                 ))
             entries.append(_Entry(
-                "Ebenenansicht", "Sicht · Schutz · Solo",
+                self.tr("Ebenenansicht"), self.tr("Sicht · Schutz · Solo"),
                 controls=(
-                    _Control("layer_show_all", "Alle Ebenen anzeigen", editor.show_all_layers,
-                             "Alle fünf Ebenen einblenden."),
+                    _Control("layer_show_all", self.tr("Alle Ebenen anzeigen"), editor.show_all_layers,
+                             self.tr("Alle fünf Ebenen einblenden.")),
                 ),
             ))
         for layer, label in LAYER_LABELS.items():
+            label = self.tr(label)
             visible = editor.layer_visible(layer)
             locked = editor.layer_locked(layer)
             active = editor.active_layer == layer
@@ -159,14 +167,15 @@ class StudioSidebar:
                 action=lambda layer=layer: self._choose_layer(editor, layer),
                 action_id=f"layer_{layer}",
                 controls=(
-                    _Control(f"layer_visibility_{layer}", "An" if visible else "Aus",
+                    _Control(f"layer_visibility_{layer}", self.tr("An" if visible else "Aus"),
                              lambda layer=layer: editor.toggle_layer_visibility(layer),
-                             f"{label} ein- oder ausblenden.", visible, editor.solo_layer is None),
-                    _Control(f"layer_lock_{layer}", "Zu" if locked else "Offen",
+                             self.tr("{layer} ein- oder ausblenden.", layer=label), visible, editor.solo_layer is None),
+                    _Control(f"layer_lock_{layer}", self.tr("Zu" if locked else "Offen"),
                              lambda layer=layer: editor.toggle_layer_lock(layer),
-                             f"Bearbeitungsschutz für {label} umschalten.", locked),
+                             self.tr("Bearbeitungsschutz für {layer} umschalten.", layer=label), locked),
                     _Control(f"layer_solo_{layer}", "Solo", lambda layer=layer: editor.toggle_layer_solo(layer),
-                             f"{label} vorübergehend allein anzeigen.", editor.solo_layer == layer),
+                             self.tr("{layer} vorübergehend allein anzeigen.", layer=label),
+                             editor.solo_layer == layer),
                 ),
             ))
         return entries
@@ -178,50 +187,53 @@ class StudioSidebar:
         else:
             editor._set_placement_mode("damage" if layer == "effects" else "collision")
 
-    @staticmethod
-    def _deletion_control(editor, layer, effect=None):
-        name = {"damage": "Schaden", "slow": "Slow"}.get(effect, LAYER_LABELS[layer])
+    def _deletion_control(self, editor, layer, effect=None):
+        name = self.tr({"damage": "Schaden", "slow": "Slow"}.get(effect, LAYER_LABELS[layer]))
         return _Control(
-            f"inspector_delete_{effect or layer}", "Löschen", lambda: editor.delete_inspected(layer, effect),
-            f"{name} nach Bestätigung aus der ausgewählten Zelle entfernen.",
+            f"inspector_delete_{effect or layer}", self.tr("Löschen"), lambda: editor.delete_inspected(layer, effect),
+            self.tr("{name} nach Bestätigung aus der ausgewählten Zelle entfernen.", name=name),
             enabled=editor.layer_editable(layer),
         )
 
     def _object_entry(self, editor, layer, label, objects, cell, editing):
         anchor = object_anchor_at(objects, cell)
         if anchor is None:
-            return _Entry(label, "Leer", accent=LAYER_COLORS[layer])
+            return _Entry(label, self.tr("Leer"), accent=LAYER_COLORS[layer])
         item = objects[anchor]
         x, y = anchor
         controls = ()
         if editing:
             controls = (
-                _Control(f"inspector_select_{layer}", "Auswählen", lambda: editor.select_inspected_object(layer),
-                         f"{label} zum Verschieben oder Ändern der Größe auswählen.",
+                _Control(f"inspector_select_{layer}", self.tr("Auswählen"),
+                         lambda: editor.select_inspected_object(layer),
+                         self.tr("{label} zum Verschieben oder Ändern der Größe auswählen.", label=label),
                          enabled=editor.layer_editable(layer)),
                 self._deletion_control(editor, layer),
             )
-        detail = f"{_art_name(editor, item.asset_id)} · {item.width} × {item.height} · Anker {x} / {y}"
+        detail = self.tr("{asset} · {width} × {height} · Anker {x} / {y}", asset=_art_name(editor, item.asset_id),
+                         width=item.width, height=item.height, x=x, y=y)
         return _Entry(label, detail, controls=controls, accent=LAYER_COLORS[layer])
 
     def _effect_entry(self, editor, kind, label, detail, editing):
         controls = ()
         if editing and detail is not None:
             controls = (
-                _Control(f"inspector_edit_{kind}", "Bearbeiten", lambda: editor.edit_inspected_effect(kind),
-                         f"{label} für diese Zelle einstellen.", enabled=editor.layer_editable("effects")),
+                _Control(f"inspector_edit_{kind}", self.tr("Bearbeiten"), lambda: editor.edit_inspected_effect(kind),
+                         self.tr("{label} für diese Zelle einstellen.", label=label),
+                         enabled=editor.layer_editable("effects")),
                 self._deletion_control(editor, "effects", kind),
             )
-        return _Entry(label, detail or "Leer", controls=controls, accent=LAYER_COLORS["effects"])
+        return _Entry(label, detail or self.tr("Leer"), controls=controls, accent=LAYER_COLORS["effects"])
 
     def _cell(self, editor, editing):
         entries = []
         if editing:
-            entries.append(_Entry("Zelle auf Karte wählen", action=editor.toggle_inspect_mode,
+            entries.append(_Entry(self.tr("Zelle auf Karte wählen"), action=editor.toggle_inspect_mode,
                                   active=editor.inspect_mode, action_id="inspector_pick_cell"))
         cell = editor.inspected_cell
         if cell is None:
-            return entries + [_Entry("Keine Zelle ausgewählt", "Aktiviere die Auswahl und klicke auf die Karte.")]
+            return entries + [_Entry(self.tr("Keine Zelle ausgewählt"),
+                                     self.tr("Aktiviere die Auswahl und klicke auf die Karte."))]
         x, y = cell
         effects = editor.effects.get(cell)
         damage = effects.damage if effects else None
@@ -233,22 +245,25 @@ class StudioSidebar:
         if editing and collision is not None:
             kind = "BARRIER" if collision == "WALL" else "WALL"
             collision_controls = (
-                _Control(f"inspector_collision_{kind.lower()}", f"Zu {kind}",
+                _Control(f"inspector_collision_{kind.lower()}", self.tr("Zu {kind}", kind=kind),
                          lambda: editor.edit_inspected_collision(kind),
-                         f"Kollision in dieser Zelle als {kind} speichern.",
+                         self.tr("Kollision in dieser Zelle als {kind} speichern.", kind=self.tr(kind)),
                          enabled=editor.layer_editable("collision")),
                 self._deletion_control(editor, "collision"),
             )
         if editing and tile is not None:
             ground_controls = (self._deletion_control(editor, "ground"),)
         return entries + [
-            _Entry(f"Zelle {x} / {y}"),
-            self._object_entry(editor, "roof", "Dach", editor.roofs, cell, editing),
-            self._object_entry(editor, "objects", "Objekt", editor.objects, cell, editing),
-            _Entry("Kollision", collision or "Leer", controls=collision_controls, accent=LAYER_COLORS["collision"]),
-            self._effect_entry(editor, "damage", "Schaden", _damage_detail(damage) if damage else None, editing),
-            self._effect_entry(editor, "slow", "Slow", f"{slow.percent} % langsamer" if slow else None, editing),
-            _Entry("Boden", _art_name(editor, tile) if tile else "Leer",
+            _Entry(self.tr("Zelle {x} / {y}", x=x, y=y)),
+            self._object_entry(editor, "roof", self.tr("Dach"), editor.roofs, cell, editing),
+            self._object_entry(editor, "objects", self.tr("Objekt"), editor.objects, cell, editing),
+            _Entry(self.tr("Kollision"), self.tr(collision or "Leer"),
+                   controls=collision_controls, accent=LAYER_COLORS["collision"]),
+            self._effect_entry(editor, "damage", self.tr("Schaden"),
+                               _damage_detail(damage, self.tr) if damage else None, editing),
+            self._effect_entry(editor, "slow", self.tr("Slow"),
+                               self.tr("{percent} % langsamer", percent=slow.percent) if slow else None, editing),
+            _Entry(self.tr("Boden"), _art_name(editor, tile) if tile else self.tr("Leer"),
                    controls=ground_controls, accent=LAYER_COLORS["ground"]),
         ]
 
@@ -262,23 +277,42 @@ class StudioSidebar:
             return self._cell(editor, editing)
         if self.tab == "learn":
             entries = [
-                _Entry("Dachbogen ausprobieren",
-                       "Die mitgelieferte Karte zeigt, wie ein Dach und zwei Kollisionssäulen zusammenwirken."),
-                _Entry("Durch den Bogen fahren",
-                       "Starte den 1P- oder 2P-Test. Mit Standardbelegung fährt W für Spieler 1, ↑ für Spieler 2."),
+                _Entry(self.tr("Dachbogen ausprobieren"),
+                       self.tr("Öffne die Dach-Demo und schalte im Layer Explorer Dach und Kollision einzeln um. "
+                               "So siehst du den freien Durchgang zwischen den Säulen.")),
+                _Entry(self.tr("Durch den Bogen fahren"),
+                       self.tr("Starte Test (1P) oder Test (2P). Mit der Standardbelegung lenkt W Spieler 1 "
+                               "und ↑ Spieler 2 durch den Bogen. Esc oder F2 beendet den Test.")),
             ]
             if editing:
-                entries.append(_Entry("Dach-Demo öffnen", action=editor.load_roof_demo,
+                entries.append(_Entry(self.tr("Dach-Demo öffnen"), action=editor.load_roof_demo,
                                       action_id="test_roof_demo"))
             return entries
         return [
-            _Entry("Karte bewegen", "Mausrad zoomt. Ziehe mit der mittleren Maustaste oder Leertaste + Linksklick. "
-                   "„Karte einpassen“ zeigt das ganze Spielfeld."),
-            _Entry("Bearbeiten", "Linksklick platziert. Rechtsklick fragt vor dem Löschen nach. "
-                   "Unter Bauen schaltet der Radierer direktes Löschen ein. Strg+Z macht rückgängig."),
-            _Entry("Layer Explorer", "Verdeckte oder gesperrte Ebenen schützen vor Änderungen. Solo zeigt nur eine Ebene."),
-            _Entry("Zellen ansehen", "Im Reiter „Zelle“ kannst du Daten prüfen und einzelne Werte bearbeiten."),
-            _Entry("Test verlassen", "Esc oder F2 führt aus dem Leveltest in den Editor zurück."),
+            _Entry(self.tr("Layer Explorer"),
+                   self.tr("Wähle die aktive Ebene zum Malen. Sichtbarkeit und Sperre funktionieren unabhängig. "
+                           "Solo blendet die übrigen Ebenen vorübergehend aus.")),
+            _Entry(self.tr("Kollision"),
+                   self.tr("Wand oder Barriere markieren blockierte Felder unabhängig von der Grafik. "
+                           "Mit „Grafik + Kollision“ malst du beides zusammen.")),
+            _Entry(self.tr("Dach / Foreground"),
+                   self.tr("Dächer werden vor den Spielfiguren gezeichnet. Stelle unter „Dachwerte“ "
+                           "das transparente Sichtfenster pro Spieler ein.")),
+            _Entry(self.tr("Malen und Löschen"),
+                   self.tr("Mit gedrückter linker Maustaste malst du Kacheln. Rechtsklick oder Rechtsziehen "
+                           "löscht sofort auf sichtbaren, ungesperrten Ebenen. Unter Bauen kannst du das "
+                           "auf die aktive Ebene einschränken. Strg+Z und Strg+Y machen einen Zug rückgängig "
+                           "oder wiederholen ihn.")),
+            _Entry(self.tr("Zellen ansehen"),
+                   self.tr("Im Reiter „Zelle“ kannst du Daten prüfen und einzelne Werte bearbeiten.")),
+            _Entry(self.tr("Speichern und öffnen"),
+                   self.tr("Öffne „Datei“, um einen Entwurf zu speichern, umzubenennen oder erneut zu laden.")),
+            _Entry(self.tr("Level testen"),
+                   self.tr("„Test (1P)“ und „Test (2P)“ prüfen Wege und Effekte im Entwurf. "
+                           "Esc oder F2 führt in den Editor zurück.")),
+            _Entry(self.tr("Karte bewegen"),
+                   self.tr("Mausrad zoomt. Ziehe mit der mittleren Maustaste oder Leertaste + Linksklick. "
+                           "„Karte einpassen“ zeigt das ganze Spielfeld.")),
         ]
 
     def _wrap(self, text, width):
@@ -306,10 +340,10 @@ class StudioSidebar:
         left = bounds.left + 9
         width = bounds.width - 18
         tab_width = (width - gap) // 2
-        tabs = [(TABS[0][0], TABS[0][1], pygame.Rect(left, bounds.top + 31, width, 34))]
+        tabs = [(TABS[0][0], self.tr(TABS[0][1]), pygame.Rect(left, bounds.top + 31, width, 34))]
         tabs.extend(
-            (key, label, pygame.Rect(left + column * (tab_width + gap), bounds.top + 69 + row * 33,
-                                     tab_width, 29))
+            (key, self.tr(label), pygame.Rect(left + column * (tab_width + gap), bounds.top + 69 + row * 33,
+                                              tab_width, 29))
             for index, (key, label) in enumerate(TABS[1:]) for row, column in (divmod(index, 2),)
         )
         body = pygame.Rect(left, bounds.top + 139, width - 6, max(0, bounds.height - 147))
@@ -337,7 +371,7 @@ class StudioSidebar:
         left, width = rect.x + offset, rect.width - offset
         if entry.action:
             yield (_Control(entry.action_id, entry.title, entry.action,
-                            self.button_art.hint(entry.action_id, entry.title), entry.active),
+                            self.tr(self.button_art.hint(entry.action_id, entry.title)), entry.active),
                    pygame.Rect(left, rect.top, width, 34))
         if entry.controls:
             count = len(entry.controls)
@@ -364,7 +398,7 @@ class StudioSidebar:
             if hovered:
                 hint = control.hint
                 if not control.enabled:
-                    hint += " Derzeit nicht verfügbar."
+                    hint += " " + self.tr("Derzeit nicht verfügbar.")
         x = rect.x + (6 if entry.accent else 0)
         y = rect.y + (34 if entry.action else 0)
         for lines, color in ((title, TEXT), (detail, MUTED)):
@@ -380,7 +414,7 @@ class StudioSidebar:
         screen.set_clip(bounds.clip(old_clip))
         pygame.draw.rect(screen, PANEL, bounds, border_radius=7)
         pygame.draw.rect(screen, STROKE, bounds, 1, border_radius=7)
-        self._text(screen, "Arbeitsbereich", (bounds.left + 10, bounds.top + 9), FOCUS)
+        self._text(screen, self.tr("Arbeitsbereich"), (bounds.left + 10, bounds.top + 9), FOCUS)
         tabs, body, entries, max_scroll = self._geometry(bounds, editor)
         hint = None
         for key, label, rect in tabs:
@@ -388,7 +422,7 @@ class StudioSidebar:
             hovered = self._hovered(rect)
             self.button_art.draw(screen, action_id, label, rect, selected=self.tab == key, hovered=hovered)
             if hovered:
-                hint = self.button_art.hint(action_id, label)
+                hint = self.tr(self.button_art.hint(action_id, label))
         screen.set_clip(body.clip(old_clip))
         for entry, title, detail, local in entries:
             rect = local.move(0, body.top - self._scroll)

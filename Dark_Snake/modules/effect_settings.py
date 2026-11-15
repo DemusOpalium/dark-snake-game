@@ -3,23 +3,25 @@
 import pygame
 
 from modules.level_effects import DamageField, SlowField, SLOW_PERCENTAGES
+from modules.studio_locale import StudioLocale
 
 
 EFFECT_COLORS = {"damage": (244, 104, 127), "slow": (197, 145, 247)}
 _FIELD_LABELS = ("Schaden pro Treffer (HP)", "Trefferintervall (s)", "Wirkungsdauer (s, leer = unbegrenzt)")
 
 
-def _display_number(value):
-    return f"{value:g}".replace(".", ",")
+def _display_number(value, tr):
+    return f"{value:g}".replace(".", tr(","))
 
 
 class EffectSettings:
     """Edit brush presets without applying anything to the level."""
 
-    def __init__(self, damage, slow, bounds, *, kind=None):
+    def __init__(self, damage, slow, bounds, *, kind=None, translate=None):
+        self.tr = translate if translate is not None else StudioLocale("de")
         self.kind = kind
-        self.values = [str(damage.amount), _display_number(damage.interval),
-                       "" if damage.duration is None else _display_number(damage.duration)]
+        self.values = [str(damage.amount), _display_number(damage.interval, self.tr),
+                       "" if damage.duration is None else _display_number(damage.duration, self.tr)]
         self.slow_percent = slow.percent
         self.field = 0
         self.select_all = True
@@ -111,24 +113,24 @@ class EffectSettings:
         pygame.draw.rect(screen, (25, 25, 25), panel)
         pygame.draw.rect(screen, (255, 255, 0), panel, 2)
         title = {"damage": "Schaden in der gewählten Zelle", "slow": "Slow in der gewählten Zelle"}
-        text(screen, title.get(self.kind, "Effektwerte für neue Felder"), (panel.x + 20, panel.y + 12))
+        text(screen, self.tr(title.get(self.kind, "Effektwerte für neue Felder")), (panel.x + 20, panel.y + 12))
         for index, (label, rect, value) in enumerate(zip(_FIELD_LABELS, self._fields(), self.values)):
-            text(screen, label, (rect.x, rect.y - 18))
+            text(screen, self.tr(label), (rect.x, rect.y - 18))
             outline = EFFECT_COLORS["damage"] if index == self.field else None
             button(screen, value or "–", rect, outline)
             if index == self.field and self.select_all:
-                text(screen, "Eingabe ersetzt Wert", (rect.right - 142, rect.y + 5), (195, 195, 195))
+                text(screen, self.tr("Eingabe ersetzt Wert"), (rect.right - 142, rect.y + 5), (195, 195, 195))
         if self.kind != "damage":
             y = panel.y + (44 if self.kind == "slow" else 202)
-            text(screen, "Verlangsamung", (panel.x + 20, y))
+            text(screen, self.tr("Verlangsamung"), (panel.x + 20, y))
         for percent, rect in self._slow_buttons():
             outline = EFFECT_COLORS["slow"] if percent == self.slow_percent else None
             button(screen, f"{percent} %", rect, outline)
         if self.error:
-            text(screen, self.error, (panel.x + 20, panel.bottom - 67), EFFECT_COLORS["damage"],
+            text(screen, self.tr(self.error), (panel.x + 20, panel.bottom - 67), EFFECT_COLORS["damage"],
                  max_width=panel.width - 40)
-        button(screen, "Abbrechen", self._cancel_button())
-        button(screen, "Übernehmen", self._confirm_button())
+        button(screen, self.tr("Abbrechen"), self._cancel_button())
+        button(screen, self.tr("Übernehmen"), self._confirm_button())
 
 
 def draw_effect_overlay(screen, map_rect, cell_size, effects):

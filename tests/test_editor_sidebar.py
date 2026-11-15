@@ -134,8 +134,11 @@ def test_sidebar_draw_and_scroll_are_confined_to_its_panel(studio):
     assert surface.get_at((bounds.centerx, bounds.top + 27))[:3] == PANEL
     _, _, _, max_scroll = sidebar._geometry(bounds, editor)
     assert max_scroll > 0
-    over_sidebar = pygame.event.Event(pygame.MOUSEWHEEL, y=-20, pos=bounds.center)
-    assert sidebar.handle_event(over_sidebar, bounds, editor) and sidebar._scroll == max_scroll
+    one_step = pygame.event.Event(pygame.MOUSEWHEEL, y=-1, pos=bounds.center)
+    assert sidebar.handle_event(one_step, bounds, editor)
+    assert 0 < sidebar._scroll < max_scroll
+    past_bottom = pygame.event.Event(pygame.MOUSEWHEEL, y=-max_scroll, pos=bounds.center)
+    assert sidebar.handle_event(past_bottom, bounds, editor) and sidebar._scroll == max_scroll
     sidebar.show("properties")
     assert sidebar._scroll == 0
 
