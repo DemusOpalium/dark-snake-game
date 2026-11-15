@@ -228,14 +228,14 @@
 - ✅ **#173 · Sieben ergänzende Editor-Motive** als Originale hochgeladen.
 - ✅ **#174 · PR C · Layer Explorer.** Sieben neue Editor-Motive als Laufzeitgrafiken zugeordnet (jetzt 55 statt 48 UI-Einträge), rechte Reiter verbessert, Ebenensichtbarkeit, Sperren, Solo-Modus und sichereres Löschen/Inspektor implementiert. **Merge bestätigt; sichtbare Windows-Gesamtabnahme nicht durch Merge ersetzt.**
 - ⬜ **Ebenenvergleich.** Mehrere Ebenen mit abgestufter Deckkraft zur Orientierung anzeigen.
-- ⬜ **PR D · Deutsch / English und Hilfe.** Gespeicherte Sprachwahl, vollständige Übersetzung, Tooltips und Werkzeugbeschreibungen.
-- ⬜ **Fullscreen / Windowed.** Sichtbare Umschaltung im Editor mit Wiederherstellung des Fenstermodus und unverändertem Spielraster.
+- 🔧 **PR D · Deutsch / English und Hilfe.** Editor-Sprache im laufenden Betrieb wechseln und speichern. Hilfe und Lernen erklären Werkzeuge, Ebenen, Kollision, Dächer, Entwürfe und Leveltests.
+- ⬜ **Fullscreen / Windowed · separater Folge-PR.** Die bestehende Fenstersteuerung für den Editor erweitern. Vorherige Fenstergröße speichern, beim Wechsel den sichtbaren Kartenausschnitt anpassen und beim Verlassen wiederherstellen. Spielraster, Entwurf und Verlauf erhalten. Resize-Ereignisse, DPI-Skalierung und mehrere Monitore unter Windows prüfen.
 - ⬜ **PR E · Learning System.** „Mein erstes FrostAge-Level“ mit geprüften Schritten in einer eigenen Übungskarte.
 - ⬜ **PR F · Lighting & Atmosphere.** Helligkeit, platzierbare und spielergebundene Lichtquellen, Flackern, Nebel und Schattenflächen. Darstellung und HUD mit mehreren Lichtquellen bei 1350×930 prüfen.
 - ⬜ **PR G · Trigger und Fallen.** Datenbasierte Auslöser, Bedingungen und Aktionen mit bestehenden Schadens- und Verlangsamungsregeln verbinden. Beispielkette: Druckplatte → Tor öffnet → Spezialgegner erscheint → Truhe wird freigeschaltet.
 - ⬜ **Interaktive Levelobjekte.** Truhen, Fallen, Druckplatten, Schalter, Tore, Schlüssel und Portale mit eigenen Interaktionsregeln. Normale Gegner, Bosse und zufällige Items behalten die regulären Spawnmechanismen.
 - ⬜ **Weitere Spielideen.** Frostburst mit acht Splittern, rotierender Tornado mit Kontaktschaden, Soundprofile und freischaltbare Schlangenköpfe und -körper.
-- ⬜ **Stempel-/Pinsel-UX vereinfachen.** Classic-Bodenfelder lassen sich durch Ziehen malen; FrostAge-Objekte und Multi-Tiles werden derzeit einzeln platziert (einmaliger Stamp pro Klick). Für 1×1-FrostAge-Bodenelemente später optionalen Malpinsel, für Multi-Tiles klaren Stamp-Modus mit Vorschau/Undo und Platzierungsprüfung ergänzen. Keine unbeabsichtigte Massenplatzierung großer Objekte.
+- 🔧 **PR D · Pinsel und schnelles Löschen.** FrostAge-Boden- und Wandgrafiken per Ziehen malen. Dekorationen, Dächer und frei skalierte Grafikobjekte einzeln stempeln. Rechtsklick löscht direkt auf sichtbaren, entsperrten Ebenen oder wahlweise nur auf der aktiven Ebene. Jede Ziehbewegung ist ein Undo-/Redo-Schritt.
 - ⬜ **Schneller Levelbau.** Vollflächige World-Backgrounds, große Flächenfüllung, passende Tile-Übergänge, Favoriten und Design-Presets kombinieren; Benutzer soll nicht jede Bodenzelle einzeln gestalten müssen.
 - ⬜ Stamp Builder als eigenen Arbeitsschritt einplanen.
 - ⬜ **Danach.** 13 Projektil- und 11 AoE-Grafiken über bestehende Treffer- und Effektsysteme mit Profilen und sichtbaren Beispielen im Leveltest.
