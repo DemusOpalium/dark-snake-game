@@ -16,11 +16,12 @@
 - 🎮 [Steuerung (CONTROLS.md)](CONTROLS.md)
 - 🤖 [Prompt-Guide für GPT (PROMPT_GUIDE.md)](PROMPT_GUIDE.md)
 - 🛣️ [Projekt-Roadmap (ROADMAP.md)](ROADMAP.md)
+- 🧪 [Messplan: Performance & Qualität (QUALITY_PERFORMANCE_PLAN.md)](QUALITY_PERFORMANCE_PLAN.md)
 
 
 # 🐍 DARK SNAKE – WORLD 2 GO
 ## Master-Ideenliste · Entwicklungstafel · Roadmap
-**Stand: 14.11.2026 · aktueller `main` nach PR #170**
+**Stand: 15.11.2026 · geprüftes `main` nach PR #173; PR #174 (Layer Explorer) ist ein offener Draft, kein fertiger Merge**
 
 **Projektziel:** DARK Snake vom klassischen Arcade-Spiel zu einem modularen Spiel mit eigenen Welten, Spezialwaffen, individuellen Bossen, einem Level-Baukasten und dem späteren Adventure-Modus **Mycelium Age** weiterentwickeln.
 
@@ -359,19 +360,20 @@
 
 **Ziel:** Schnelle, direkte Steuerung und stabile Darstellung.
 
-- ⬜ 60 FPS als wichtiges Mindestziel für flüssiges Spiel.
-- ⬜ Bildbudget von ungefähr 16,67 ms berücksichtigen.
-- ⬜ Eingabeverzögerung getrennt von der Rasterbewegung messen.
-- ⬜ Effekte dürfen keine unnötigen Ruckler verursachen.
-- ⬜ Animationen nicht ständig neu laden oder berechnen.
-- ⬜ Grafik- und Effekt-Caching verbessern.
-- ⬜ Unnötige doppelte Berechnungen vermeiden.
-- ⬜ Grenzen für gleichzeitig aktive Effekte festlegen.
-- ⬜ Leistung bei vielen Gegnern und Projektilen messen.
-- ⬜ Bosskämpfe besonders intensiv testen.
-- ⬜ Level-Editor und Testmodus dürfen die normalen Spielregeln nicht beschädigen.
-- ⬜ Windows-EXE und ZIP regelmäßig überprüfen.
-- ⬜ Automatisierte Tests durch echte Windows-Spieltests ergänzen.
+- 🎯 **Ziel 60 FPS**: pro Frame circa 16,67 ms Budget. **Zielwert, kein gemessener Ist-Stand**.
+- ✅ `FrameMetrics` misst Bildabstand und Event-/Update-/Draw-/Present-Phasen, Eingabeannahme, Rasterwartezeit und Event→Bild (p50, p95, Max; Schwelle >33,3 ms).
+- ✅ `scripts/benchmark_game.py` bietet reproduzierbare `1p`, `2p` und `load`-Lasten sowie `--uncapped` und `--overlay`. Das belegt **noch keine** echte Windows-FPS-Referenz.
+- ⬜ **Erste dokumentierte Windows-Referenzmessung**: 1P, 2P, Boss/Projektile, Editor-Zoom/Dach, 900×620, 1350×930, maximiert; Commit, Rechner, Treiber, Szenario, Framezahl, p95/Max/Spikes festhalten.
+- ⬜ **Laufende Regressionserkennung**: vor/nach Grafik- und Gameplay-PRs vergleichbare Benchmarks ausführen; reproduzierbare Verschlechterungen untersuchen statt automatische Erfolgsmeldungen.
+- ⬜ Eingabeverzögerung **getrennt** von absichtlich späteren Rasterzügen bewerten; keine künstliche „16-ms-Gesamtlatenz“ verlangen.
+- 🔧 UI-/FrostAge-Grafiken verwenden teils Cache; übrige Animations-/Bildpfade auf wiederholte Loads, Scaling, Alpha-Konversion und unnötige Zeichenaufrufe prüfen.
+- ⬜ Bei vielen Gegnern, 24+ Projektilen, Bossen, Nebel, Roof-Masken und AoE **Bilder >33,3 ms** auswerten und Ursache bestimmen.
+- ⬜ Beim späteren World-Background-, Light- und Layer-Ausbau Cache-Invalidierung, Render-Reihenfolge, RAM/EXE-Asset-Zuwachs und Zoom-Stress kontrollieren.
+- ⬜ Simulator/Testergebnisse klar als **PASS / FAIL / NOT RUN** ausweisen; Soll-/Ist-Verhalten und reproduzierbare Fehlerbeispiele verlangen.
+- ✅ Windows-CI kompiliert, prüft pytest und Asset-Kataloge, baut EXE + SHA-256-geprüftes ZIP; **sichtbarer Windows-Spieltest bleibt zusätzlich nötig**.
+- ⬜ Nach jedem bedeutenden PR einen **Qualitätsnachweis** hinterlegen: Tests, realer Klicktest, 1P/2P soweit betroffen, Performancevergleich oder begründetes „nicht gemessen“.
+
+**Messmethodik, vorläufige Schwellenwerte, Abnahmeprotokolle und spätere Classic-Tile-Pflege:** [QUALITY_PERFORMANCE_PLAN.md](QUALITY_PERFORMANCE_PLAN.md). **Keine tatsächlich gemessenen FPS-Werte erfinden.**
 
 ---
 
@@ -418,6 +420,8 @@
 - ⬜ Projektilvarianten für Spieler 1 und 2 entwerfen; spätere Zuordnung erst durch Codeintegration.
 - ⬜ Boss001/Boss002/Boss003, FlameExplosion und Bolbu als **Animationsframes**, nicht als Einzelbosse zählen.
 - ⬜ Alte Kopf- und Körperdesigns sichten, Originalgrößen erhalten und Lesbarkeit im 30-Pixel-Spielraster testen.
+- 💡 **Spätere Classic-Tile-Kuration:** Die 495 älteren Tiles auf Kombinierbarkeit, Stil, Nahtlosigkeit und Bedienbarkeit prüfen; eine kleinere empfohlene Standardpalette und einen Legacy-Bereich planen, bestehende Tile-IDs und gespeicherte Level erhalten. Nicht während PR #174 ausmisten.
+- ⬜ Classic-Tile-Audit erst nach den wichtigeren Editor-/Gameplay-Arbeiten: Sichtprüfung, ID-/Nutzungsübersicht, Beispielkarten und Vorher-/Nachher-Messung von Ladezeit und Scrollen. Details im [Qualitätsplan](QUALITY_PERFORMANCE_PLAN.md).
 - ⬜ Vorhandene zusätzliche Heads/Bodies nach Tests über die Skin-Auswahl verfügbar machen.
 - 💡 Freischaltbare Schlangenköpfe/Körper und charakterbezogene Sounds für Treffer, Levelwechsel und Game Over.
 - ✅ `titel2.png` ist bereits als Fenster-Icon eingebunden; EXE-Dateiicon gesondert prüfen.
@@ -434,7 +438,9 @@
 # 🗺️ ENTWICKLUNGSREIHENFOLGE
 
 **PHASE 1 – AKTUELLE ARBEIT**
-✅ Frost und Simulator 2.0 Schritt 1 sowie World Studio nach PR #169 auf `main`: benannte Entwürfe, 1P/2P-Leveltest, Roof/Foreground, Rand-Builder, 48 grafische Buttons. Nächster eigenständiger PR: Layer Explorer (Solo, Sperren, Inspektor, sicheres Löschen). Für die weitere Grafikarbeit gelten die Kataloge; neue Gameplay-Profile werden separat entwickelt.
+✅ Frost und Simulator 2.0 Schritt 1 sowie World Studio bis PR #169 auf `main`: benannte Entwürfe, 1P/2P-Leveltest, Roof/Foreground, Rand-Builder und 48 grafische Buttons. ✅ PR #173 brachte sieben **zusätzliche Quellbilder** unter `GamePICs/`; **noch nicht auf `main` eingebunden**.
+🔧 **PR #174 ist offener Draft**: Layer Explorer (Solo, Sperren, Inspektor, sicheres Löschen) und Integration dieser sieben Grafiken. Erst nach Merge mit Windows-Test als ✅ markieren.
+⬜ Danach **Performance-Baseline** auf dem tatsächlich gemergten Stand erfassen; bei größeren Arbeiten nachfolgende Baselines vergleichen. [Messplan](QUALITY_PERFORMANCE_PLAN.md). Für die Grafikarbeit gelten die Kataloge; neue Gameplay-Profile bleiben separate PRs.
 
 **PHASE 2 – EFFECT & WEAPON SYSTEM 2.0**
 Gemeinsame Effektarchitektur, Frost, Feuer, Gift, Sporen, Spezialmunition.
