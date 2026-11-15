@@ -21,6 +21,10 @@ Hier liegen Originalgrafiken, Uploads und Referenzbilder. Das Windows-Paket bün
 
 Die 48 eingebundenen PNGs liegen bytegleich in `Dark_Snake/assets/graphics/editor_ui/`. Alle 81 Originale behalten ihren Pfad. Der Laufzeitkatalog verbindet die verwendeten Dateien über Action-IDs mit den Editoraktionen. Die Asset-Legende listet die reservierten Grafiken und ihre geplante Verwendung. [Laufzeitkatalog](../Dark_Snake/assets/graphics/editor_ui/catalog.json) · [Asset-Legende](../ASSET_GUIDE.md)
 
+## Nachtrag vom 15.11.2026
+
+Die sieben RGBA-Dateien unter [Nachtrag Fehlende Buttons](Nachtrag%20Fehlende%20Buttons/) wurden in PR #173 hochgeladen. World Studio verwendet sie für Hilfe, Rand-Builder, Dachübertragung, Grafikmodus, kombinierten Grafik-/Kollisionsmodus, Eigenschaften und Vorschau-Ende. Mit den 48 früheren Motiven sind es 55 Laufzeit-PNGs. Vier Reiter im rechten Arbeitsbereich verwenden dieselben Dateien wie die zugehörigen Hauptaktionen und behalten eigene Action-IDs. [Zuordnung im Laufzeitkatalog](../Dark_Snake/assets/graphics/editor_ui/catalog.json)
+
 ## Skin-Entwürfe
 
 In `DarkSnake-NeueHeads/` liegen 53 Kopfdesigns, in `DarkSnake-KörperNeuDesign/` 15 Körperdesigns. Geeignete Einzelbilder sollen in einem eigenen PR für die geplante Galerie ausgewählt werden.

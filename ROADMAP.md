@@ -217,11 +217,16 @@
 - ✅ **#169 · Editor-Schaltflächen.** 48 von 81 eigenen PNGs über Action-IDs in World Studio integriert; fehlende Motive behalten einen Textbutton, 33 Vorlagen bleiben reserviert. 493 Headless-Tests, 30 Smoke-Simulationen und Windows-EXE-Prüfung laut PR abgeschlossen.
 - ✅ **#167 · Asset-Legende.** Trennung von Laufzeitbildern und `GamePICs`-Vorlagen mit Katalogen und Agentenhinweisen dokumentiert.
 - ✅ **#170 · Neue Screenshots.** Aktuelles Titelmenü und World-Studio-Ansicht für README/Galerie hochgeladen (keine neue Gameplayfunktion).
-- ⬜ **PR C · Layer Explorer.** Ebenenfarben, Sichtbarkeit, Sperren und Vergleich, Zellen-Inspektor mit Objektauswahl, Effektbearbeitung und sicheres Löschen samt Radierer.
+- ✅ **#173 · Sieben ergänzende Editor-Motive** als Originale hochgeladen.
+- 🔧 **PR C · Layer Explorer.** Sieben Motive einbinden, die rechten Reiter bebildern, Ebenen sichtbar schalten, sperren und solo anzeigen. Zellen-Inspektor mit Objektauswahl, Effektbearbeitung und sicherem Löschen samt Radierer.
+- ⬜ **Ebenenvergleich.** Mehrere Ebenen mit abgestufter Deckkraft zur Orientierung anzeigen.
 - ⬜ **PR D · Deutsch / English und Hilfe.** Gespeicherte Sprachwahl, vollständige Übersetzung, Tooltips und Werkzeugbeschreibungen.
+- ⬜ **Fullscreen / Windowed.** Sichtbare Umschaltung im Editor mit Wiederherstellung des Fenstermodus und unverändertem Spielraster.
 - ⬜ **PR E · Learning System.** „Mein erstes FrostAge-Level“ mit geprüften Schritten in einer eigenen Übungskarte.
 - ⬜ **PR F · Lighting & Atmosphere.** Helligkeit, platzierbare und spielergebundene Lichtquellen, Flackern, Nebel und Schattenflächen. Darstellung und HUD mit mehreren Lichtquellen bei 1350×930 prüfen.
-- ⬜ **PR G · Trigger und Fallen.** Auslöser, Bedingungen und Aktionen mit bestehenden Schadens- und Verlangsamungsregeln verbinden.
+- ⬜ **PR G · Trigger und Fallen.** Datenbasierte Auslöser, Bedingungen und Aktionen mit bestehenden Schadens- und Verlangsamungsregeln verbinden. Beispielkette: Druckplatte → Tor öffnet → Spezialgegner erscheint → Truhe wird freigeschaltet.
+- ⬜ **Interaktive Levelobjekte.** Truhen, Fallen, Druckplatten, Schalter, Tore, Schlüssel und Portale mit eigenen Interaktionsregeln. Normale Gegner, Bosse und zufällige Items behalten die regulären Spawnmechanismen.
+- ⬜ **Weitere Spielideen.** Frostburst mit acht Splittern, rotierender Tornado mit Kontaktschaden, Soundprofile und freischaltbare Schlangenköpfe und -körper.
 - ⬜ Stamp Builder als eigenen Arbeitsschritt einplanen.
 - ⬜ **Danach.** 13 Projektil- und 11 AoE-Grafiken über bestehende Treffer- und Effektsysteme mit Profilen und sichtbaren Beispielen im Leveltest.
 - ⬜ Acht FrostAge-Gegner mit Richtungsdarstellung, konfigurierbaren Angriffen, sicheren Editor-Spawns und Tests.
@@ -229,7 +234,7 @@
 - ⬜ Eigene Levels mit ihren Gameplay-Ebenen im Adventure-Modus spielen. Classic separat erhalten.
 - ⬜ Druckplatten, Verzögerung und Schadenszone als Trigger-Arbeitspaket.
 - ⬜ Größerer Spielrahmen um das unveränderte 45×31-Raster und später eine Challenge-Zeitleiste.
-- ⬜ **PR H – World Backgrounds (neue Idee 14.11.).** Vollflächige, dauerhaft gespeicherte Landschaftsbilder unter Boden/Objekten/Kollisionen/Dächern; Galerie, Vorschau, geordnete Render-Ebenen, auswählbare Themen wie Friedhof, Wald, Eis, Wüste, Vulkan und Weltraum. Bestehenden kurzlebigen Spezialbild-Effekt über `Ü` nicht mit der permanenten Hintergrundebene verwechseln.
+- ⬜ **PR H · World Backgrounds.** Dauerhaft gespeicherte Landschaften unter den Tiles mit Galerie und Vorschau. Themen sind Gothic Graveyard, Mystic Forest, FrostAge, Desert, Volcano und Galaxy. Der Spezialbild-Effekt über `Ü` bleibt ein zeitlich begrenzter Spieleffekt.
 - 💡 **Sichtweiten-Mechanik.** Später Nebel- und Dunkelheitsmasken mit spielerbezogenem Radius; Items können die Sichtweite verändern, analog zur bestehenden Dach-Sichtfenster-Idee, aber mit eigenem Rendering.
 - ⬜ Bestehenden Editor grundlegend erweitern.
 - ✅ Eigenen großen, größenveränderbaren Editor-Bildschirm durch PR #155 umgesetzt.
@@ -241,7 +246,7 @@
 - ✅ Grafikobjekte und FrostAge-Multi-Tiles direkt im Editor platzieren.
 - ✅ Wände, Barrieren, Durchgänge und Randseiten im isolierten Editor-Leveltest mit Vorschau gestalten.
 - ⬜ Objekte verschieben, löschen und verändern.
-- ✅ Boden, Objekte, Roof/Foreground, Kollision und Effektfelder getrennt bearbeiten; Solo/Lock/Vergleich bleiben PR C.
+- ✅ Boden, Objekte, Roof/Foreground, Kollision und Effektfelder getrennt bearbeiten. Solo und Sperren sind Bestandteil von PR C.
 - ⬜ Animierte Objekte platzieren.
 - ⬜ Boss-Spawns und Seelenschreine platzieren.
 - ⬜ Spieler-Spawnpunkte festlegen.

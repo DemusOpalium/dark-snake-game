@@ -33,9 +33,16 @@ def check(executable: Path) -> None:
     editor_catalog = EDITOR_UI_DIR + "catalog.json"
     if editor_catalog not in names:
         raise ValueError("World Studio button catalogue missing from EXE.")
-    buttons = json.loads(archive.extract(names[editor_catalog]))["buttons"]
+    editor_data = json.loads(archive.extract(names[editor_catalog]))
+    buttons = editor_data["buttons"]
     if not buttons:
         raise ValueError("World Studio button catalogue is empty.")
+    aliases = editor_data.get("aliases", {})
+    if not isinstance(aliases, dict) or any(
+        action in buttons or not isinstance(target, str) or target not in buttons
+        for action, target in aliases.items()
+    ):
+        raise ValueError("World Studio button catalogue contains invalid artwork aliases.")
     expected_buttons = {EDITOR_UI_DIR + entry["file"] for entry in buttons.values()}
     packaged_buttons = {name for name in names if name.startswith(EDITOR_UI_DIR) and name.endswith(".png")}
     if expected_buttons != packaged_buttons:
@@ -55,7 +62,8 @@ def check(executable: Path) -> None:
         raise ValueError("FrostAge runtime modules missing from EXE.")
     if not {"modules.border_builder", "modules.border_builder_ui", "modules.editor_buttons"} <= pyz.toc.keys():
         raise ValueError("World Studio runtime modules missing from EXE.")
-    print(f"Verified {len(entries)} FrostAge PNGs, {len(buttons)} editor buttons and roof demo inside {executable.name}.")
+    print(f"Verified {len(entries)} FrostAge PNGs, {len(buttons)} editor button PNGs "
+          f"({len(buttons) + len(aliases)} actions) and roof demo inside {executable.name}.")
 
 
 if __name__ == "__main__":

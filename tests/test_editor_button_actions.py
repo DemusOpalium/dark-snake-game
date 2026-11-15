@@ -43,10 +43,12 @@ def test_drawn_toolbar_controls_fit_and_receive_mouse_at_each_size(studio, size)
             click(game, control.rect.center)
             assert calls == ([control.id] if editor._button_available(control.id) else [])
             editor.buttons[index] = control
-    assert seen == set(catalog) - {
+    secondary_controls = {
         "border_all", "border_corner", "border_left", "border_right", "border_top", "border_bottom",
-        "layer_effects", "test_stop",
+        "layer_effects", "test_stop", "preview_stop", "sidebar_properties", "sidebar_layers",
+        "sidebar_cell", "sidebar_help", "sidebar_learn",
     }
+    assert seen == set(catalog) - secondary_controls
 
 
 def test_artwork_selects_damage_slow_roof_and_real_playtest_actions(studio):
@@ -72,3 +74,17 @@ def test_artwork_selects_damage_slow_roof_and_real_playtest_actions(studio):
     assert editor.playtest is None
     click(game, target(editor, "test_player_1").rect.center)
     assert editor.playtest.player_count == 1
+
+
+def test_preview_stop_art_leaves_the_map_unchanged(studio):
+    game, editor, _ = studio
+    key(game, pygame.K_F2)
+    click(game, target(editor, "nav_test").rect.center)
+    click(game, target(editor, "test_preview").rect.center)
+    assert editor.preview_active
+    stop = target(editor, "preview_stop")
+    assert editor.layout.header.contains(stop.rect)
+    assert "preview_stop" in load_editor_button_catalog()
+    game.draw()
+    click(game, stop.rect.center)
+    assert not editor.preview_active and not editor.dirty

@@ -32,6 +32,12 @@ HINTS = {
     "nav_view": "Kartenausschnitt, Seitenleisten und Markierungen einstellen.",
     "nav_test": "Vorschau und isolierte Leveltests öffnen.",
     "nav_learn": "Die spielbare Dach-Demo und ihre Anleitung öffnen.",
+    "nav_help": "Die Hilfe zum World Studio öffnen.",
+    "sidebar_properties": "Eigenschaften des gewählten Werkzeugs anzeigen.",
+    "sidebar_layers": "Den Layer Explorer anzeigen.",
+    "sidebar_cell": "Den Zellen-Inspektor anzeigen.",
+    "sidebar_help": "Die Bedienung des Editors erklären.",
+    "sidebar_learn": "Die Dach-Demo und ihre Anleitung anzeigen.",
     "file_new": "Einen leeren Levelentwurf anlegen.",
     "file_open": "Einen gespeicherten Levelentwurf öffnen.",
     "file_save": "Den aktuellen Levelentwurf speichern.",
@@ -41,9 +47,11 @@ HINTS = {
     "file_use_classic": "Diesen Entwurf für die nächste Classic-Runde wählen.",
     "file_classic_default": "Die Standardkarte für die nächste Classic-Runde wählen.",
     "build_middle": "Die Bodenfläche innerhalb des Randes füllen.",
+    "build_border": "Bodenkacheln am Kartenrand mit Vorschau gestalten.",
     "build_move_objects": "Ein Grafikobjekt und danach sein Ziel anklicken.",
     "build_object_size": "Die Größe des Grafikobjekts in Rasterfeldern einstellen.",
     "build_tile_library": "Die Suche in der Kachelbibliothek links öffnen.",
+    "build_transfer_roof": "Ein Dachobjekt auf die Vordergrundebene verschieben.",
     "border_all": "Alle vier Seiten für die Randvorschau ein- oder ausschalten.",
     "border_left": "Die linke Randseite für die Vorschau ein- oder ausschalten.",
     "border_right": "Die rechte Randseite für die Vorschau ein- oder ausschalten.",
@@ -55,6 +63,8 @@ HINTS = {
     "layer_roof": "Dächer auf der Vordergrundebene bearbeiten.",
     "layer_collision": "WALL- und BARRIER-Kollisionsfelder bearbeiten.",
     "layer_effects": "Effektfelder bearbeiten oder anzeigen.",
+    "tool_graphics": "Grafiken bearbeiten.",
+    "tool_combined": "Grafik und Kollision gemeinsam bearbeiten.",
     "collision_wall": "WALL-Felder blockieren im isolierten Leveltest.",
     "collision_barrier": "BARRIER-Felder blockieren im isolierten Leveltest.",
     "effect_damage": "Felder mit wiederholtem Schaden platzieren.",
@@ -69,6 +79,7 @@ HINTS = {
     "view_effects": "Effektmarkierungen ein- oder ausblenden.",
     "view_roof": "Dächer in der Editoransicht ein- oder ausblenden.",
     "test_preview": "Die Karte als Vorschau anzeigen.",
+    "preview_stop": "Die Kartenvorschau beenden und zur Bearbeitung zurückkehren.",
     "test_player_1": "Den isolierten Leveltest für einen Spieler starten.",
     "test_player_2": "Den isolierten Leveltest für beide Spieler starten.",
     "test_roof_demo": "Den mitgelieferten FrostAge-Dachbogen öffnen.",
@@ -123,6 +134,16 @@ def load_editor_button_catalog() -> dict[str, EditorButtonAsset]:
             assets[action_id] = _decode_asset(catalog, metadata)
         except (ValueError, KeyError, TypeError) as error:
             LOGGER.warning("Editor-Button %s konnte nicht zugeordnet werden: %s", action_id, error)
+    aliases = data.get("aliases", {})
+    if not isinstance(aliases, dict):
+        LOGGER.warning("Ungültige Wiederverwendung im Editor-Button-Katalog.")
+        return assets
+    for action_id, target in aliases.items():
+        if (action_id not in data["buttons"] and isinstance(target, str)
+                and target in data["buttons"] and target in assets):
+            assets[action_id] = assets[target]
+        else:
+            LOGGER.warning("Editor-Button %s kann seine Grafik nicht wiederverwenden.", action_id)
     return assets
 
 

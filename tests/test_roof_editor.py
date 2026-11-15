@@ -1,6 +1,6 @@
 import pygame
 
-from test_level_studio import button, cell, click, key, studio, text
+from test_level_studio import button, cell, click, erase_cell, key, studio, text
 
 from modules.graphic_objects import GraphicObject
 from modules.level_drafts import load_level_document, write_draft
@@ -56,10 +56,12 @@ def test_roof_tools_edit_only_the_selected_layer_and_save_undo_redo(studio):
     key(game, pygame.K_ESCAPE)
 
     button(game, editor, "Dachansicht")
-    assert not editor.show_roofs
+    assert not editor.layer_visible("roof")
     button(game, editor, "Dach / Foreground")
-    assert editor.show_roofs
-    click(game, cell(editor, 15, 12), 3)
+    assert not editor.layer_visible("roof")
+    button(game, editor, "Dachansicht")
+    assert editor.layer_visible("roof")
+    erase_cell(game, editor, cell(editor, 15, 12))
     assert not editor.roofs
     key(game, pygame.K_z, pygame.KMOD_CTRL)
     assert editor.roofs == {target: resized}
