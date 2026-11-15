@@ -1,5 +1,5 @@
 # 🐍 DARK SNAKE – Asset-Legende für Menschen und Coding-Agenten
-**Stand vom 14.11.2026 · `main` nach PR #170; 48 Editor-Buttons seit PR #169 integriert**
+**Stand vom 15.11.2026 · Layer Explorer auf Basis von PR #173**
 
 > `Dark_Snake/assets/` enthält die Spiel- und EXE-Laufzeitdaten. `GamePICs/` enthält Originale, Entwürfe und Referenzen. Die passenden Laufzeitkataloge dokumentieren die tatsächlich verwendeten Dateien.
 
@@ -12,8 +12,9 @@
 | `Dark_Snake/assets/` | Laufzeitgrafiken, Levelvorlagen, Audio und Kataloge | **Ja**, `--add-data "Dark_Snake/assets;assets"` |
 | `Dark_Snake/assets/graphics/frostage/` | 175 importierte FrostAge-PNGs plus `catalog.json` | **Ja** |
 | `GamePICs/Incoming/Frost_Tiles/` | 175 unveränderte FrostAge-Originale + Importhinweise | **Nein**, nicht direkt |
-| `Dark_Snake/assets/graphics/editor_ui/` | 48 geprüfte Editor-Button-PNGs mit stabilen Action-IDs und Herkunftsnachweis | **Ja** |
+| `Dark_Snake/assets/graphics/editor_ui/` | 55 geprüfte Editor-Button-PNGs für 59 Action-IDs mit Herkunftsnachweis | **Ja** |
 | `GamePICs/Build/`, `File/`, `Effects/`, `Layers/` usw. | Alle 81 Originale der englisch beschrifteten Editor-Button-Grafiken | 48 bytegleiche Kopien unter `editor_ui/` |
+| `GamePICs/Nachtrag Fehlende Buttons/` | Sieben Originale aus #173 | Sieben bytegleiche Kopien unter `editor_ui/` |
 | `GamePICs/DarkSnake-NeueHeads/` | 53 neue Head-Kandidaten / Rohentwürfe | **Nein**, noch nicht registriert |
 | `GamePICs/DarkSnake-KörperNeuDesign/` | 15 Body-Kandidaten / Rohentwürfe | **Nein**, noch nicht registriert |
 | `GamePICs/` (weitere Bilder) | Projekt-Screenshots, Referenzen, Konzeptgrafiken; einige in README verlinkt | Nur wenn separat in `assets/` importiert |
@@ -39,7 +40,21 @@ Der Katalog dokumentiert für jede Action-ID den Originalpfad, den Laufzeitdatei
 | Ansicht (7) | Karte einpassen `view_fit_map`, Bibliothek `view_library`, Arbeitsbereich `view_panel`, Zelle untersuchen `view_cell`, Kollision `view_collision`, Effekte `view_effects`, Dachansicht `view_roof` |
 | Testen (5) | Vorschau starten `test_preview`, Test 1P `test_player_1`, Test 2P `test_player_2`, Dach-Demo `test_roof_demo`, Test beenden `test_stop` |
 
-Hilfe, der Einstieg **Rand**, **Vorschau beenden**, **Auf Dachebene** und weitere Aktionen ohne passendes Motiv behalten lesbare Textschaltflächen. **Border (All)** befindet sich bei der Auswahl aller Seiten im Rand-Builder. **Lernen** führt zur vorhandenen Dach-Demo.
+**Border (All)** befindet sich bei der Auswahl aller Seiten im Rand-Builder. **Lernen** führt zur vorhandenen Dach-Demo.
+
+## Die sieben Motive aus PR #173
+
+| Original | Action-ID |
+| --- | --- |
+| `Help.png` | `nav_help` |
+| `Border_Builder.png` | `build_border` |
+| `Move_to_Roof.png` | `build_transfer_roof` |
+| `Graphics_Only.png` | `tool_graphics` |
+| `Graphics_Collision.png` | `tool_combined` |
+| `Properties.png` | `sidebar_properties` |
+| `Stop.png` | `preview_stop` |
+
+Die Seitenreiter `sidebar_layers`, `sidebar_cell`, `sidebar_help` und `sidebar_learn` verwenden die vorhandenen Bilder für Ebenen, Zellinspektion, Hilfe und Lernen. Ihre eigenen Action-IDs teilen sich die vorhandenen Laufzeitdateien. Insgesamt enthält das Paket 20.156.625 Byte an Editor-Button-PNGs. [Laufzeitkatalog](Dark_Snake/assets/graphics/editor_ui/catalog.json)
 
 ## Die 33 reservierten Editor-Grafiken
 
@@ -51,7 +66,7 @@ Die Dateinamen stehen ohne den gemeinsamen Suffix `-removebg-preview.png` in der
 | `Building Blocks` (5) | `Building_Blocks`, `Event_-_Triggers`, `Ground_Tile`, `Lighting`, `Roof_-_Foreground` | Kategorietitel, zusätzliche Entwürfe für vorhandene Ebenen und geplante Werkzeuge für Licht und Trigger. |
 | `EditorBigs` (8) | `Ceiling`, `Collision`, `Damage`, `Events`, `floor_object`, `Light`, `Roof`, `Slow` | Alternative Großformate für eine spätere Gestaltung. |
 | `General` (5) | `About`, `De-En_Language`, `Exit`, `General`, `Settings` | Konzepte für eigene Studio-Aktionen und Sprachwechsel. Der Editor verwendet seine bestehenden Dialoge sowie F2 und Esc zum Schließen. |
-| `Layers` (3) | `All_Layers`, `Lock_layers`, `Show_Hide` | Vorgesehen für den Layer Explorer mit Sichtbarkeit, Sperren und Ansichtsmodi. |
+| `Layers` (3) | `All_Layers`, `Lock_layers`, `Show_Hide` | Reservierte Motive. Der Layer Explorer verwendet kompakte Textschaltflächen, die den aktuellen Zustand der einzelnen Ebenen anzeigen. |
 | `Learn` (4) | `Examples`, `Guided_Build`, `Learn_Tutorial`, `My_FIrst_LvL` | Vorgesehen für den geführten Kurs und weitere Beispiele. |
 | `Miscellaneos` (4) | `Chest`, `Coin_-_Item`, `Miscellaneous`, `Random_D20` | Konzepte für spätere platzierbare Interaktionen und Events. |
 | `View` (1) | `View_Map` | Die vorhandenen Aktionen heißen Karte einpassen und Vorschau starten. |
@@ -101,7 +116,7 @@ Die Dateinamen stehen ohne den gemeinsamen Suffix `-removebg-preview.png` in der
 - ✅ PR #170 · Neue Titelbildschirm- und World-Studio-Screenshots unter `GamePICs/`; in README und Galerie verwendet.
 - ⬜ Nacharbeiten: reale Ansicht der beiden Roof-Buttons `layer_roof` und `view_roof` im Windows-Fenster prüfen; beide Action-IDs stehen bereits im Runtime-Katalog, eine noch fehlende Bildzuordnung ist durch die Dateiliste nicht belegt.
 - ⬜ Neue volle **World-Background-Ebene** nach PR H als separates Konzept, nicht mit dem temporären Hintergrund-Spezialeffekt verwechseln.
-- ⬜ Layer Explorer und sicheres Löschen mit Undo/Redo.
+- 🔧 PR C · Sieben ergänzende Editorbilder, grafische Seitenreiter und Layer Explorer mit sicherem Löschen.
 - ⬜ DE/EN-Hilfe und interaktiver Lernmodus.
 - ⬜ Lighting, Events/Trigger, erweiterte FrostAge-Profile, Snake-Skin-Galerie.
 

@@ -257,7 +257,7 @@ PR #142 hat die Multi-Tiles als dekorative Objekte eingeführt. Das FrostAge-Hau
 1. `DARK-Snake.exe` starten, **Level Studio** öffnen und unter **Testen** auf **Dach-Demo** klicken. Die mitgelieferte Karte öffnet sich als Entwurf. Unter **Datei → Speichern** lässt sich eine eigene Kopie anlegen.
 2. **Test 1P** wählen. Die Schlange steht zwischen zwei Säulen. Bei Standardbelegung fährt **W** nach oben durch den mittleren Durchgang. **Test 2P** wiederholt den Versuch mit **W** für Spieler 1 und **↑** für Spieler 2. Über **Esc** geht es zurück zur Karte.
 3. Im Durchgang verdeckt der Bogen die Schlangenköpfe teilweise. Unter **Effekte → Dachwerte** lassen sich Sichtfenster, Radius, Transparenz und Randweichheit ändern. Für den Vergleich das Sichtfenster ausschalten und den Leveltest erneut starten. Die Säulen blockieren weiterhin nur ihre eigenen Kollisionsfelder.
-4. Im **Baukasten** links nach **FrostAge Dach** suchen und das Motiv mit Linksklick platzieren. **Bauen → Objekt verschieben** wählt ein Dach und anschließend sein Ziel. Rechtsklick entfernt das Dach. **Bauen → Auf Dachebene** und ein Klick auf ein bereits unter **Objekte** liegendes Dach übertragen es. Undo und Redo erfassen Platzierung, Verschieben, Löschen, Ebenenwechsel und Dachwerte.
+4. Im **Baukasten** links nach **FrostAge Dach** suchen und das Motiv mit Linksklick platzieren. **Build → Move Object** wählt ein Dach und anschließend sein Ziel. Rechtsklick öffnet die Löschbestätigung. **Build → Move to Roof** und ein Klick auf ein bereits unter **Objekte** liegendes Dach übertragen es. Undo und Redo erfassen Platzierung, Verschieben, Löschen, Ebenenwechsel und Dachwerte.
 
 Der isolierte 1P-/2P-Leveltest verwendet die Kollisionsfelder der Karte. Im regulären Classic-Spiel zeigt **Für Classic wählen** beim nächsten Start die Bodenkacheln und die Dachebene eines gespeicherten Entwurfs. Dort wirkt das Dach auch über Gegnern, Bossen und Projektilen. Classic verwendet seine üblichen Kollisions- und Effektregeln. **Classic-Standard** kehrt zur Standardkarte zurück.
 
@@ -270,7 +270,7 @@ Levelformat 3 speichert Dächer und Sichtfenster-Einstellungen getrennt von Graf
 3. Unter **Ansicht → Zelle untersuchen** eine Zelle anklicken und rechts die vorhandenen Daten lesen. **Esc** beendet die Auswahl. Die bestehenden Einstellungen für Damage, Slow und Dächer stehen unter **Effekte** und im Eigenschaftenpanel.
 4. **Testen → Dach-Demo** laden und **Test 1P** sowie **Test 2P** spielen. **F2** beendet zuerst den Test und anschließend den Editor. Beim Schließen erscheint bei Änderungen der vorhandene Dialog. Die normale Spielansicht kehrt zu 1350×930 zurück.
 
-Bei 900×620 ist die Karte in der Gesamtansicht kleiner. Mit Zoom und eingeklappten Seitenleisten bleiben Zellwerkzeuge bedienbar. Rechtsklick löscht weiterhin direkt auf der aktiven Ebene. Gesichertes Löschen, vollständige Ebenenkontrollen und DE/EN folgen laut Roadmap. **Lernen** führt aktuell zur spielbaren Dach-Demo. Der geführte Kurs folgt als eigenes Paket.
+Bei 900×620 ist die Karte in der Gesamtansicht kleiner. Mit Zoom und eingeklappten Seitenleisten bleiben Zellwerkzeuge bedienbar. Die aktuellen Schritte zur Ebenenbearbeitung stehen im Abschnitt zum Layer Explorer. **Lernen** führt zur spielbaren Dach-Demo. Der geführte Kurs und DE/EN folgen in eigenen Paketen.
 
 ## World Studio · Rand-Builder ausprobieren
 
@@ -281,12 +281,26 @@ Bei 900×620 ist die Karte in der Gesamtansicht kleiner. Mit Zoom und eingeklapp
 
 ## World Studio · Eigene Schaltflächen unter Windows prüfen
 
-1. **Level Studio** öffnen. **File**, **Build**, **Layers**, **Effects**, **View**, **Test** und **Learn** anklicken. Die eingebetteten Schriftzüge sind Englisch. Deutsche Hinweise stehen beim Überfahren in der Statusleiste. Hilfe und Werkzeuge ohne eindeutige Vorlage behalten eine Textschaltfläche.
+1. **Level Studio** öffnen. **File**, **Build**, **Layers**, **Effects**, **View**, **Test**, **Learn** und **Help** anklicken. Die eingebetteten Schriftzüge sind Englisch. Deutsche Hinweise stehen beim Überfahren in der Statusleiste. Werkzeuge ohne eindeutige Vorlage behalten eine Textschaltfläche.
 2. **File** öffnen und **New**, **Save**, **Open**, **Undo** und **Redo** prüfen. Undo und Redo werden gedimmt, solange die jeweilige Aktion leer ist.
-3. **Build → Rand** öffnen. **Border Left**, **Border Right**, **Border Top** und **Border Bottom** wirken auf ihre jeweilige Seite. Die separate Kachelauswahl je Seite und die Vorschau bleiben wie in #168. **Test → Roof Demo** und **Test 1P/2P** prüfen den Weg durch den Dachbogen.
+3. **Build → Border Builder** öffnen. **Border Left**, **Border Right**, **Border Top** und **Border Bottom** wirken auf ihre jeweilige Seite. Die separate Kachelauswahl je Seite und die Vorschau bleiben wie in #168. **Test → Roof Demo** und **Test 1P/2P** prüfen den Weg durch den Dachbogen.
 4. Die EXE bei kleiner Fenstergröße und maximiert ausprobieren. Werkzeuge umbrechen, wenn die Breite für eine Zeile fehlt. Mausrad über der Karte und mittlere Maustaste bedienen weiterhin Zoom und Kartenposition.
 
-48 geprüfte PNGs liegen mit ihren stabilen Action-IDs im [Laufzeitkatalog](Dark_Snake/assets/graphics/editor_ui/catalog.json). Die [Asset-Legende](ASSET_GUIDE.md) nennt die restlichen Motive und die nächsten Integrationsschritte. Die vollständige DE/EN-Umschaltung und die Freigabe weiterer Grafiken gehören zu den folgenden Arbeitspaketen.
+55 geprüfte PNGs liegen mit ihren stabilen Action-IDs im [Laufzeitkatalog](Dark_Snake/assets/graphics/editor_ui/catalog.json). Die [Asset-Legende](ASSET_GUIDE.md) nennt die restlichen Motive und die nächsten Integrationsschritte. Die vollständige DE/EN-Umschaltung und die Freigabe weiterer Grafiken gehören zu den folgenden Arbeitspaketen.
+
+## World Studio · Layer Explorer unter Windows prüfen
+
+1. **Level Studio → Layers** öffnen. Für Boden, Objekte, Dach, Kollision und Effekte jeweils **Sichtbar** oder **Verdeckt** sowie **Offen** oder **Gesperrt** wählen. Ebenenauswahl und Sichtbarkeit sind unabhängig. Ein verdecktes Dach bleibt bei der Auswahl verdeckt.
+2. **Solo** an einer Ebene probieren. **Solo beenden** stellt die vorherige Sichtbarkeit wieder her. **Alle Ebenen anzeigen** blendet jede Ebene ein. Verdeckte und gesperrte Ebenen sind vor der Kartenbearbeitung geschützt, einschließlich Rand-Builder, Ebenenübertragung und betroffener Undo-/Redo-Schritte. **Graphics + Collision** malt nur, wenn beide beteiligten Ebenen bearbeitbar sind.
+3. Im Reiter **Zelle** den Inspektor aktivieren und eine Rasterstelle anklicken. Vorhandene Kollisionsarten sowie Damage- und Slow-Werte lassen sich einzeln ändern. Bei Objekten und Dächern führt die Auswahl zum bestehenden Verschiebe- und Größenwerkzeug.
+4. Ein Rechtsklick auf ein Element bereitet das Löschen vor und markiert es rot. **Abbrechen** oder **Esc** lässt die Karte unverändert, **Löschen** oder **Enter** entfernt das markierte Element. **Build → Radierer** löscht nach ausdrücklicher Aktivierung mit Linksklick oder Ziehen auf der aktiven Ebene. Eine Grafik mit mehreren Feldern wird vollständig entfernt. **Strg+Z** nimmt einen kompletten Löschvorgang zurück.
+5. **Test → Roof Demo → Test (1P)/(2P)** ausprobieren. Editor-Sperren und Solo gelten für die Bearbeitung. Die Vorschau und der Spieltest verwenden die Karte mit ihrer Dachtransparenz. Die Ansichtsoptionen werden in der Editor-Sitzung geführt. Das Leveldateiformat bleibt bei Version 3.
+
+### Normaler Gegner-Spawn · separater Bugfix
+
+In `Game.update()` steht der einzige zufällige `NormalEnemy`-Spawn innerhalb der Abfrage auf aktives `projectile_shoot`. Mit Spawnrate 1, einem erzwungen erfolgreichen Zufallswurf und je einem Update ergaben 1P und 2P jeweils null normale Gegner ohne den Effekt und einen mit dem Effekt. Der Vergleich mit Commit `5f569e2b` (#40) zeigt, dass die Kopplung bei einer früheren Einrückungsänderung entstand. Boss- und Bolbu-Spawns haben eigene Pfade.
+
+Separater Fix: den normalen Spawn aus der Auto-Shoot-Bedingung lösen. Mit festen Zufallswerten beide Effektzustände sowie die vorhandenen Gegnergrenzen in 1P und 2P testen.
 
 ## Vorgeschlagene nächste Phase
 
