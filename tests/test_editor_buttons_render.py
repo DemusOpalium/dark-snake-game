@@ -40,6 +40,13 @@ def sample_catalogue(tmp_path, monkeypatch):
                 "width": 60, "height": 20, "art_bounds": [10, 5, 40, 10],
             },
         },
+        "aliases": {
+            "sidebar_save": "file_save",
+            "alias_of_alias": "sidebar_save",
+            "dangling_alias": "missing",
+            "file_save": "invalid",
+            "wrong_type": ["file_save"],
+        },
     }), encoding="utf-8")
     monkeypatch.setattr(editor_buttons, "find_asset", lambda *parts: path)
     editor_buttons.load_editor_button_catalog.cache_clear()
@@ -50,8 +57,11 @@ def sample_catalogue(tmp_path, monkeypatch):
 def test_catalogue_artwork_is_exactly_packaged_under_runtime_asset_root():
     catalogue = editor_buttons.load_editor_button_catalog()
     assert "file_save" in catalogue and "border_left" in catalogue
+    assert len(catalogue) == 59
     project_root = Path(__file__).resolve().parents[1]
-    for asset in catalogue.values():
+    physical_assets = set(catalogue.values())
+    assert len(physical_assets) == 55
+    for asset in physical_assets:
         assert asset.path.parent.name == "editor_ui"
         assert asset.path.read_bytes() == (project_root / asset.source).read_bytes()
         assert sha256(asset.path.read_bytes()).hexdigest() == asset.sha256
@@ -60,12 +70,38 @@ def test_catalogue_artwork_is_exactly_packaged_under_runtime_asset_root():
         assert original.get_bounding_rect() == pygame.Rect(asset.art_bounds)
 
 
+def test_layer_explorer_uses_its_seven_sources_and_reuses_tab_artwork(renderer):
+    catalogue = editor_buttons.load_editor_button_catalog()
+    additions = {
+        "nav_help": "Help.png",
+        "build_border": "Border_Builder.png",
+        "build_transfer_roof": "Move_to_Roof.png",
+        "tool_graphics": "Graphics_Only.png",
+        "tool_combined": "Graphics_Collision.png",
+        "sidebar_properties": "Properties.png",
+        "preview_stop": "Stop.png",
+    }
+    button = pygame.Rect(0, 0, 180, 44)
+    for action, filename in additions.items():
+        assert catalogue[action].source == f"GamePICs/Nachtrag Fehlende Buttons/{filename}"
+        screen = pygame.Surface(button.size, pygame.SRCALPHA)
+        renderer.draw(screen, action, "Ersatztext", button)
+        assert screen.get_bounding_rect() == screen.get_bounding_rect().clip(button.inflate(-4, -4))
+        assert screen.get_bounding_rect().width > 150
+    assert catalogue["sidebar_layers"] is catalogue["nav_layers"]
+    assert catalogue["sidebar_cell"] is catalogue["view_cell"]
+    assert catalogue["sidebar_help"] is catalogue["nav_help"]
+    assert catalogue["sidebar_learn"] is catalogue["nav_learn"]
+
+
 def test_renderer_fits_alpha_art_and_draws_no_additional_label(renderer, sample_catalogue, monkeypatch):
     screen = pygame.Surface((90, 66), pygame.SRCALPHA)
     button = pygame.Rect(20, 14, 44, 36)
     expected_art = pygame.Rect(0, 0, 40, 10)
     expected_art.center = button.center
-    assert "invalid" not in editor_buttons.load_editor_button_catalog()
+    catalogue = editor_buttons.load_editor_button_catalog()
+    assert set(catalogue) == {"file_save", "sidebar_save"}
+    assert catalogue["sidebar_save"] is catalogue["file_save"]
 
     class TextMustNotRender:
         def render(self, *args):
@@ -85,7 +121,7 @@ def test_renderer_fits_alpha_art_and_draws_no_additional_label(renderer, sample_
     renderer.draw(screen, "file_save", "Save", button, enabled=False)
     assert screen.get_bounding_rect() == expected_art
     assert screen.get_at(expected_art.topleft).a < 255
-    renderer.draw(screen, "file_save", "Speichern", button, hovered=True)
+    renderer.draw(screen, "sidebar_save", "Speichern", button, hovered=True)
     assert screen.get_at((button.centerx, button.top))[:3] == editor_buttons.HOVER
     renderer.draw(screen, "file_save", "Speichern", button, active=True)
     assert screen.get_at((button.centerx, button.top))[:3] == editor_buttons.ACTIVE

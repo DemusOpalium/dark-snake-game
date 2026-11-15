@@ -79,6 +79,19 @@
         213
       ]
     },
+    "build_border": {
+      "file": "build_border.png",
+      "source": "GamePICs/Nachtrag Fehlende Buttons/Border_Builder.png",
+      "sha256": "a0b894ca0e20714ede1a0201b85c5ad7076f34666df999b855d915cbc837c5d6",
+      "width": 1060,
+      "height": 235,
+      "art_bounds": [
+        0,
+        0,
+        1060,
+        235
+      ]
+    },
     "build_middle": {
       "file": "build_middle.png",
       "source": "GamePICs/Build/Middle_Area-removebg-preview.png",
@@ -129,6 +142,19 @@
         4,
         1079,
         224
+      ]
+    },
+    "build_transfer_roof": {
+      "file": "build_transfer_roof.png",
+      "source": "GamePICs/Nachtrag Fehlende Buttons/Move_to_Roof.png",
+      "sha256": "66faca8f299256ad08db19953f77a66b1b3af8dc367ccbf159cf811b0948aae5",
+      "width": 1050,
+      "height": 237,
+      "art_bounds": [
+        3,
+        0,
+        1046,
+        233
       ]
     },
     "collision_barrier": {
@@ -404,6 +430,19 @@
         212
       ]
     },
+    "nav_help": {
+      "file": "nav_help.png",
+      "source": "GamePICs/Nachtrag Fehlende Buttons/Help.png",
+      "sha256": "141efa40c42a8cd0797800c33bd81df93b05ca25a18e48326595743ff4ad135a",
+      "width": 1055,
+      "height": 236,
+      "art_bounds": [
+        1,
+        0,
+        1052,
+        235
+      ]
+    },
     "nav_layers": {
       "file": "nav_layers.png",
       "source": "GamePICs/Layers/Layers-removebg-preview.png",
@@ -456,6 +495,19 @@
         211
       ]
     },
+    "preview_stop": {
+      "file": "preview_stop.png",
+      "source": "GamePICs/Nachtrag Fehlende Buttons/Stop.png",
+      "sha256": "e039843b97d8450cb669e11e0701fffa7f96b3007bb899ecbc22c0668b08c1ae",
+      "width": 1052,
+      "height": 237,
+      "art_bounds": [
+        0,
+        0,
+        1051,
+        236
+      ]
+    },
     "roof_settings": {
       "file": "roof_settings.png",
       "source": "GamePICs/Effects/Roof_Value-removebg-preview.png",
@@ -467,6 +519,19 @@
         2,
         1053,
         235
+      ]
+    },
+    "sidebar_properties": {
+      "file": "sidebar_properties.png",
+      "source": "GamePICs/Nachtrag Fehlende Buttons/Properties.png",
+      "sha256": "f05c9c2233441f10f279c044c732c2c15343237b842f302cb9dd7cd3c8df4f34",
+      "width": 1046,
+      "height": 238,
+      "art_bounds": [
+        0,
+        0,
+        1046,
+        238
       ]
     },
     "test_player_1": {
@@ -532,6 +597,32 @@
         3,
         1118,
         217
+      ]
+    },
+    "tool_combined": {
+      "file": "tool_combined.png",
+      "source": "GamePICs/Nachtrag Fehlende Buttons/Graphics_Collision.png",
+      "sha256": "eee05c1ee89c992a925e5e21dce47677dfee1fb39fb325d118640332554b363f",
+      "width": 1049,
+      "height": 238,
+      "art_bounds": [
+        3,
+        0,
+        1044,
+        237
+      ]
+    },
+    "tool_graphics": {
+      "file": "tool_graphics.png",
+      "source": "GamePICs/Nachtrag Fehlende Buttons/Graphics_Only.png",
+      "sha256": "d110678908d3572482b9d03b94b421ad4e51ff9bc56e2d031ef4dba37de51a5e",
+      "width": 1057,
+      "height": 236,
+      "art_bounds": [
+        0,
+        0,
+        1057,
+        236
       ]
     },
     "view_cell": {
@@ -625,5 +716,11 @@
         212
       ]
     }
+  },
+  "aliases": {
+    "sidebar_cell": "view_cell",
+    "sidebar_help": "nav_help",
+    "sidebar_layers": "nav_layers",
+    "sidebar_learn": "nav_learn"
   }
 }
