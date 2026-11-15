@@ -1103,15 +1103,17 @@ class LevelEditor:
         return (asset is not None and asset.category in ("ground", "walls")
                 and asset.cells == (item.width, item.height))
 
+    def _can_repaint_frost_tile(self, existing, item):
+        return (existing is not None and (existing.width, existing.height) == (item.width, item.height)
+                and self._is_frost_tile_brush(existing) and self._is_frost_tile_brush(item))
+
     def _paint_object(self, objects, cell, item):
         brush = self._is_frost_tile_brush(item)
         if self._stroke_changed and not brush:
             return
         existing = objects.get(cell)
         combined = self.placement_mode == "combined"
-        repainting = (brush and existing is not None and self._is_frost_tile_brush(existing)
-                      and (existing.width, existing.height) == (item.width, item.height))
-        if repainting:
+        if self._can_repaint_frost_tile(existing, item):
             if existing == item and (not combined or self.collisions.get(cell) == self.collision_type):
                 return
         elif not can_place_graphic_object(objects, cell, item):
@@ -1708,7 +1710,8 @@ class LevelEditor:
         board, size = self.camera.board_rect, self.camera.cell_size
         rect = pygame.Rect(board.x + anchor[0] * size, board.y + anchor[1] * size,
                            item.width * size, item.height * size)
-        fits = can_place_graphic_object(objects, anchor, item, moving=moving)
+        fits = ((moving is None and self._can_repaint_frost_tile(objects.get(anchor), item))
+                or can_place_graphic_object(objects, anchor, item, moving=moving))
         if fits:
             draw_graphic_object(screen, board, anchor, item, preview=True)
         pygame.draw.rect(screen, COLOR_SELECT if fits else DELETE_COLOR, rect, 2)

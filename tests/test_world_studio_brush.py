@@ -7,6 +7,7 @@ from test_level_studio import cell, click, key, send, studio, text
 
 from modules.graphic_objects import GraphicObject
 from modules.level_drafts import load_level_document
+from modules.level_editor import COLOR_SELECT, DELETE_COLOR
 from modules.level_effects import CellEffects, DamageField, SlowField
 
 
@@ -165,6 +166,13 @@ def test_frost_brush_repaints_matching_terrain_footprints_only(studio):
     }
     editor.objects = original.copy()
     editor._select_tile(replacement.asset_id)
+    board, size = editor.camera.board_rect, editor.camera.cell_size
+    for column, outline in ((3, COLOR_SELECT), (9, DELETE_COLOR)):
+        send(game, pygame.event.Event(pygame.MOUSEMOTION, pos=cell(editor, column, 7),
+                                      rel=(0, 0), buttons=(0, 0, 0)))
+        game.draw()
+        assert game.screen.get_at((board.x + column * size, board.y + 7 * size))[:3] == outline
+
     drag(game, editor, (3, 7), (9, 7), button=1)
     expected = original | {(x, 7): replacement for x in (3, 4, 5)}
     assert editor.objects == expected
