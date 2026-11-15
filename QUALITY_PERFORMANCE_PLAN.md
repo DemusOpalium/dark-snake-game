@@ -105,7 +105,7 @@ Prüfschritte:
 
 | Arbeitspaket | Voraussetzung / Abnahme | Stand am 15.11.2026 |
 | --- | --- | --- |
-| PR #174 Layer Explorer + sieben UI-Grafiken | CI, Test der Locks/Solo und Windows-Grafikprüfung, danach Merge | 🔧 Draft offen, nicht in `main` |
+| PR #174 Layer Explorer + sieben UI-Grafiken | Merge bestätigt; tatsächliche sichtbare Windows-Abnahme nachführen | ✅ Gemergt; ⬜ Windows-Gesamtprüfung |
 | Performance-Referenz erfassen | Gleiche 1P/2P/`load`-Tests + echte Windows-Tests mit dokumentierten Messwerten | ⬜ |
 | DE/EN, Hilfe, sichtbares Fenster-Vollbild | Vollständige Tooltip-Übersetzung, UI-Klicks, gespeicherte Sprache, Resize | ⬜ |
 | World Backgrounds | Dauerhafte Landschaft unter Tiles, gespeicherte Levelreferenz, Zoom, EXE-Bundle, Legacy-Leser | ⬜ |
