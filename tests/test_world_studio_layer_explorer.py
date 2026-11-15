@@ -197,7 +197,7 @@ def test_locked_or_hidden_object_cannot_be_painted_moved_resized_or_deleted(stud
     assert editor._snapshot() == original and not editor.undo_stack
 
 
-def test_right_click_confirms_whole_multitile_deletion_and_undo_redo(studio):
+def test_inspector_confirms_whole_multitile_deletion_and_undo_redo(studio):
     game, editor, _ = studio
     key(game, pygame.K_F2)
     anchor, inner = (4, 4), (5, 5)
@@ -208,9 +208,10 @@ def test_right_click_confirms_whole_multitile_deletion_and_undo_redo(studio):
     editor.effects[inner] = CellEffects(DamageField(9, 1, None), SlowField(50))
     editor.map[inner[1]][inner[0]] = editor.current_tile
     original = editor._snapshot()
-    button(game, editor, "Objekte")
+    button(game, editor, "Zelle untersuchen")
+    click(game, cell(editor, *inner))
 
-    click(game, cell(editor, *inner), button=3)
+    editor.delete_inspected("objects")
     assert editor._dialog["kind"] == "delete"
     assert editor._snapshot() == original and not editor.undo_stack
     game.draw()
@@ -220,14 +221,14 @@ def test_right_click_confirms_whole_multitile_deletion_and_undo_redo(studio):
     key(game, pygame.K_ESCAPE)
     assert editor._snapshot() == original and not editor.undo_stack
 
-    click(game, cell(editor, *inner), button=3)
+    editor.delete_inspected("objects")
     editor.toggle_layer_lock("objects")
     key(game, pygame.K_RETURN)
     assert not editor.dialog_open
     assert editor._snapshot() == original and not editor.undo_stack
     editor.toggle_layer_lock("objects")
 
-    click(game, cell(editor, *inner), button=3)
+    editor.delete_inspected("objects")
     confirm = editor._discard_buttons(editor._dialog_panel())[1]
     click(game, confirm.center)
     after = editor._snapshot()
@@ -265,9 +266,9 @@ def test_delete_dialog_does_not_cover_centered_object_outline(studio):
     center = editor.camera.cell_at(editor.layout.bounds.center)
     assert center is not None
     editor.objects[center] = GraphicObject(OBJECT, 2, 2)
-    button(game, editor, "Objekte")
-
-    click(game, cell(editor, *center), button=3)
+    button(game, editor, "Zelle untersuchen")
+    click(game, cell(editor, *center))
+    editor.delete_inspected("objects")
     assert editor._dialog["kind"] == "delete"
     game.draw()
 

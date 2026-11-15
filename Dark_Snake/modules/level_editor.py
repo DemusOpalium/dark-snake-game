@@ -108,6 +108,7 @@ class LevelEditor:
         self.collision_type = "WALL"
         self.layer_view = LayerView()
         self.eraser_active = False
+        self.right_click_erase_all = game.settings["studio_erase_all_layers"] is not False
         self.damage_brush = DamageField()
         self.slow_brush = SlowField()
         self.effect_settings = None
@@ -122,6 +123,7 @@ class LevelEditor:
         self.favorites = []
         self._stroke_button = None
         self._stroke_changed = False
+        self._stroke_cell = None
         self._pan_button = None
         self._space_held = False
         self.preview_active = False
@@ -197,7 +199,7 @@ class LevelEditor:
     def _toggle_language(self):
         self.tr.language = "de" if self.tr.language == "en" else "en"
         self.game.settings["studio_language"] = self.tr.language
-        saved = self.game.save_settings()
+        saved = self.game.headless or self.game.save_settings()
         if self.tile_library is not None:
             self.tile_library.refresh_language()
         self._layout_controls()
@@ -248,6 +250,18 @@ class LevelEditor:
         self.eraser_active = not self.eraser_active
         self.info = (self.tr("Radierer an · {name}", name=self.tr(LAYER_LABELS[self.active_layer]))
                      if self.eraser_active else self.tr("Radierer aus."))
+
+    def toggle_right_click_erase(self):
+        self._stroke_button = None
+        self.right_click_erase_all = not self.right_click_erase_all
+        self.game.settings["studio_erase_all_layers"] = self.right_click_erase_all
+        saved = self.game.headless or self.game.save_settings()
+        self._layout_controls()
+        self.info = self._right_click_hint() if saved else self.tr("Löscheinstellung konnte nicht gespeichert werden.")
+
+    def _right_click_hint(self):
+        return self.tr("Rechtsklick löscht auf allen sichtbaren, ungesperrten Ebenen."
+                       if self.right_click_erase_all else "Rechtsklick löscht nur auf der aktiven Ebene.")
 
     def resize(self, size):
         self._layout_controls(size)
@@ -361,12 +375,14 @@ class LevelEditor:
                     ("file_use_classic", "Für Classic wählen", self.select_for_classic),
                     ("file_classic_default", "Classic-Standard", self.select_classic_default))
         if self.section == "nav_build":
+            erase_scope = "Rechtsklick: Alle" if self.right_click_erase_all else "Rechtsklick: Aktiv"
             return (("build_border", "Rand", self.set_border), ("build_middle", "Mittelfeld", self.fill_middle),
                     ("build_move_objects", "Objekt verschieben", self._toggle_object_move),
                     ("build_object_size", "Objektgröße", self._open_object_size),
                     ("build_transfer_roof", "Auf Dachebene", self._toggle_roof_transfer),
                     ("build_tile_library", "Tile-Bibliothek", self.open_tile_library),
-                    ("build_eraser", "Radierer", self.toggle_eraser))
+                    ("build_eraser", "Radierer", self.toggle_eraser),
+                    ("right_click_erase", erase_scope, self.toggle_right_click_erase))
         if self.section == "nav_layers":
             return (
                 *((f"layer_{layer}", label, lambda layer=layer: self._set_graphic_layer(layer))
@@ -920,9 +936,8 @@ class LevelEditor:
             self._handle_key(event)
         elif event.type == pygame.MOUSEBUTTONDOWN:
             self._handle_click(event.pos, event.button)
-        elif event.type == pygame.MOUSEMOTION:
-            if self._stroke_button:
-                self._paint(*event.pos)
+        elif event.type == pygame.MOUSEMOTION and self._stroke_button:
+            self._continue_stroke(self._hover_cell)
 
     def _handle_map_navigation(self, event):
         viewport = self.layout.viewport
@@ -1008,23 +1023,20 @@ class LevelEditor:
             return
         if (cell := self._map_cell(pos)) is not None:
             self._hover_cell = cell
-            if button == 3:
-                if not self.inspect_mode and not self._transferring_roof:
-                    self._request_delete(self.active_layer, cell, self.placement_mode)
-                return
             if button == 1:
                 self.inspected_cell = cell
-            if self.inspect_mode:
-                return
-            if self._transferring_roof:
-                self._transfer_roof_at(cell)
-                return
-            if self._moving_objects:
-                self._move_object_at(cell)
-                return
+                if self.inspect_mode:
+                    return
+                if self._transferring_roof:
+                    self._transfer_roof_at(cell)
+                    return
+                if self._moving_objects:
+                    self._move_object_at(cell)
+                    return
             self._stroke_button = button
             self._stroke_changed = False
-            self._paint(*pos)
+            self._stroke_cell = None
+            self._continue_stroke(cell)
 
     def _map_cell(self, position):
         return self.camera.cell_at(position)
@@ -1036,16 +1048,26 @@ class LevelEditor:
                 return self._object_brush
         return None
 
-    def _paint(self, mx, my):
-        cell = self._map_cell((mx, my))
-        if cell is None:
+    def _continue_stroke(self, cell):
+        previous = self._stroke_cell
+        self._stroke_cell = cell
+        if cell is None or cell == previous:
             return
+        apply_cell = self._erase_right_click if self._stroke_button == 3 else self._paint_cell
+        if previous is None:
+            apply_cell(cell)
+            return
+        # Motion events may skip cells. Fill the grid line since the last event.
+        x, y = previous
+        dx, dy = cell[0] - x, cell[1] - y
+        steps = max(abs(dx), abs(dy))
+        for step in range(1, steps + 1):
+            apply_cell((x + round(dx * step / steps), y + round(dy * step / steps)))
+
+    def _paint_cell(self, cell):
         layer = self.active_layer
         if self.eraser_active:
-            if self._require_editable(layer):
-                deletion = self._deletion_at(layer, cell, self.placement_mode)
-                if deletion is not None:
-                    self._delete(deletion)
+            self._erase_active_cell(cell)
             return
         layers = (layer, "collision") if self.placement_mode == "combined" else (layer,)
         if not self._require_editable(*layers):
@@ -1076,15 +1098,29 @@ class LevelEditor:
         else:
             self.info = self.tr("{tile} gesetzt", tile=tile)
 
+    def _is_frost_tile_brush(self, item):
+        asset = self.frost_assets.get(item.asset_id)
+        return (asset is not None and asset.category in ("ground", "walls")
+                and asset.cells == (item.width, item.height))
+
     def _paint_object(self, objects, cell, item):
-        if self._stroke_changed and self._stroke_button is not None:
+        brush = self._is_frost_tile_brush(item)
+        if self._stroke_changed and not brush:
             return
-        if not can_place_graphic_object(objects, cell, item):
-            self.info = self.tr("Grafikobjekt passt hier nicht.")
+        existing = objects.get(cell)
+        combined = self.placement_mode == "combined"
+        repainting = (brush and existing is not None and self._is_frost_tile_brush(existing)
+                      and (existing.width, existing.height) == (item.width, item.height))
+        if repainting:
+            if existing == item and (not combined or self.collisions.get(cell) == self.collision_type):
+                return
+        elif not can_place_graphic_object(objects, cell, item):
+            if not brush or not self._stroke_changed:
+                self.info = self.tr("Grafikobjekt passt hier nicht.")
             return
         self._begin_stroke_change()
-        place_graphic_object(objects, cell, item)
-        if self.placement_mode == "combined":
+        objects[cell] = item
+        if combined:
             self.collisions[cell] = self.collision_type
             self.info = self.tr("Grafikobjekt gesetzt · Kollision nur am Ankerfeld")
         else:
@@ -1122,6 +1158,29 @@ class LevelEditor:
     def delete_inspected(self, layer, effect=None):
         if self.inspected_cell is not None:
             self._request_delete(layer, self.inspected_cell, effect)
+
+    def _erase_active_cell(self, cell):
+        if self._require_editable(self.active_layer):
+            target = self._deletion_at(self.active_layer, cell, self.placement_mode)
+            if target is not None:
+                self._delete(target)
+
+    def _erase_right_click(self, cell):
+        if not self.right_click_erase_all:
+            self._erase_active_cell(cell)
+            return
+        removed = False
+        for layer in LAYER_LABELS:
+            if not self.layer_editable(layer):
+                continue
+            effects = ("damage", "slow") if layer == "effects" else (None,)
+            for effect in effects:
+                target = self._deletion_at(layer, cell, effect)
+                if target is not None:
+                    self._delete(target)
+                    removed = True
+        if removed:
+            self.info = self.tr("Rechtsklick · Elemente entfernt.")
 
     def _request_delete(self, layer, cell, effect):
         if not self._require_editable(layer):
@@ -1454,7 +1513,7 @@ class LevelEditor:
             "view_panel": self.show_inspector, "view_collision": self.show_collisions,
             "view_effects": self.show_effects, "view_roof": self.show_roofs,
             "build_move_objects": self._moving_objects, "build_transfer_roof": self._transferring_roof,
-            "build_eraser": self.eraser_active,
+            "build_eraser": self.eraser_active, "right_click_erase": self.right_click_erase_all,
         }
         mode = self.placement_mode
         layer = f"layer_{self.graphic_layer}" if mode in ("graphics", "combined") else None
@@ -1534,20 +1593,23 @@ class LevelEditor:
                 layer += f" · {self.tr('ausgeblendet')}"
             tools = {"graphics": "Grafik", "combined": "Grafik + Kollision", "collision": self.collision_type,
                      "damage": "Schaden", "slow": "Slow"}
-            tool = tools[self.placement_mode]
+            tool = self.tr(tools[self.placement_mode])
             if self.eraser_active:
-                tool = "Radierer"
+                tool = self.tr("Radierer")
             elif self.inspect_mode:
-                tool = "Zellen-Auswahl"
+                tool = self.tr("Zellen-Auswahl")
             elif self._moving_objects:
-                tool = "Verschieben"
+                tool = self.tr("Verschieben")
             elif self._transferring_roof:
-                tool = "Auf Dachebene"
+                tool = self.tr("Auf Dachebene")
+            elif self.placement_mode in ("graphics", "combined") and (item := self._selected_object()) is not None:
+                graphic_tool = self.tr("Pinsel" if self._is_frost_tile_brush(item) else "Stempel")
+                tool = f"{tool} · {graphic_tool}"
             cell = self._hover_cell if self._hover_cell is not None else self.inspected_cell
             coordinates = f"X {cell[0]} / Y {cell[1]}" if cell is not None else "X – / Y –"
             asset = self.frost_assets.get(self.current_tile)
             selection = asset.name if asset else self.current_tile or "–"
-            summary = f"{saved} · {title}    |    {layer} / {self.tr(tool)}    |    {coordinates}    |    {selection}"
+            summary = f"{saved} · {title}    |    {layer} / {tool}    |    {coordinates}    |    {selection}"
             if self.eraser_active:
                 hint = "Radierer aktiv · Links löscht auf der aktiven Ebene · Esc beendet"
             elif self.inspect_mode:
@@ -1557,7 +1619,7 @@ class LevelEditor:
             elif self._transferring_roof:
                 hint = "Dach auf der Objektebene anklicken · Esc bricht ab"
             else:
-                hint = "Links platziert · Rechts fragt vor dem Löschen · Mausrad zoomt"
+                hint = "Links platziert · Rechts löscht · Mausrad zoomt"
         summary_color = (COLOR_TEXT if self.playtest is not None or self.preview_active
                          else LAYER_COLORS[self.active_layer])
         self._draw_text(screen, summary, (12, status.top + 4), summary_color, max_width=status.width - 24)
@@ -1565,6 +1627,8 @@ class LevelEditor:
         if hovered is not None:
             if hovered.id == "nav_language":
                 message = self.tr("Aktiv: Deutsch · Zu English wechseln")
+            elif hovered.id == "right_click_erase":
+                message = self._right_click_hint()
             else:
                 message = self.tr(self.button_art.hint(hovered.id, hovered.label))
             if not self._button_available(hovered.id):

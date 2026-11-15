@@ -468,6 +468,7 @@ class Game:
             'music_track': DEFAULT_MUSIC_TRACK,
             'difficulty': 1.0,
             'field_scale': 1.0,
+            'studio_erase_all_layers': True,
             'snake_design': 0,
             'custom_head_p1': None,
             'custom_body_p1': None,

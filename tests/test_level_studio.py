@@ -76,9 +76,10 @@ def click(game, pos, button=1):
 
 
 def erase_cell(game, editor, position):
+    # These tests exercise selective edits within one layer.
+    if editor.right_click_erase_all:
+        editor.toggle_right_click_erase()
     click(game, position, button=3)
-    assert editor._dialog["kind"] == "delete"
-    key(game, pygame.K_RETURN)
     assert not editor.dialog_open
 
 
