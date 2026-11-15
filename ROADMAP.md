@@ -21,7 +21,7 @@
 
 # 🐍 DARK SNAKE – WORLD 2 GO
 ## Master-Ideenliste · Entwicklungstafel · Roadmap
-**Stand: 15.11.2026 · geprüftes `main` nach PR #175; PR #174 Layer Explorer ist gemergt**
+**Stand: 15.11.2026 · geprüftes `main` nach PR #176; PR #174–#176 sind gemergt. UI 2.0 ist bisher geplant, nicht umgesetzt.**
 
 **Projektziel:** DARK Snake vom klassischen Arcade-Spiel zu einem modularen Spiel mit eigenen Welten, Spezialwaffen, individuellen Bossen, einem Level-Baukasten und dem späteren Adventure-Modus **Mycelium Age** weiterentwickeln.
 
@@ -436,7 +436,7 @@
 - ⬜ Alte Kopf- und Körperdesigns sichten, Originalgrößen erhalten und Lesbarkeit im 30-Pixel-Spielraster testen.
 - 💡 **Spätere Classic-Tile-Kuration:** Die 495 älteren Tiles auf Kombinierbarkeit, Stil, Nahtlosigkeit und Bedienbarkeit prüfen; eine kleinere empfohlene Standardpalette und einen Legacy-Bereich planen, bestehende Tile-IDs und gespeicherte Level erhalten. Nach dem Layer-Explorer-Merge weiterhin ausdrücklich **keine** Löschung oder Umbenennung im laufenden Betrieb.
 - ⬜ Classic-Tile-Audit erst nach den wichtigeren Editor-/Gameplay-Arbeiten: Sichtprüfung, ID-/Nutzungsübersicht, Beispielkarten und Vorher-/Nachher-Messung von Ladezeit und Scrollen. Details im [Qualitätsplan](QUALITY_PERFORMANCE_PLAN.md).
-- ⬜ Vorhandene zusätzliche Heads/Bodies nach Tests über die Skin-Auswahl verfügbar machen.
+- ⬜ Vorhandene zusätzliche Heads/Bodies nach Tests über die Skin-Auswahl verfügbar machen; **53 Head- und 15 Body-Kandidaten** aus `GamePICs` einzeln auf Dubletten/Qualität prüfen, stabile IDs und kreative Anzeigenamen vergeben. Umfang und visuelle Anforderungen: [UI-2.0-Bildprüfung](UI_2_0_SCREEN_AUDIT.md).
 - 💡 Freischaltbare Schlangenköpfe/Körper und charakterbezogene Sounds für Treffer, Levelwechsel und Game Over.
 - ✅ `titel2.png` ist bereits als Fenster-Icon eingebunden; EXE-Dateiicon gesondert prüfen.
 - ⬜ Neue, unfertige PNG-Dateien zunächst in `GamePICs/Incoming/` nach Projektilen, Bossen, Gegnern, AoE, Heads, Bodies, Hintergründen und Animationen ablegen.
@@ -446,6 +446,24 @@
 - ✅ PNG-Abmessungen, transparente Bildbereiche und Original-Hashes der 48 integrierten Buttons durch Katalog und Tests geprüft.
 - ✅ FrostAge- und Editorgrafiken über explizite Integrations-PRs eingebunden; neue Gegner-/Projektilmechaniken bleiben offen.
 - 💡 Später optional HTML-Drop-in und PNG-/Paketexport; **vorerst unnötig**, da GitHub-Upload einfacher ist.
+
+---
+
+## 16 · UI 2.0 – OPTIONEN, SNAKE-GALERIE, STEUERUNG & BESTENLISTE
+
+**Ziel:** Die historischen Alpha-Menüs funktionserhaltend in eine gemeinsame FrostAge-/Gothic-Arkade-Oberfläche überführen. **Planung und Bildprüfung:** [UI_2_0_SCREEN_AUDIT.md](UI_2_0_SCREEN_AUDIT.md) (Screenshots 15.11.2026, aktuelle Codepfade, einzelne Mini-Profile, Akzeptanzkriterien).
+
+- ✅ Aktuell vorhanden: Optionen mit **4 oberen Aktionsbuttons**, **2 Tabs**, **5 Gameplay-Reglern**, **2 Audio-Reglern**, **Musik-Dropdown** und P1/P2-Vorschau; Auswahl und Speichern existieren.
+- ✅ Aktuell vorhanden: Eingabemenü mit Spieler-/Gerätewahl, Aktionen, **6 unteren Befehlen** und Speicher-/Testfunktion; einfache Top-10-Bestenliste mit Rückkehrknopf.
+- 🔧 **Beobachteter UI-Rückstand, kein Gameplay-Ausfall:** Überlappende Sliderlabels, große schwarze Leerflächen, uneinheitlich skalierte Schriften, alte grüne Doppelrahmen und unruhiger Audio-Dropdown.
+- ⬜ **UI-2A · Options-FrostAge-Stil:** eigene ruhige Hintergrundgrafik, neue Buttons/Rahmen, klare Gruppierung, funktionierende Slider und gut bedienbarer Musik-Dropdown; **Spawnrate nicht als 0.0 anzeigen**, da interne Werte kleiner als 0,01 sind.
+- ⬜ **UI-2B · Snake-Galerie:** bestehende Runtime-Skins und 53 neue Head-/15 Body-Kandidaten sichten, Dubletten/Artwork unterscheiden, katalogisieren, skalierte **und gecachte** Thumbnails sowie scrollbare Suche und kreative Namen. Separate tatsächliche 30×30-Spielgrößen-Vorschau für P1/P2 beibehalten.
+- ⬜ **UI-2C · Steuerung:** bestehendes Input-2.0-/Geräte-/Rebinding-/Test-/Speicherverhalten erhalten, aber Lesbarkeit und Navigation an neues Menüschema anpassen.
+- ⬜ **UI-2D · Bestenliste:** Rang 1–3 als aufwendig gestaltetes Podest mit Totenkopf-/Schlangenbaum-Thema, Rang 4–10 gut lesbar darunter; Elite/Legendär/Episch nur als **visuelle Auszeichnung**, solange keine geprüften Gameplay-Rangstufen bestehen. Bestehendes `name,score`-Format kompatibel erhalten.
+- ⬜ **Einstellungen für alle vs. Entwickler:** Speed, Difficulty, Spawnrate und Boss-HP zunächst erhalten; Projectile-Speed und experimentelle Balanceparameter bei Bedarf in aufklappbaren Advanced-/Developer-Bereich verschieben, aber **nicht** vorzeitig entfernen.
+- ⬜ **Performance & Qualität:** Bilder vorladen und skaliert cachen, fehlende Assets abfangen, Scroll-/Dropdown-Clipping, Fenstergrößen, 1P/2P, Keyboard/Controller, Save/Reload sowie FPS-Regressionen explizit prüfen.
+- 💡 **Gestalterische Grundregel:** Dekorative, neue Grafiken und ruhige FrostAge-Farben dürfen Bedienbarkeit und tatsächlich angezeigte Original-Spritegröße nicht überdecken. Menü-Grafik und übersetzbarer UI-Text getrennt halten, wo möglich.
+- ⬜ Alle UI-Bereiche **in separaten kleinen Draft-PRs** umsetzen; nach jedem Schritt sichtbare Windows-Abnahme. Bestehende Startmenü-/Editor-/Boss-/Highscore-Logik nicht ungeprüft umbauen.
 
 ---
 
@@ -466,7 +484,7 @@ Vier Slots pro Spieler, Item-Icons, frei belegbare Aktivierungstasten.
 Seelenschrein, klar lesbare individuelle Bossprofile und Phasen; kontrolliertes Boss-Spawn-Verhalten, UI/Audio, Boss-Minions, Belohnung und heroischer Siegübergang. Im Adventure-Modus später eine kuratierte Folge von bis zu 20–40 thematischen Bossen; zuerst **einen vollständigen Vertical Slice** entwickeln. Konzept: [BOSS_ENCOUNTERS_DESIGN.md](BOSS_ENCOUNTERS_DESIGN.md).
 
 **PHASE 5 – WORLD STUDIO 3.0**
-Weltbibliothek, Kollision, Damage/Slow, FrostAge-Multi-Tiles, Hauptmenü, Roof / Foreground, Editor-Layout, Rand-Builder und **48 grafische Editor-Buttons** sind integriert (#155, #168, #169). Es folgen Layer Explorer (PR C), vollständige Sprache/Hilfe, Lernmodus, Licht/Nebel und Trigger in einzelnen PRs. Der neue **World-Background-Ansatz (PR H, Konzept)** erlaubt später dauerhaft gespeicherte Vollbildlandschaften unter Tiles. Projektile/AoE/Gegner/Items, Freischalt-Skins und Adventure bleiben separate Arbeitspakete.
+Weltbibliothek, Kollision, Damage/Slow, FrostAge-Multi-Tiles, Hauptmenü, Roof / Foreground, Editor-Layout, Rand-Builder und **55 zugeordnete Editor-Bildaktionen** sind auf `main` integriert (#155, #168, #169, #174). Es folgen vollständige Sprache/Hilfe, Lernmodus, Licht/Nebel und Trigger in einzelnen PRs. Der **World-Background-Ansatz (PR H, Konzept)** erlaubt später dauerhaft gespeicherte Landschaften unter Tiles. Projektile/AoE/Gegner/Items, Freischalt-Skins und Adventure bleiben separate Arbeitspakete.
 
 **PHASE 6 – LEVEL-VERWALTUNG**
 Entwürfe, Level-Bibliothek, JSON, Grafikpakete, Export und Import.
@@ -478,7 +496,7 @@ Eigene Welten, Pilzgegner, Bossarenen, neue Spielmechaniken.
 53 neue Head- und 15 Body-Kandidaten sowie 175 FrostAge-Originale bleiben als vorbereitete Quellen unter `GamePICs/`; Laufzeitkopien nur nach Prüfung in `Dark_Snake/assets`. Separater Skin-Galerie-PR mit scrollbarer Vorschau und späteren Freischaltungen bleibt offen.
 
 **GEPLANTE UI-ERGÄNZUNGEN – IN KLEINEN PRs**
-Titelmenü 2.0 (Gothic Arcade) und GO IN GAME als wiederverwendbaren Übergangsbildschirm entwickeln, sobald Bilder und technische Grundlagen bereitstehen.
+Titelmenü 2.0 (Gothic Arcade), GO IN GAME und **UI 2.0** (Options, Skins, Steuerung, Bestenliste) als getrennte, funktionserhaltende Arbeitspakete. Screenshots, Mini-Profile und Abnahmeplan: [UI_2_0_SCREEN_AUDIT.md](UI_2_0_SCREEN_AUDIT.md).
 
 *Die Phasen sind eine vorläufige Reihenfolge. Gemeinsame technische Grundlagen können früher vorbereitet werden.*
 
