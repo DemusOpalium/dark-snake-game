@@ -84,11 +84,12 @@ def erase_cell(game, editor, position):
 
 
 def button(game, editor, label):
-    if not any(control.label == label for control in editor.buttons):
-        section = BUTTON_SECTIONS[label]
+    localized_label = editor.tr(label)
+    if not any(control.label == localized_label for control in editor.buttons):
+        section = editor.tr(BUTTON_SECTIONS[label])
         section_rect, = [control.rect for control in editor.buttons if control.label == section]
         click(game, section_rect.center)
-    rect, = [control.rect for control in editor.buttons if control.label == label]
+    rect, = [control.rect for control in editor.buttons if control.label == localized_label]
     click(game, rect.center)
 
 
