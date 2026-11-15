@@ -1358,14 +1358,13 @@ class Game:
         invincible = current_time < self.respawn_invincible_until
         if self.effects['projectile_shoot'] > current_time:
             self.auto_shoot()
-            # -- Gegner-Spawn ---------------------------------------------
-            if (random.random() < self.settings['enemy_spawn_rate']
-                    and len(self.enemies) < ENEMY_LIMIT[self.player_count]):
-                enemy = NormalEnemy()
-                enemy.spawn_time = time.time()
-                self.enemies.append(enemy)
-#             enemy.spawn_time = time.time()    # removed by patch to avoid UnboundLocalError
-#             self.enemies.append(enemy)    # removed by patch to avoid UnboundLocalError
+
+        # Normal enemy spawns are independent of the optional Auto-Shoot item.
+        if (random.random() < self.settings['enemy_spawn_rate']
+                and len(self.enemies) < ENEMY_LIMIT[self.player_count]):
+            enemy = NormalEnemy()
+            enemy.spawn_time = current_time
+            self.enemies.append(enemy)
 
         for enemy in self.enemies:
             # Pass Spielerposition für smartere Gegner

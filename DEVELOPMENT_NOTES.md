@@ -300,7 +300,7 @@ Bei 900×620 ist die Karte in der Gesamtansicht kleiner. Mit Zoom und eingeklapp
 
 In `Game.update()` steht der einzige zufällige `NormalEnemy`-Spawn innerhalb der Abfrage auf aktives `projectile_shoot`. Mit Spawnrate 1, einem erzwungen erfolgreichen Zufallswurf und je einem Update ergaben 1P und 2P jeweils null normale Gegner ohne den Effekt und einen mit dem Effekt. Der Vergleich mit Commit `5f569e2b` (#40) zeigt, dass die Kopplung bei einer früheren Einrückungsänderung entstand. Boss- und Bolbu-Spawns haben eigene Pfade.
 
-Separater Fix: den normalen Spawn aus der Auto-Shoot-Bedingung lösen. Mit festen Zufallswerten beide Effektzustände sowie die vorhandenen Gegnergrenzen in 1P und 2P testen.
+Fix als eigener Draft-PR vorbereitet: Die normale Spawn-Wahrscheinlichkeit wird wieder unabhängig von Auto-Shoot geprüft; bestehende 1P-/2P-Gegnerlimits bleiben unverändert. Neue Regressionstests erzwingen die Zufallsentscheidung für beide Spielerzahlen, prüfen beide Effektzustände, das Nicht-Spawnen bei einer zu hohen Zufallszahl und die volle Gegnergrenze. **Erst nach erfolgreichem PR-Review und Merge als vollständig abgeschlossen markieren; Boss-Minions/Spawnregeln bleiben eine separate Designaufgabe.**
 
 ## Vorgeschlagene nächste Phase
 
