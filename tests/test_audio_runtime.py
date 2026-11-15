@@ -97,6 +97,26 @@ def test_legacy_audio_settings_are_clamped_and_default_track_is_restored(tmp_pat
     assert audio.SOUNDS["eat"].get_volume() == 1.0
 
 
+def test_failed_settings_replace_preserves_previous_preferences(tmp_path, monkeypatch):
+    monkeypatch.setattr(resources, "DATA_DIR", tmp_path)
+    settings_path = tmp_path / "settings.json"
+    original = '{"studio_language":"en","sfx_volume":0.25}'
+    settings_path.write_text(original, encoding="utf-8")
+    game = Game()
+    game.settings["studio_language"] = "de"
+
+    def rejected_replace(source, target):
+        assert target == settings_path
+        assert source != target
+        assert json.loads(source.read_text(encoding="utf-8"))["studio_language"] == "de"
+        raise PermissionError("Testing an unavailable settings file")
+
+    monkeypatch.setattr(Path, "replace", rejected_replace)
+    assert game.save_settings() is False
+    assert settings_path.read_text(encoding="utf-8") == original
+    assert not list(tmp_path.glob(".settings-*.tmp"))
+
+
 def test_initialize_audio_reuses_running_mixer(monkeypatch):
     calls = []
     monkeypatch.setattr(pygame.mixer, "get_init", lambda: (48000, -16, 2) if calls else None)

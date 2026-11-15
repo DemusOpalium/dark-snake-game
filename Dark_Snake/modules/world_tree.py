@@ -2,6 +2,7 @@
 
 import pygame
 
+from modules.studio_locale import StudioLocale
 from modules.world_library import WorldLibrary
 
 
@@ -17,7 +18,8 @@ ACCENT = (246, 199, 105)
 
 
 class WorldTree:
-    def __init__(self, bounds, font, open_draft, ask_name, close):
+    def __init__(self, bounds, font, open_draft, ask_name, close, *, translate=None):
+        self.tr = translate if translate is not None else StudioLocale("de")
         self.font = font
         self.open_draft = open_draft
         self.ask_name = ask_name
@@ -60,7 +62,7 @@ class WorldTree:
         for level in sorted(self.library.levels.values(), key=lambda entry: entry.name.casefold()):
             grouped[level.world_id].append(level)
         worlds = sorted(self.library.worlds.values(), key=lambda world: world.name.casefold())
-        for world_id, label in [(None, FREE_LABEL), *((world.id, world.name) for world in worlds)]:
+        for world_id, label in [(None, self.tr(FREE_LABEL)), *((world.id, world.name) for world in worlds)]:
             yield "world", world_id, label
             if world_id in self.expanded:
                 for level in grouped[world_id]:
@@ -177,7 +179,7 @@ class WorldTree:
         if level.available:
             self.open_draft(level.draft_name)
         else:
-            self.message = f"Die Datei für „{level.name}“ fehlt."
+            self.message = self.tr("Die Datei für „{name}“ fehlt.", name=level.name)
 
     def handle_event(self, event):
         if event.type == pygame.KEYDOWN and event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
@@ -232,10 +234,10 @@ class WorldTree:
         pygame.draw.rect(screen, BG, self.panel)
         pygame.draw.rect(screen, SELECTED, self.panel, 2)
         self._text(screen, "WORLD STUDIO", (self.design.x, self.panel.y + 13), self.panel.width - 36, ACCENT)
-        self._text(screen, "Level auswählen · Zielwelt anklicken · Zuordnen", (self.design.x, self.panel.y + 39),
-                   self.panel.width - 36, MUTED)
+        self._text(screen, self.tr("Level auswählen · Zielwelt anklicken · Zuordnen"),
+                   (self.design.x, self.panel.y + 39), self.panel.width - 36, MUTED)
         for area, title in ((self.design, "Entwurfsbibliothek"), (self.order, "Spielreihenfolge")):
-            self._text(screen, title, (area.x, area.y - 24), area.width, ACCENT)
+            self._text(screen, self.tr(title), (area.x, area.y - 24), area.width, ACCENT)
             pygame.draw.rect(screen, PANEL, area)
             for rect, kind, item_id, label in self._rows(area):
                 if kind == "world":
@@ -247,15 +249,16 @@ class WorldTree:
                 selected = item_id == self.selected_level
                 level = self.library.levels[item_id]
                 pygame.draw.rect(screen, SELECTED if selected else PANEL, rect)
-                self._text(screen, label if level.available else f"{label} (Datei fehlt)",
+                self._text(screen, label if level.available else self.tr("{name} (Datei fehlt)", name=label),
                            (rect.x + 13, rect.y + 3), rect.width - 86, TEXT if level.available else MUTED)
                 if level.available:
                     button = self._open_rect(rect)
                     pygame.draw.rect(screen, BUTTON, button)
-                    self._text(screen, "Öffnen", (button.x + 7, button.y + 2), button.width - 10)
+                    self._text(screen, self.tr("Öffnen"), (button.x + 7, button.y + 2), button.width - 10)
         for rect, label, _ in self._controls():
             pygame.draw.rect(screen, BUTTON, rect)
-            self._text(screen, label, (rect.x + 7, rect.y + 4), rect.width - 14)
+            self._text(screen, self.tr(label), (rect.x + 7, rect.y + 4), rect.width - 14)
         target = self.library.worlds.get(self.target_world)
-        status = self.message or f"Zielwelt · {target.name if target else FREE_LABEL}"
+        status = (self.tr(self.message) if self.message else
+                  self.tr("Zielwelt · {world}", world=target.name if target else self.tr(FREE_LABEL)))
         self._text(screen, status, (self.design.x, self.panel.bottom - 33), self.panel.width - 150, ACCENT)

@@ -3,6 +3,7 @@
 import pygame
 
 from modules.roof_settings import RoofVisibility
+from modules.studio_locale import StudioLocale
 
 
 FIELDS = ("Sichtradius in Rasterfeldern", "Transparenz in Prozent", "Weicher Rand in Rasterfeldern")
@@ -11,7 +12,8 @@ ERROR = (244, 104, 127)
 
 
 class RoofSettingsEditor:
-    def __init__(self, settings, bounds):
+    def __init__(self, settings, bounds, *, translate=None):
+        self.tr = translate if translate is not None else StudioLocale("de")
         self.enabled = settings.enabled
         self.values = [f"{settings.radius:g}", str(settings.transparency), f"{settings.softness:g}"]
         self.field = 0
@@ -84,16 +86,16 @@ class RoofSettingsEditor:
         panel = self.panel
         pygame.draw.rect(screen, (25, 25, 25), panel)
         pygame.draw.rect(screen, OUTLINE, panel, 2)
-        text(screen, "Dach-Sichtfenster für dieses Level", (panel.x + 20, panel.y + 12))
-        button(screen, "Sichtfenster an" if self.enabled else "Sichtfenster aus",
+        text(screen, self.tr("Dach-Sichtfenster für dieses Level"), (panel.x + 20, panel.y + 12))
+        button(screen, self.tr("Sichtfenster an" if self.enabled else "Sichtfenster aus"),
                self.toggle, OUTLINE if self.enabled else None)
         for index, (label, rect, value) in enumerate(zip(FIELDS, self.fields, self.values)):
-            text(screen, label, (rect.x, rect.y - 18))
+            text(screen, self.tr(label), (rect.x, rect.y - 18))
             button(screen, value or "–", rect, OUTLINE if index == self.field else None)
             if index == self.field and self.select_all:
-                text(screen, "Eingabe ersetzt Wert", (rect.right - 142, rect.y + 5), (195, 195, 195))
-        text(screen, self.error or "Ein Sichtfenster pro Spieler unter dem Dach.",
+                text(screen, self.tr("Eingabe ersetzt Wert"), (rect.right - 142, rect.y + 5), (195, 195, 195))
+        text(screen, self.tr(self.error or "Ein Sichtfenster pro Spieler unter dem Dach."),
              (panel.x + 20, panel.y + 238), ERROR if self.error else (195, 195, 195),
              max_width=panel.width - 40)
-        button(screen, "Abbrechen", self.cancel)
-        button(screen, "Übernehmen", self.confirm)
+        button(screen, self.tr("Abbrechen"), self.cancel)
+        button(screen, self.tr("Übernehmen"), self.confirm)

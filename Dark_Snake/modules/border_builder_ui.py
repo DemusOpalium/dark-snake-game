@@ -6,6 +6,7 @@ import pygame
 
 from config import GRID_HEIGHT, GRID_WIDTH
 from modules.border_builder import CORNERS, SIDES, BorderPlan
+from modules.studio_locale import StudioLocale
 
 
 PANEL = (24, 33, 48)
@@ -38,9 +39,10 @@ class _Slot:
 class BorderBuilderUI:
     """Hold uncommitted brush choices and show their effect on the current floor."""
 
-    def __init__(self, tile, bounds, button_art=None):
+    def __init__(self, tile, bounds, button_art=None, *, translate=None):
         self.plan = BorderPlan()
         self.button_art = button_art
+        self.tr = translate if translate is not None else StudioLocale("de")
         self._last_tile = tile
         self._side_tiles = {}
         self._corner_tiles = {}
@@ -102,7 +104,7 @@ class BorderBuilderUI:
 
     def _choose(self, key):
         self._target = key
-        self._message = f"{LABELS.get(key, 'Gesamter Rand')} · Bodenkachel links wählen."
+        self._message = ""
 
     def _choices(self, key):
         return (self.plan.sides, self._side_tiles) if key in SIDES else (self.plan.corners, self._corner_tiles)
@@ -200,55 +202,59 @@ class BorderBuilderUI:
         pygame.draw.rect(screen, STROKE, self.panel, width=1, border_radius=6)
         x, y = self.panel.topleft
         left = x + 14
-        text(screen, "Rand-Builder", (left, y + 10), TEXT)
-        text(screen, "Seiten einzeln wählen und die Änderung vor dem Anwenden prüfen.", (left, y + 34), MUTED,
-             max_width=self.panel.width - 28)
+        text(screen, self.tr("Rand-Builder"), (left, y + 10), TEXT)
+        text(screen, self.tr("Seiten einzeln wählen und die Änderung vor dem Anwenden prüfen."),
+             (left, y + 34), MUTED, max_width=self.panel.width - 28)
         all_on = all(key in self.plan.sides for key in SIDES)
         self._draw_art(screen, "border_all", "Gesamter Rand", self.all_button, button, active=all_on)
         self._draw_slots(screen, self.side_rows, self.plan.sides, tile_images, text, button)
         self._draw_art(screen, "border_corner", "Ecken", self.corners_button, button,
                        selected=self._show_corners)
-        text(screen, "Einblenden" if not self._show_corners else "Ausblenden",
+        text(screen, self.tr("Ausblenden" if self._show_corners else "Einblenden"),
              (self.corners_button.right + 7, self.corners_button.y + 10), MUTED,
              max_width=self._preview_frame.left - self.corners_button.right - 15)
         if self._show_corners:
             self._draw_slots(screen, self.corner_rows, self.plan.corners, tile_images, text, button)
-        text(screen, "Automatische Ecken · Oben/Unten zuerst", (left, y + 366), MUTED,
+        text(screen, self.tr("Automatische Ecken · Oben/Unten zuerst"), (left, y + 366), MUTED,
              max_width=self._preview_frame.left - left - 8)
 
         preview = {(cell.x, cell.y): cell for cell in self.plan.preview(level_map)}
         self._draw_preview(screen, level_map, tile_images, preview, text)
-        button(screen, "Abbrechen", self.cancel_button)
+        button(screen, self.tr("Abbrechen"), self.cancel_button)
         if not self.target_pending and any(cell.changed for cell in preview.values()):
-            button(screen, "Anwenden", self.apply_button, ACCENT)
+            button(screen, self.tr("Anwenden"), self.apply_button, ACCENT)
         else:
             pygame.draw.rect(screen, STROKE, self.apply_button, width=1, border_radius=5)
-            text(screen, "Anwenden", (self.apply_button.x + 8, self.apply_button.y + 5), MUTED)
+            text(screen, self.tr("Anwenden"), (self.apply_button.x + 8, self.apply_button.y + 5), MUTED)
 
         usable = self.apply_button.left - self.cancel_button.right - 20
-        text(screen, self._message or self._slot_detail() or self._art_hint()
-             or "Nur Boden-Grafik · Strg+Z macht rückgängig.",
-             (self.cancel_button.right + 9, self.cancel_button.y + 6), ACCENT if self._message else MUTED,
+        message = self.tr(self._message)
+        if not message and self.target_pending:
+            side = self.tr(LABELS.get(self._target, "Gesamter Rand"))
+            message = self.tr("{side} · Bodenkachel links wählen.", side=side)
+        text(screen, message or self._slot_detail() or self._art_hint()
+             or self.tr("Nur Boden-Grafik · Strg+Z macht rückgängig."),
+             (self.cancel_button.right + 9, self.cancel_button.y + 6), ACCENT if message else MUTED,
              max_width=usable)
 
     def _draw_art(self, screen, action_id, label, rect, button, *, active=False, selected=False):
         hovered = self._pointer is not None and rect.collidepoint(self._pointer)
         if self.button_art is not None:
-            self.button_art.draw(screen, action_id, label, rect, active=active, selected=selected,
+            self.button_art.draw(screen, action_id, self.tr(label), rect, active=active, selected=selected,
                                  hovered=hovered)
         else:
-            button(screen, label, rect, ACCENT if active or selected or hovered else None)
+            button(screen, self.tr(label), rect, ACCENT if active or selected or hovered else None)
 
     def _art_hint(self):
         if self._pointer is None:
             return None
         if self.all_button.collidepoint(self._pointer):
-            return "Alle vier Randseiten gemeinsam ein- oder ausschalten."
+            return self.tr("Alle vier Randseiten gemeinsam ein- oder ausschalten.")
         if self.corners_button.collidepoint(self._pointer):
-            return "Optionale Eckgrafiken ein- oder ausblenden."
+            return self.tr("Optionale Eckgrafiken ein- oder ausblenden.")
         for key, slot in self.side_rows.items():
             if slot.toggle.collidepoint(self._pointer):
-                return f"{LABELS[key]} · Diese Randseite ein- oder ausschalten."
+                return self.tr("{side} · Diese Randseite ein- oder ausschalten.", side=self.tr(LABELS[key]))
         return None
 
     def _slot_detail(self):
@@ -260,32 +266,32 @@ class BorderBuilderUI:
             tile = choice[0] if choice else self.plan.corners.get(key)
         else:
             tile = self.plan.sides.get(key)
-        return f"{LABELS[key]} · {tile}" if tile else None
+        return f"{self.tr(LABELS[key])} · {tile}" if tile else None
 
     def _draw_slots(self, screen, rows, choices, tile_images, text, button):
         for key, slot in rows.items():
             tile = choices.get(key)
             if key in SIDES:
                 self._draw_art(screen, f"border_{key}", LABELS[key], slot.toggle, button, active=bool(tile))
-                text(screen, "An" if tile else "Aus", (slot.toggle.right + 3, slot.toggle.y + 9),
+                text(screen, self.tr("An" if tile else "Aus"), (slot.toggle.right + 3, slot.toggle.y + 9),
                      ACCENT if tile else MUTED)
             else:
-                text(screen, LABELS[key], slot.label_pos, TEXT)
-                button(screen, "An" if tile else "Aus", slot.toggle, ACCENT if tile else None)
+                text(screen, self.tr(LABELS[key]), slot.label_pos, TEXT)
+                button(screen, self.tr("An" if tile else "Aus"), slot.toggle, ACCENT if tile else None)
             pygame.draw.rect(screen, (29, 43, 62), slot.choose, border_radius=5)
             highlighted = key in (self._target, self._hover_slot)
             pygame.draw.rect(screen, ACCENT if highlighted else STROKE, slot.choose,
                              width=2 if key == self._target else 1, border_radius=5)
-            label = tile or ("Auto" if key in CORNERS else "Grafik wählen")
+            label = tile or self.tr("Auto" if key in CORNERS else "Grafik wählen")
             swatch_tile = tile
             if key in CORNERS and (choice := self.plan.corner_choice(key)) is not None and tile is None:
                 swatch_tile, source = choice
-                label = "Von " + LABELS[source]
+                label = self.tr("Von {side}", side=self.tr(LABELS[source]))
             elif key in CORNERS and tile:
                 if self.plan.corner_choice(key) is None:
-                    label = "Wartet"
+                    label = self.tr("Wartet")
             if key == self._target:
-                label = "Links wählen"
+                label = self.tr("Links wählen")
             label_x, label_y = slot.choose.x + 5, slot.choose.y + 4
             if swatch_tile in tile_images and key != self._target:
                 if swatch_tile not in self._swatches:
@@ -322,11 +328,13 @@ class BorderBuilderUI:
                     pygame.draw.rect(screen, TEXT, cell, width=1)
         x, y = self._preview_frame.left, self._preview_frame.bottom + 7
         width = self._preview_frame.width
-        text(screen, f"{len(preview)} Zielzellen · {sum(cell.changed for cell in preview.values())} geändert",
+        text(screen, self.tr("{count} Zielzellen · {changed} geändert", count=len(preview),
+                             changed=sum(cell.changed for cell in preview.values())),
              (x, y), TEXT, max_width=width)
         overwritten = sum(cell.overwrites for cell in preview.values())
-        text(screen, f"{overwritten} vorhandene Kacheln ersetzt", (x, y + 20), OVERWRITE, max_width=width)
-        text(screen, "Blau neu · Orange ersetzt · Violett Ecke", (x, y + 40), MUTED, max_width=width)
+        text(screen, self.tr("{count} vorhandene Kacheln ersetzt", count=overwritten),
+             (x, y + 20), OVERWRITE, max_width=width)
+        text(screen, self.tr("Blau neu · Orange ersetzt · Violett Ecke"), (x, y + 40), MUTED, max_width=width)
         if self._hover_cell is not None:
             self._draw_cell_details(screen, level_map, preview, text, x, y + 62, width)
 
@@ -335,8 +343,10 @@ class BorderBuilderUI:
         entry = preview.get((x, y))
         existing = level_map[y][x]
         if entry is None:
-            text(screen, f"X {x} / Y {y} · bleibt unverändert", (left, top), MUTED, max_width=width)
+            text(screen, self.tr("X {x} / Y {y} · bleibt unverändert", x=x, y=y),
+                 (left, top), MUTED, max_width=width)
             return
-        text(screen, f"X {x} / Y {y} · {LABELS[entry.source]}", (left, top), TEXT, max_width=width)
-        text(screen, "Vorher " + (existing or "leer"), (left, top + 18), MUTED, max_width=width)
-        text(screen, "Danach " + entry.tile, (left, top + 36), ACCENT, max_width=width)
+        text(screen, f"X {x} / Y {y} · {self.tr(LABELS[entry.source])}", (left, top), TEXT, max_width=width)
+        text(screen, self.tr("Vorher {tile}", tile=existing or self.tr("leer")),
+             (left, top + 18), MUTED, max_width=width)
+        text(screen, self.tr("Danach {tile}", tile=entry.tile), (left, top + 36), ACCENT, max_width=width)

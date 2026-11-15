@@ -5,6 +5,7 @@ from dataclasses import dataclass
 import pygame
 
 from modules.frostage_assets import load_frostage_image
+from modules.studio_locale import StudioLocale
 from modules.tile_catalog import GROUPS, THEMES, TileEntry, load_tile_catalog
 
 
@@ -34,7 +35,8 @@ class _Row:
 
 class TileLibrary:
     def __init__(self, tiles, favorites, bounds, font, select_tile, *, max_favorites=8,
-                 frost_assets=None, embedded=False):
+                 frost_assets=None, embedded=False, translate=None):
+        self.tr = translate if translate is not None else StudioLocale("de")
         self.tiles = tiles
         self.frost_assets = frost_assets or {}
         self._themes = {key: label for key, (label, _) in THEMES.items()}
@@ -98,6 +100,10 @@ class TileLibrary:
     def close(self):
         self.blur_search()
 
+    def refresh_language(self):
+        """Rebuild text labels without changing the current search or tile choice."""
+        self._refresh_rows()
+
     def focus_search(self):
         if not self.search_focused:
             self.search_focused = True
@@ -125,25 +131,26 @@ class TileLibrary:
                 continue
             expanded = (category not in self._search_closed if terms else category in self._expanded)
             marker = "−" if expanded else "+"
-            self._rows.append(_Row("category", f"{marker}  {label} ({len(entries)})", category))
+            self._rows.append(_Row("category", f"{marker}  {self.tr(label)} ({len(entries)})", category))
             if not expanded:
                 continue
             if category == FAVORITES:
                 if not entries:
                     hint = "Noch keine Favoriten" if self.embedded else "Rechtsklick auf eine Kachel fügt sie hinzu."
-                    self._rows.append(_Row("hint", hint, "", 16))
+                    self._rows.append(_Row("hint", self.tr(hint), "", 16))
                 self._add_tile_rows(entries, 16)
             else:
                 self._add_group_rows(category, entries, bool(terms))
         if not self._rows:
-            self._rows.append(_Row("hint", "Keine Kacheln gefunden.", ""))
+            self._rows.append(_Row("hint", self.tr("Keine Kacheln gefunden."), ""))
         self._scroll_by(0)
 
     def _matches_terms(self, entry, terms):
         if not terms:
             return True
-        searchable = (f"{self._tile_label(entry)} {entry.key} {entry.category} "
-                      f"{self._themes[entry.category]} {entry.group} {GROUPS[entry.group]}").casefold()
+        theme, group = self._themes[entry.category], GROUPS[entry.group]
+        searchable = (f"{self._tile_label(entry)} {entry.key} {entry.category} {entry.group} "
+                      f"{theme} {self.tr(theme)} {group} {self.tr(group)}").casefold()
         return all(term in searchable for term in terms)
 
     def _tile_label(self, entry):
@@ -162,7 +169,7 @@ class TileLibrary:
             target = (category, group)
             expanded = target not in closed_groups
             marker = "−" if expanded else "+"
-            self._rows.append(_Row("group", f"{marker}  {label} ({len(members)})", target, 16))
+            self._rows.append(_Row("group", f"{marker}  {self.tr(label)} ({len(members)})", target, 16))
             if expanded:
                 self._add_tile_rows(members, 32)
 
@@ -277,37 +284,39 @@ class TileLibrary:
         pygame.draw.rect(screen, ROW_COLOR if self.embedded else ACCENT_COLOR, self.panel,
                          width=1 if self.embedded else 2, border_radius=6)
         if self.embedded:
-            self._text(screen, "Baukasten", (self.panel.left + 10, self.panel.top + 11))
+            self._text(screen, self.tr("Baukasten"), (self.panel.left + 10, self.panel.top + 11))
         else:
-            self._text(screen, "Tile-Bibliothek", (self.panel.left + 18, self.panel.top + 18))
-            self._draw_button(screen, self.close_rect, "Schließen")
+            self._text(screen, self.tr("Tile-Bibliothek"), (self.panel.left + 18, self.panel.top + 18))
+            self._draw_button(screen, self.close_rect, self.tr("Schließen"))
         pygame.draw.rect(screen, LIST_COLOR, self.search_rect, border_radius=3)
         pygame.draw.rect(screen, ACCENT_COLOR if self.search_focused else MUTED_COLOR,
                          self.search_rect, width=1, border_radius=3)
         placeholder = "Kacheln suchen …" if self.embedded else "Dateiname oder Thema suchen …"
-        query = self._query or placeholder
+        query = self._query or self.tr(placeholder)
         self._text(screen, query, (self.search_rect.left + 9, self.search_rect.top + 8),
                    color=TEXT_COLOR if self._query else MUTED_COLOR, max_width=self.search_rect.width - 18)
-        self._draw_button(screen, self.clear_rect, "×" if self.embedded else "Leeren")
+        self._draw_button(screen, self.clear_rect, "×" if self.embedded else self.tr("Leeren"))
         pygame.draw.rect(screen, LIST_COLOR, self.list_rect)
         previous_clip = screen.get_clip()
         screen.set_clip(self.list_rect.clip(previous_clip))
         for row, rect in self._visible_rows():
             self._draw_row(screen, row, rect, current_tile)
         screen.set_clip(previous_clip)
+        warning = self.tr("Kachelkatalog fehlerhaft. Standardzuordnung aktiv.") if self._warnings else None
         if self.embedded:
             self._draw_scrollbar(screen)
-            count = self._warnings[0] if self._warnings else f"{len(self._matches)} Kacheln"
+            count = warning or self.tr("{count} Kacheln", count=len(self._matches))
             self._text(screen, count, (self.list_rect.left, self.list_rect.bottom + 4),
-                       color=ACCENT_COLOR if self._warnings else MUTED_COLOR, max_width=self.list_rect.width)
-            self._text(screen, "Rechtsklick: Favoriten", (self.list_rect.left, self.list_rect.bottom + 23),
+                       color=ACCENT_COLOR if warning else MUTED_COLOR, max_width=self.list_rect.width)
+            self._text(screen, self.tr("Rechtsklick: Favoriten"), (self.list_rect.left, self.list_rect.bottom + 23),
                        color=MUTED_COLOR, max_width=self.list_rect.width)
             return
-        footer = f"{len(self._matches)} Kacheln · Mausrad scrollt · Rechtsklick ändert Favoriten · Esc schließt"
+        footer = self.tr("{count} Kacheln · Mausrad scrollt · Rechtsklick ändert Favoriten · Esc schließt",
+                         count=len(self._matches))
         self._text(screen, footer, (self.list_rect.left, self.list_rect.bottom + 6), color=MUTED_COLOR,
                    max_width=self.list_rect.width)
-        if self._warnings:
-            self._text(screen, self._warnings[0], (self.list_rect.left, self.list_rect.bottom + 26),
+        if warning:
+            self._text(screen, warning, (self.list_rect.left, self.list_rect.bottom + 26),
                        color=ACCENT_COLOR, max_width=self.list_rect.width)
 
     def _draw_scrollbar(self, screen):

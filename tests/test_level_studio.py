@@ -49,6 +49,8 @@ def studio(tmp_path, monkeypatch):
     profile = tmp_path / "profile"
     monkeypatch.setattr(resources, "DATA_DIR", profile)
     monkeypatch.chdir(tmp_path)
+    profile.mkdir()
+    (profile / "settings.json").write_text('{"studio_language": "de"}', encoding="utf-8")
     game = Game()
     pygame.event.clear()
     return game, game.level_editor, profile
