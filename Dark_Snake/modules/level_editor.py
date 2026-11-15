@@ -1252,6 +1252,17 @@ class LevelEditor:
         height = 310 if self._dialog["kind"] == "open" else 174
         panel = pygame.Rect(0, 0, min(540, self.layout.bounds.width - 40), height)
         panel.center = self.layout.bounds.center
+        if self._dialog["kind"] == "delete":
+            target = self._deletion_rect(self._dialog["target"])
+            if target is not None:
+                visible_target = target.clip(self.layout.viewport)
+                if panel.colliderect(visible_target):
+                    bounds = self.layout.bounds.inflate(-40, -40)
+                    if visible_target.top - bounds.top >= bounds.bottom - visible_target.bottom:
+                        panel.bottom = visible_target.top - 8
+                    else:
+                        panel.top = visible_target.bottom + 8
+                    panel.clamp_ip(bounds)
         return panel
 
     def _discard_buttons(self, panel):
@@ -1612,7 +1623,7 @@ class LevelEditor:
             draw_graphic_object(screen, board, anchor, item, preview=True)
         pygame.draw.rect(screen, COLOR_SELECT if fits else DELETE_COLOR, rect, 2)
 
-    def _draw_deletion_outline(self, screen, target):
+    def _deletion_rect(self, target):
         width = height = 1
         if target.layer in ("objects", "roof"):
             items = self.roofs if target.layer == "roof" else self.objects
@@ -1622,7 +1633,12 @@ class LevelEditor:
             width, height = item.width, item.height
         board, size = self.camera.board_rect, self.camera.cell_size
         x, y = target.cell
-        rect = pygame.Rect(board.x + x * size, board.y + y * size, width * size, height * size)
+        return pygame.Rect(board.x + x * size, board.y + y * size, width * size, height * size)
+
+    def _draw_deletion_outline(self, screen, target):
+        rect = self._deletion_rect(target)
+        if rect is None:
+            return
         old_clip = screen.get_clip()
         screen.set_clip(old_clip.clip(self.layout.viewport))
         pygame.draw.rect(screen, DELETE_COLOR, rect, 2)

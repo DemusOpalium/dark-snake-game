@@ -259,6 +259,25 @@ def test_eraser_drag_changes_only_the_active_layer_in_one_step(studio):
     assert editor._snapshot() == original
 
 
+def test_delete_dialog_does_not_cover_centered_object_outline(studio):
+    game, editor, _ = studio
+    key(game, pygame.K_F2)
+    center = editor.camera.cell_at(editor.layout.bounds.center)
+    assert center is not None
+    editor.objects[center] = GraphicObject(OBJECT, 2, 2)
+    button(game, editor, "Objekte")
+
+    click(game, cell(editor, *center), button=3)
+    assert editor._dialog["kind"] == "delete"
+    game.draw()
+
+    board, size = editor.camera.board_rect, editor.camera.cell_size
+    origin = board.x + center[0] * size, board.y + center[1] * size
+    far_corner = origin[0] + 2 * size - 1, origin[1] + 2 * size - 1
+    assert game.screen.get_at(origin)[:3] == DELETE_COLOR
+    assert game.screen.get_at(far_corner)[:3] == DELETE_COLOR
+
+
 def test_inspected_collision_edit_is_undoable_and_keeps_other_layers(studio):
     game, editor, _ = studio
     key(game, pygame.K_F2)
