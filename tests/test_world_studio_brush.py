@@ -108,6 +108,25 @@ def test_right_click_scope_persists_on_restart(studio):
                for control in reopened.level_editor.buttons)
 
 
+def test_right_click_removes_the_selected_object_and_ends_move(studio):
+    game, editor, _ = studio
+    key(game, pygame.K_F2)
+    anchor = (5, 5)
+    item = GraphicObject("frostage_1x1_027", 2, 2)
+    editor.objects[anchor] = item
+    choose_tool(game, editor, "nav_build", "build_move_objects")
+    click(game, cell(editor, 6, 6))
+    assert editor._move_anchor == anchor
+
+    click(game, cell(editor, 6, 6), button=3)
+    assert not editor.objects and editor._move_anchor is None and not editor._moving_objects
+    game.draw()
+    click(game, cell(editor, 8, 9))
+    assert not editor.objects and len(editor.undo_stack) == 1
+    key(game, pygame.K_z, pygame.KMOD_CTRL)
+    assert editor.objects == {anchor: item}
+
+
 @pytest.mark.parametrize(("asset_id", "columns"), [
     ("frostage_1x1_001", range(3, 10)),
     ("frostage_1x1_014", range(3, 10)),
