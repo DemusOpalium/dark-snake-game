@@ -443,6 +443,19 @@
         235
       ]
     },
+    "nav_language": {
+      "file": "nav_language.png",
+      "source": "GamePICs/General/De-En_Language-removebg-preview.png",
+      "sha256": "e8a89518ebce5f32c82cdf168c5336967cfddfd8a1e08f9e7c64848cf3646a20",
+      "width": 1085,
+      "height": 230,
+      "art_bounds": [
+        0,
+        1,
+        1083,
+        226
+      ]
+    },
     "nav_layers": {
       "file": "nav_layers.png",
       "source": "GamePICs/Layers/Layers-removebg-preview.png",

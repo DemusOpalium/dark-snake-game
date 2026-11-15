@@ -57,10 +57,10 @@ def sample_catalogue(tmp_path, monkeypatch):
 def test_catalogue_artwork_is_exactly_packaged_under_runtime_asset_root():
     catalogue = editor_buttons.load_editor_button_catalog()
     assert "file_save" in catalogue and "border_left" in catalogue
-    assert len(catalogue) == 59
+    assert len(catalogue) == 60
     project_root = Path(__file__).resolve().parents[1]
     physical_assets = set(catalogue.values())
-    assert len(physical_assets) == 55
+    assert len(physical_assets) == 56
     for asset in physical_assets:
         assert asset.path.parent.name == "editor_ui"
         assert asset.path.read_bytes() == (project_root / asset.source).read_bytes()
@@ -92,6 +92,17 @@ def test_layer_explorer_uses_its_seven_sources_and_reuses_tab_artwork(renderer):
     assert catalogue["sidebar_cell"] is catalogue["view_cell"]
     assert catalogue["sidebar_help"] is catalogue["nav_help"]
     assert catalogue["sidebar_learn"] is catalogue["nav_learn"]
+
+
+def test_bilingual_language_button_renders_the_staged_artwork(renderer):
+    asset = editor_buttons.load_editor_button_catalog()["nav_language"]
+    assert asset.source == "GamePICs/General/De-En_Language-removebg-preview.png"
+    button = pygame.Rect(0, 0, 140, 44)
+    surface = pygame.Surface(button.size, pygame.SRCALPHA)
+    renderer.draw(surface, "nav_language", "Deutsch / English", button)
+    visible = surface.get_bounding_rect()
+    assert visible.width == button.width - 4
+    assert visible.center == button.center
 
 
 def test_renderer_fits_alpha_art_and_draws_no_additional_label(renderer, sample_catalogue, monkeypatch):

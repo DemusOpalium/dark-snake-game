@@ -1,5 +1,5 @@
 # 🐍 DARK SNAKE – Asset-Legende für Menschen und Coding-Agenten
-**Stand vom 15.11.2026 · Layer Explorer auf Basis von PR #173**
+**Stand vom 15.11.2026 · World Studio mit Layer Explorer und Sprachschalter**
 
 > `Dark_Snake/assets/` enthält die Spiel- und EXE-Laufzeitdaten. `GamePICs/` enthält Originale, Entwürfe und Referenzen. Die passenden Laufzeitkataloge dokumentieren die tatsächlich verwendeten Dateien.
 
@@ -12,9 +12,10 @@
 | `Dark_Snake/assets/` | Laufzeitgrafiken, Levelvorlagen, Audio und Kataloge | **Ja**, `--add-data "Dark_Snake/assets;assets"` |
 | `Dark_Snake/assets/graphics/frostage/` | 175 importierte FrostAge-PNGs plus `catalog.json` | **Ja** |
 | `GamePICs/Incoming/Frost_Tiles/` | 175 unveränderte FrostAge-Originale + Importhinweise | **Nein**, nicht direkt |
-| `Dark_Snake/assets/graphics/editor_ui/` | 55 geprüfte Editor-Button-PNGs für 59 Action-IDs mit Herkunftsnachweis | **Ja** |
+| `Dark_Snake/assets/graphics/editor_ui/` | 56 geprüfte Editor-Button-PNGs für 60 Action-IDs mit Herkunftsnachweis | **Ja** |
 | `GamePICs/Build/`, `File/`, `Effects/`, `Layers/` usw. | Alle 81 Originale der englisch beschrifteten Editor-Button-Grafiken | 48 bytegleiche Kopien unter `editor_ui/` |
 | `GamePICs/Nachtrag Fehlende Buttons/` | Sieben Originale aus #173 | Sieben bytegleiche Kopien unter `editor_ui/` |
+| `GamePICs/General/De-En_Language-removebg-preview.png` | Original des Sprachschalters | Bytegleiche Kopie als `editor_ui/nav_language.png` |
 | `GamePICs/DarkSnake-NeueHeads/` | 53 neue Head-Kandidaten / Rohentwürfe | **Nein**, noch nicht registriert |
 | `GamePICs/DarkSnake-KörperNeuDesign/` | 15 Body-Kandidaten / Rohentwürfe | **Nein**, noch nicht registriert |
 | `GamePICs/` (weitere Bilder) | Projekt-Screenshots, Referenzen, Konzeptgrafiken; einige in README verlinkt | Nur wenn separat in `assets/` importiert |
@@ -27,7 +28,7 @@ Der datierte Staging-Snapshot enthält alle 81 Button-Dateipfade und alle 68 Kop
 
 ## Die 48 eingebundenen Editor-Grafiken
 
-Der Katalog dokumentiert für jede Action-ID den Originalpfad, den Laufzeitdateinamen, die nativen Abmessungen, die sichtbare Fläche und den SHA-256-Wert. Die PNGs belegen zusammen 16.881.238 Byte. Beim Rendern kann der vollständig transparente Außenbereich ausgespart werden. Das Bild behält sein Seitenverhältnis und den englischen Schriftzug. Deutsche Hinweise gehören zur Action-ID und können später gemeinsam mit den Ersatzbeschriftungen übersetzt werden. [Editor-Button-Katalog](Dark_Snake/assets/graphics/editor_ui/catalog.json)
+Der Katalog dokumentiert für jede Action-ID den Originalpfad, den Laufzeitdateinamen, die nativen Abmessungen, die sichtbare Fläche und den SHA-256-Wert. Die ersten 48 PNGs belegen zusammen 16.881.238 Byte. Beim Rendern kann der vollständig transparente Außenbereich ausgespart werden. Das Bild behält sein Seitenverhältnis und den englischen Schriftzug. Tooltips und Ersatzbeschriftungen folgen der gewählten Editor-Sprache. [Editor-Button-Katalog](Dark_Snake/assets/graphics/editor_ui/catalog.json)
 
 | Bereich | Zuordnung der vorhandenen Aktionen zu den Grafik-IDs |
 | --- | --- |
@@ -54,9 +55,13 @@ Der Katalog dokumentiert für jede Action-ID den Originalpfad, den Laufzeitdatei
 | `Properties.png` | `sidebar_properties` |
 | `Stop.png` | `preview_stop` |
 
-Die Seitenreiter `sidebar_layers`, `sidebar_cell`, `sidebar_help` und `sidebar_learn` verwenden die vorhandenen Bilder für Ebenen, Zellinspektion, Hilfe und Lernen. Ihre eigenen Action-IDs teilen sich die vorhandenen Laufzeitdateien. Insgesamt enthält das Paket 20.156.625 Byte an Editor-Button-PNGs. [Laufzeitkatalog](Dark_Snake/assets/graphics/editor_ui/catalog.json)
+Die Seitenreiter `sidebar_layers`, `sidebar_cell`, `sidebar_help` und `sidebar_learn` verwenden die vorhandenen Bilder für Ebenen, Zellinspektion, Hilfe und Lernen. Ihre eigenen Action-IDs teilen sich die vorhandenen Laufzeitdateien. [Laufzeitkatalog](Dark_Snake/assets/graphics/editor_ui/catalog.json)
 
-## Die 33 reservierten Editor-Grafiken
+## Sprachschalter aus PR D
+
+Der Schalter `nav_language` übernimmt das vorhandene DE/EN-Motiv aus `GamePICs/General/`. Die RGBA-Datei misst 1085 × 230 Pixel. Beide Sprachzustände nutzen dieselbe Kopie und denselben Grafik-Cache. Der Sprachwechsel lokalisiert die UI-Texte, während der Schriftzug Teil der Grafik bleibt. Insgesamt enthält das Paket 20.548.240 Byte an Editor-Button-PNGs. [Laufzeitkatalog](Dark_Snake/assets/graphics/editor_ui/catalog.json)
+
+## Die 32 reservierten Editor-Grafiken
 
 Die Dateinamen stehen ohne den gemeinsamen Suffix `-removebg-preview.png` in der Tabelle. Die Quelldateien und ihre exakten Pfade stehen im Inventar. [Staging-Snapshot](GamePICs/asset_inventory.json)
 
@@ -65,7 +70,7 @@ Die Dateinamen stehen ohne den gemeinsamen Suffix `-removebg-preview.png` in der
 | `Build` (3) | `Build_Symbol_Text`, `Favorite`, `Search` | Alternative Navigation. Favoriten und Suche haben bereits eine Kategorieliste und ein Eingabefeld. |
 | `Building Blocks` (5) | `Building_Blocks`, `Event_-_Triggers`, `Ground_Tile`, `Lighting`, `Roof_-_Foreground` | Kategorietitel, zusätzliche Entwürfe für vorhandene Ebenen und geplante Werkzeuge für Licht und Trigger. |
 | `EditorBigs` (8) | `Ceiling`, `Collision`, `Damage`, `Events`, `floor_object`, `Light`, `Roof`, `Slow` | Alternative Großformate für eine spätere Gestaltung. |
-| `General` (5) | `About`, `De-En_Language`, `Exit`, `General`, `Settings` | Konzepte für eigene Studio-Aktionen und Sprachwechsel. Der Editor verwendet seine bestehenden Dialoge sowie F2 und Esc zum Schließen. |
+| `General` (4) | `About`, `Exit`, `General`, `Settings` | Konzepte für eigene Studio-Aktionen. Der Editor verwendet seine bestehenden Dialoge sowie F2 und Esc zum Schließen. |
 | `Layers` (3) | `All_Layers`, `Lock_layers`, `Show_Hide` | Reservierte Motive. Der Layer Explorer verwendet kompakte Textschaltflächen, die den aktuellen Zustand der einzelnen Ebenen anzeigen. |
 | `Learn` (4) | `Examples`, `Guided_Build`, `Learn_Tutorial`, `My_FIrst_LvL` | Vorgesehen für den geführten Kurs und weitere Beispiele. |
 | `Miscellaneos` (4) | `Chest`, `Coin_-_Item`, `Miscellaneous`, `Random_D20` | Konzepte für spätere platzierbare Interaktionen und Events. |
@@ -95,7 +100,7 @@ Die Dateinamen stehen ohne den gemeinsamen Suffix `-removebg-preview.png` in der
 2. **Originale erhalten.** Aus `GamePICs/` ausgewählte, geprüfte PNGs nach `Dark_Snake/assets/` **kopieren** bzw. aus dortigem Staging katalogisieren; Originale und Screenshots nicht löschen oder verschieben, solange sie referenziert sind.
 3. Vor jeder Nutzung **Datei und Inhalt** kontrollieren: Name, Schriftzug, Transparenz, Bildabmessungen, Blickrichtung, 24–48-Pixel-Lesbarkeit. Dateiname allein beweist nicht korrekte Zuordnung.
 4. Eine **eindeutige stabile Action-ID → bestehende PNG-Datei**-Zuordnung anlegen, statt Buttonfunktionen über den deutschen/englischen Beschriftungstext zu steuern.
-5. Die neuen Button-PNGs enthalten teilweise **englischen Text**; eine allgemeine DE/EN-Umschaltung übersetzt diesen Text nicht. Für eine vollständig deutsche Oberfläche alternative DE-Grafiken oder separaten UI-Text planen.
+5. Die Button-PNGs behalten ihren **englischen Schriftzug**. Tooltips, Hilfetexte und Ersatzbeschriftungen verwenden die gewählte Editor-Sprache.
 6. Runtime-Assets über `modules.resources.find_asset(...)` / `find_asset_directory(...)` auflösen. **Keine cwd-abhängigen Pfade** und keine `GamePICs/`-Pfade zur Laufzeit.
 7. Große Bilder **erst nach Bedarf laden und skalierte Varianten cachen**. Originale nicht zerstörend verkleinern. Nur tatsächlich aktive Assets in die EXE übernehmen.
 8. Die Spiel-Koordinaten, Level-JSON-Versionen 1–3, Classic, Spieltests und Dachmaske dürfen bei Grafikarbeiten nicht stillschweigend verändert werden.
@@ -116,8 +121,9 @@ Die Dateinamen stehen ohne den gemeinsamen Suffix `-removebg-preview.png` in der
 - ✅ PR #170 · Neue Titelbildschirm- und World-Studio-Screenshots unter `GamePICs/`; in README und Galerie verwendet.
 - ⬜ Nacharbeiten: reale Ansicht der beiden Roof-Buttons `layer_roof` und `view_roof` im Windows-Fenster prüfen; beide Action-IDs stehen bereits im Runtime-Katalog, eine noch fehlende Bildzuordnung ist durch die Dateiliste nicht belegt.
 - ⬜ Neue volle **World-Background-Ebene** nach PR H als separates Konzept, nicht mit dem temporären Hintergrund-Spezialeffekt verwechseln.
-- 🔧 PR C · Sieben ergänzende Editorbilder, grafische Seitenreiter und Layer Explorer mit sicherem Löschen.
-- ⬜ DE/EN-Hilfe und interaktiver Lernmodus.
+- ✅ PR #174 · Sieben ergänzende Editorbilder, grafische Seitenreiter und Layer Explorer.
+- 🔧 PR D · Sprachschalter mit vorhandener DE/EN-Grafik und zweisprachiger Hilfe.
+- ⬜ Interaktiver Lernmodus.
 - ⬜ Lighting, Events/Trigger, erweiterte FrostAge-Profile, Snake-Skin-Galerie.
 
 **Hinweis:** Ältere `PROJECT_STATE.md` / `DEV_STRUCTURE.md` enthalten Aussagen aus früheren Alpha-Ständen. Für eine Änderung immer **aktuellen Code, Tests und PRs** prüfen, statt alte Statusangaben ungeprüft zu übernehmen.
