@@ -21,7 +21,7 @@
 
 # 🐍 DARK SNAKE – WORLD 2 GO
 ## Master-Ideenliste · Entwicklungstafel · Roadmap
-**Stand: 15.11.2026 · geprüftes `main` nach PR #173; PR #174 (Layer Explorer) ist ein offener Draft, kein fertiger Merge**
+**Stand: 15.11.2026 · geprüftes `main` nach PR #175; PR #174 Layer Explorer ist gemergt**
 
 **Projektziel:** DARK Snake vom klassischen Arcade-Spiel zu einem modularen Spiel mit eigenen Welten, Spezialwaffen, individuellen Bossen, einem Level-Baukasten und dem späteren Adventure-Modus **Mycelium Age** weiterentwickeln.
 
@@ -180,6 +180,8 @@
 - ⬜ Verfolger: jagt die Schlange und versucht, sie einzukesseln.
 - ⬜ Fernkampfboss: verwendet besondere Schussmuster.
 - ⬜ Weitere Bosse aus vorhandenen Grafiken entwickeln.
+- 💡 **Einzigartige Bossfolge im Adventure-Modus:** Langfristig 20–40 thematisch erkennbare Bossprofile (nicht 20–40 neue Hardcode-Klassen). Pro Level/Abschnitt ein kuratierter Boss, eigene Arena, Attacken, Sound/Ansage, Belohnung. Classic darf weiterhin zufällige Bossbegegnungen verwenden.
+- ⬜ **Kampfübergänge und Rückkehr:** Boss-Ankündigung → klarer Start → Kampf → deutlicher Sieg-/Belohnungsmoment → zurück ins normale Spiel samt kontrollierter Level-/Score-Fortsetzung. [Designkonzept](BOSS_ENCOUNTERS_DESIGN.md).
 
 ### Boss-Phasen
 
@@ -189,6 +191,11 @@
 - ⬜ Phase 2: zusätzliche Fähigkeiten.
 - ⬜ Phase 3: gefährlichere Spezialangriffe.
 - ⬜ Angriffe durch erkennbare Warnungen ankündigen.
+- ⬜ Sichtbare Boss-Lebensleiste mit Phasenmarkierungen und klaren Angriffshinweisen/Cooldowns; optional stimmliche Ansagen mit Untertiteln, Audio nie als einziges Signal.
+- ⬜ Bossbezogene, begrenzte Grafiken, Aura-/Farben- und Größenwechsel, Arena-Effekte und eigene Treffer-/Sieg-Sounds – keine beliebig gemischten Effekte.
+- ⬜ Während eines Bosskampfs normale Zufallsgegner standardmäßig pausieren oder begrenzen; nur ausdrücklich definierte Boss-Minions erlauben. Danach normales Spawnverhalten wiederherstellen.
+- ⬜ Schwierigkeit/HP/Schaden über Kapitel, verfügbare Items und Spielertempo balancieren; herausfordernd, aber ohne zufällige, praktisch unbesiegbare Ressourcen-Falle.
+- ⬜ Ein Boss zuerst als vollständig spielbarer Vertical Slice (Einführung, 2–3 Phasen, Minions, Sieg, 1P/2P-Tests, Performance), danach Profile wiederverwenden.
 - ⬜ Tunnel-, Loch- und Teleportmechaniken ermöglichen.
 - ⬜ Schwierigkeit mit fortschreitendem Spiel erhöhen.
 - ⬜ Bosse im Classic-Modus zufällig auswählen.
@@ -219,7 +226,7 @@
 - ✅ **#167 · Asset-Legende.** Trennung von Laufzeitbildern und `GamePICs`-Vorlagen mit Katalogen und Agentenhinweisen dokumentiert.
 - ✅ **#170 · Neue Screenshots.** Aktuelles Titelmenü und World-Studio-Ansicht für README/Galerie hochgeladen (keine neue Gameplayfunktion).
 - ✅ **#173 · Sieben ergänzende Editor-Motive** als Originale hochgeladen.
-- 🔧 **PR C · Layer Explorer.** Sieben Motive einbinden, die rechten Reiter bebildern, Ebenen sichtbar schalten, sperren und solo anzeigen. Zellen-Inspektor mit Objektauswahl, Effektbearbeitung und sicherem Löschen samt Radierer.
+- ✅ **#174 · PR C · Layer Explorer.** Sieben neue Editor-Motive als Laufzeitgrafiken zugeordnet (jetzt 55 statt 48 UI-Einträge), rechte Reiter verbessert, Ebenensichtbarkeit, Sperren, Solo-Modus und sichereres Löschen/Inspektor implementiert. **Merge bestätigt; sichtbare Windows-Gesamtabnahme nicht durch Merge ersetzt.**
 - ⬜ **Ebenenvergleich.** Mehrere Ebenen mit abgestufter Deckkraft zur Orientierung anzeigen.
 - ⬜ **PR D · Deutsch / English und Hilfe.** Gespeicherte Sprachwahl, vollständige Übersetzung, Tooltips und Werkzeugbeschreibungen.
 - ⬜ **Fullscreen / Windowed.** Sichtbare Umschaltung im Editor mit Wiederherstellung des Fenstermodus und unverändertem Spielraster.
@@ -228,6 +235,8 @@
 - ⬜ **PR G · Trigger und Fallen.** Datenbasierte Auslöser, Bedingungen und Aktionen mit bestehenden Schadens- und Verlangsamungsregeln verbinden. Beispielkette: Druckplatte → Tor öffnet → Spezialgegner erscheint → Truhe wird freigeschaltet.
 - ⬜ **Interaktive Levelobjekte.** Truhen, Fallen, Druckplatten, Schalter, Tore, Schlüssel und Portale mit eigenen Interaktionsregeln. Normale Gegner, Bosse und zufällige Items behalten die regulären Spawnmechanismen.
 - ⬜ **Weitere Spielideen.** Frostburst mit acht Splittern, rotierender Tornado mit Kontaktschaden, Soundprofile und freischaltbare Schlangenköpfe und -körper.
+- ⬜ **Stempel-/Pinsel-UX vereinfachen.** Classic-Bodenfelder lassen sich durch Ziehen malen; FrostAge-Objekte und Multi-Tiles werden derzeit einzeln platziert (einmaliger Stamp pro Klick). Für 1×1-FrostAge-Bodenelemente später optionalen Malpinsel, für Multi-Tiles klaren Stamp-Modus mit Vorschau/Undo und Platzierungsprüfung ergänzen. Keine unbeabsichtigte Massenplatzierung großer Objekte.
+- ⬜ **Schneller Levelbau.** Vollflächige World-Backgrounds, große Flächenfüllung, passende Tile-Übergänge, Favoriten und Design-Presets kombinieren; Benutzer soll nicht jede Bodenzelle einzeln gestalten müssen.
 - ⬜ Stamp Builder als eigenen Arbeitsschritt einplanen.
 - ⬜ **Danach.** 13 Projektil- und 11 AoE-Grafiken über bestehende Treffer- und Effektsysteme mit Profilen und sichtbaren Beispielen im Leveltest.
 - ⬜ Acht FrostAge-Gegner mit Richtungsdarstellung, konfigurierbaren Angriffen, sicheren Editor-Spawns und Tests.
@@ -425,7 +434,7 @@
 - ⬜ Projektilvarianten für Spieler 1 und 2 entwerfen; spätere Zuordnung erst durch Codeintegration.
 - ⬜ Boss001/Boss002/Boss003, FlameExplosion und Bolbu als **Animationsframes**, nicht als Einzelbosse zählen.
 - ⬜ Alte Kopf- und Körperdesigns sichten, Originalgrößen erhalten und Lesbarkeit im 30-Pixel-Spielraster testen.
-- 💡 **Spätere Classic-Tile-Kuration:** Die 495 älteren Tiles auf Kombinierbarkeit, Stil, Nahtlosigkeit und Bedienbarkeit prüfen; eine kleinere empfohlene Standardpalette und einen Legacy-Bereich planen, bestehende Tile-IDs und gespeicherte Level erhalten. Nicht während PR #174 ausmisten.
+- 💡 **Spätere Classic-Tile-Kuration:** Die 495 älteren Tiles auf Kombinierbarkeit, Stil, Nahtlosigkeit und Bedienbarkeit prüfen; eine kleinere empfohlene Standardpalette und einen Legacy-Bereich planen, bestehende Tile-IDs und gespeicherte Level erhalten. Nach dem Layer-Explorer-Merge weiterhin ausdrücklich **keine** Löschung oder Umbenennung im laufenden Betrieb.
 - ⬜ Classic-Tile-Audit erst nach den wichtigeren Editor-/Gameplay-Arbeiten: Sichtprüfung, ID-/Nutzungsübersicht, Beispielkarten und Vorher-/Nachher-Messung von Ladezeit und Scrollen. Details im [Qualitätsplan](QUALITY_PERFORMANCE_PLAN.md).
 - ⬜ Vorhandene zusätzliche Heads/Bodies nach Tests über die Skin-Auswahl verfügbar machen.
 - 💡 Freischaltbare Schlangenköpfe/Körper und charakterbezogene Sounds für Treffer, Levelwechsel und Game Over.
@@ -443,9 +452,9 @@
 # 🗺️ ENTWICKLUNGSREIHENFOLGE
 
 **PHASE 1 – AKTUELLE ARBEIT**
-✅ Frost und Simulator 2.0 Schritt 1 sowie World Studio bis PR #169 auf `main`: benannte Entwürfe, 1P/2P-Leveltest, Roof/Foreground, Rand-Builder und 48 grafische Buttons. ✅ PR #173 brachte sieben **zusätzliche Quellbilder** unter `GamePICs/`; **noch nicht auf `main` eingebunden**.
-🔧 **PR #174 ist offener Draft**: Layer Explorer (Solo, Sperren, Inspektor, sicheres Löschen) und Integration dieser sieben Grafiken. Erst nach Merge mit Windows-Test als ✅ markieren.
-⬜ Danach **Performance-Baseline** auf dem tatsächlich gemergten Stand erfassen; bei größeren Arbeiten nachfolgende Baselines vergleichen. [Messplan](QUALITY_PERFORMANCE_PLAN.md). Für die Grafikarbeit gelten die Kataloge; neue Gameplay-Profile bleiben separate PRs.
+✅ Frost, Simulator 2.0 und World Studio nach PR #174 auf `main`: 1P/2P-Test, Roof/Foreground, Rand-Builder, 55 registrierte Editor-Bildaktionen (48 + 7), Ebenensperren und Solo-Modus. ✅ PR #175 aktualisierte die Qualitätsdokumentation.
+⬜ **Nächster Kontrollpunkt:** Sichtbare Windows-Abnahme des Layer Explorers und die erste Performance-Baseline auf dem gemergten Stand dokumentieren. [Messplan](QUALITY_PERFORMANCE_PLAN.md).
+💡 **Neue Testbeobachtungen (15.11.):** FrostAge-Objekte sind einzeln zu stempeln, Classic-Ground-Tiles lassen sich durch Ziehen malen; langfristig UX vereinfachen, World Backgrounds vor einzelner Massen-Kachelkunst priorisieren. Bossfight 2.0 als gesondertes datenbasiertes Spielsystem planen.
 
 **PHASE 2 – EFFECT & WEAPON SYSTEM 2.0**
 Gemeinsame Effektarchitektur, Frost, Feuer, Gift, Sporen, Spezialmunition.
@@ -454,7 +463,7 @@ Gemeinsame Effektarchitektur, Frost, Feuer, Gift, Sporen, Spezialmunition.
 Vier Slots pro Spieler, Item-Icons, frei belegbare Aktivierungstasten.
 
 **PHASE 4 – BOSSFIGHT 2.0**
-Seelenschrein, individuelle Bosstypen, feste AoE-Profile, Kampfphasen.
+Seelenschrein, klar lesbare individuelle Bossprofile und Phasen; kontrolliertes Boss-Spawn-Verhalten, UI/Audio, Boss-Minions, Belohnung und heroischer Siegübergang. Im Adventure-Modus später eine kuratierte Folge von bis zu 20–40 thematischen Bossen; zuerst **einen vollständigen Vertical Slice** entwickeln. Konzept: [BOSS_ENCOUNTERS_DESIGN.md](BOSS_ENCOUNTERS_DESIGN.md).
 
 **PHASE 5 – WORLD STUDIO 3.0**
 Weltbibliothek, Kollision, Damage/Slow, FrostAge-Multi-Tiles, Hauptmenü, Roof / Foreground, Editor-Layout, Rand-Builder und **48 grafische Editor-Buttons** sind integriert (#155, #168, #169). Es folgen Layer Explorer (PR C), vollständige Sprache/Hilfe, Lernmodus, Licht/Nebel und Trigger in einzelnen PRs. Der neue **World-Background-Ansatz (PR H, Konzept)** erlaubt später dauerhaft gespeicherte Vollbildlandschaften unter Tiles. Projektile/AoE/Gegner/Items, Freischalt-Skins und Adventure bleiben separate Arbeitspakete.
