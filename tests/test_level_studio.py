@@ -73,6 +73,13 @@ def click(game, pos, button=1):
          pygame.event.Event(pygame.MOUSEBUTTONUP, pos=pos, button=button))
 
 
+def erase_cell(game, editor, position):
+    click(game, position, button=3)
+    assert editor._dialog["kind"] == "delete"
+    key(game, pygame.K_RETURN)
+    assert not editor.dialog_open
+
+
 def button(game, editor, label):
     if not any(control.label == label for control in editor.buttons):
         section = BUTTON_SECTIONS[label]
@@ -121,11 +128,12 @@ def test_effect_settings_paint_and_save_both_independent_effects(studio):
     assert editor.effects == {spot: both}
     button(game, editor, "Nur Grafik")
     click(game, cell(editor, *spot))
-    click(game, cell(editor, *spot), button=3)
+    erase_cell(game, editor, cell(editor, *spot))
     assert editor.effects == {spot: both}
 
+    button(game, editor, "Effekte ein/aus")
     button(game, editor, "Slow")
-    click(game, cell(editor, *spot), button=3)
+    erase_cell(game, editor, cell(editor, *spot))
     assert editor.effects == {spot: CellEffects(damage=both.damage)}
     key(game, pygame.K_z, pygame.KMOD_CTRL)
     assert editor.effects == {spot: both}
@@ -224,7 +232,7 @@ def test_collision_tools_keep_graphics_and_walls_independent(studio):
     button(game, editor, "Nur Grafik")
     click(game, cell(editor, *spot))
     assert editor.map[3][4] == second and editor.collisions == {spot: "WALL"}
-    click(game, cell(editor, *spot), button=3)
+    erase_cell(game, editor, cell(editor, *spot))
     assert editor.map[3][4] is None and editor.collisions == {spot: "WALL"}
 
     key(game, pygame.K_z, pygame.KMOD_CTRL)
@@ -237,7 +245,7 @@ def test_collision_tools_keep_graphics_and_walls_independent(studio):
     assert editor.map[3][4] == first and editor.collisions == {spot: "WALL"}
 
     button(game, editor, "Nur Kollision")
-    click(game, cell(editor, *spot), button=3)
+    erase_cell(game, editor, cell(editor, *spot))
     assert editor.collisions == {} and editor.map[3][4] == first
     button(game, editor, "BARRIER")
     click(game, cell(editor, *spot))
@@ -266,7 +274,7 @@ def test_collision_tools_keep_graphics_and_walls_independent(studio):
     assert not reopened.level_editor.dirty
 
 
-def test_combined_wall_stroke_undo_redo_and_clear_affect_both_layers(studio):
+def test_combined_stroke_affects_both_layers_and_deletion_uses_graphic_layer(studio):
     game, editor, _ = studio
     key(game, pygame.K_F2)
     button(game, editor, "Grafik + Kollision")
@@ -280,8 +288,9 @@ def test_combined_wall_stroke_undo_redo_and_clear_affect_both_layers(studio):
     assert not editor.dirty and editor.map[5][3:5] == [None, None] and not editor.collisions
     key(game, pygame.K_y, pygame.KMOD_CTRL)
     assert editor.dirty and editor.collisions == {(3, 5): "WALL", (4, 5): "WALL"}
-    click(game, start, button=3)
-    assert editor.map[5][3:5] == [None, editor.current_tile] and editor.collisions == {(4, 5): "WALL"}
+    erase_cell(game, editor, start)
+    assert editor.map[5][3:5] == [None, editor.current_tile]
+    assert editor.collisions == {(3, 5): "WALL", (4, 5): "WALL"}
 
 
 def test_collision_only_edits_use_discard_guard_and_f2_exits_test_first(studio):
@@ -538,7 +547,7 @@ def test_frostage_objects_are_selected_and_edited_as_whole_footprints(studio):
     key(game, pygame.K_y, pygame.KMOD_CTRL)
     assert editor.objects == {moved: item}
 
-    click(game, cell(editor, 8, 13), button=3)
+    erase_cell(game, editor, cell(editor, 8, 13))
     assert not editor.objects
     assert editor.collisions == collision_before and editor.effects == effects_before
     key(game, pygame.K_z, pygame.KMOD_CTRL)
@@ -815,7 +824,7 @@ def test_tile_drag_overwrite_and_erase_have_undo_redo(studio):
     editor.current_tile = second
     click(game, b)
     assert editor.map[0][:2] == [first, second]
-    click(game, b, button=3)
+    erase_cell(game, editor, b)
     assert editor.map[0][:2] == [first, None]
     editor.undo()
     assert editor.map[0][:2] == [first, second]

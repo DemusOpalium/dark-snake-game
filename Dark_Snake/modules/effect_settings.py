@@ -16,7 +16,8 @@ def _display_number(value):
 class EffectSettings:
     """Edit brush presets without applying anything to the level."""
 
-    def __init__(self, damage, slow, bounds):
+    def __init__(self, damage, slow, bounds, *, kind=None):
+        self.kind = kind
         self.values = [str(damage.amount), _display_number(damage.interval),
                        "" if damage.duration is None else _display_number(damage.duration)]
         self.slow_percent = slow.percent
@@ -26,18 +27,23 @@ class EffectSettings:
         self.set_bounds(bounds)
 
     def set_bounds(self, bounds):
-        self.panel = pygame.Rect(0, 0, min(500, bounds.width - 40), 322)
+        self.panel = pygame.Rect(0, 0, min(500, bounds.width - 40), 182 if self.kind == "slow" else 322)
         self.panel.center = bounds.center
 
     def _fields(self):
+        if self.kind == "slow":
+            return
         for index in range(len(_FIELD_LABELS)):
             yield pygame.Rect(self.panel.x + 20, self.panel.y + 60 + index * 48, self.panel.width - 40, 24)
 
     def _slow_buttons(self):
+        if self.kind == "damage":
+            return
         width = (self.panel.width - 56) // len(SLOW_PERCENTAGES)
+        y = self.panel.y + (67 if self.kind == "slow" else 222)
         for index, percent in enumerate(SLOW_PERCENTAGES):
             yield percent, pygame.Rect(self.panel.x + 20 + index * (width + 4),
-                                       self.panel.y + 222, width, 26)
+                                       y, width, 26)
 
     def _confirm_button(self):
         return pygame.Rect(self.panel.right - 136, self.panel.bottom - 38, 116, 26)
@@ -69,6 +75,8 @@ class EffectSettings:
             mod = getattr(event, "mod", 0)
             if event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
                 return self._submit()
+            if self.kind == "slow":
+                return None
             if event.key == pygame.K_TAB:
                 step = -1 if mod & pygame.KMOD_SHIFT else 1
                 self._focus((self.field + step) % len(self.values))
@@ -77,7 +85,7 @@ class EffectSettings:
             elif event.key == pygame.K_BACKSPACE:
                 self.values[self.field] = "" if self.select_all else self.values[self.field][:-1]
                 self.select_all = False
-        elif event.type == pygame.TEXTINPUT:
+        elif event.type == pygame.TEXTINPUT and self.kind != "slow":
             text = "".join(char for char in event.text if char in "0123456789.,")
             if text:
                 previous = "" if self.select_all else self.values[self.field]
@@ -102,19 +110,22 @@ class EffectSettings:
         panel = self.panel
         pygame.draw.rect(screen, (25, 25, 25), panel)
         pygame.draw.rect(screen, (255, 255, 0), panel, 2)
-        text(screen, "Effektwerte für neue Felder", (panel.x + 20, panel.y + 12))
+        title = {"damage": "Schaden in der gewählten Zelle", "slow": "Slow in der gewählten Zelle"}
+        text(screen, title.get(self.kind, "Effektwerte für neue Felder"), (panel.x + 20, panel.y + 12))
         for index, (label, rect, value) in enumerate(zip(_FIELD_LABELS, self._fields(), self.values)):
             text(screen, label, (rect.x, rect.y - 18))
             outline = EFFECT_COLORS["damage"] if index == self.field else None
             button(screen, value or "–", rect, outline)
             if index == self.field and self.select_all:
                 text(screen, "Eingabe ersetzt Wert", (rect.right - 142, rect.y + 5), (195, 195, 195))
-        text(screen, "Verlangsamung", (panel.x + 20, panel.y + 202))
+        if self.kind != "damage":
+            y = panel.y + (44 if self.kind == "slow" else 202)
+            text(screen, "Verlangsamung", (panel.x + 20, y))
         for percent, rect in self._slow_buttons():
             outline = EFFECT_COLORS["slow"] if percent == self.slow_percent else None
             button(screen, f"{percent} %", rect, outline)
         if self.error:
-            text(screen, self.error, (panel.x + 20, panel.y + 255), EFFECT_COLORS["damage"],
+            text(screen, self.error, (panel.x + 20, panel.bottom - 67), EFFECT_COLORS["damage"],
                  max_width=panel.width - 40)
         button(screen, "Abbrechen", self._cancel_button())
         button(screen, "Übernehmen", self._confirm_button())

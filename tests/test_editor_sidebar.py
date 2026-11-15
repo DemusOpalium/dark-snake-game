@@ -35,21 +35,33 @@ def _click(sidebar, editor, bounds, position):
     return sidebar.handle_event(event, bounds, editor)
 
 
-def _action_center(sidebar, editor, bounds, label):
-    _, area, entries, _ = sidebar._geometry(bounds, editor)
-    rect, = [rect for entry, _, _, rect in entries if entry.title == label]
-    return rect.move(0, area.top - sidebar._scroll).center
+def _tab_center(sidebar, editor, bounds, key):
+    tabs, _, _, _ = sidebar._geometry(bounds, editor)
+    return next(rect.center for tab, _, rect in tabs if tab == key)
+
+
+def _action_center(sidebar, editor, bounds, action_id):
+    _, area, entries, max_scroll = sidebar._geometry(bounds, editor)
+    rect, = [
+        target for entry, _, _, rect in entries for control, target in sidebar._entry_targets(entry, rect)
+        if control.action_id == action_id
+    ]
+    sidebar._scroll = max(0, min(max_scroll, rect.centery - area.height // 2))
+    pos = rect.move(0, area.top - sidebar._scroll).center
+    assert area.collidepoint(pos)
+    return pos
 
 
 def test_sidebar_switches_the_existing_layer_tool_and_keeps_map_data(studio):
     editor, sidebar = studio
     bounds = pygame.Rect(700, 80, 240, 500)
     editor.collisions[(4, 4)] = "WALL"
-    assert _click(sidebar, editor, bounds, (bounds.left + 36, bounds.top + 74))
+    assert _click(sidebar, editor, bounds, _tab_center(sidebar, editor, bounds, "layers"))
     assert sidebar.tab == "layers"
-    assert _click(sidebar, editor, bounds, _action_center(sidebar, editor, bounds, "Dach / Foreground"))
+    for action in ("layer_visibility_roof", "layer_roof", "layer_visibility_collision"):
+        assert _click(sidebar, editor, bounds, _action_center(sidebar, editor, bounds, action))
     assert editor.graphic_layer == "roof"
-    assert _click(sidebar, editor, bounds, _action_center(sidebar, editor, bounds, "Kollisionsmarkierung · an"))
+    assert not editor.show_roofs
     assert not editor.show_collisions
     assert editor.collisions == {(4, 4): "WALL"}
     assert not _click(sidebar, editor, bounds, (bounds.left - 1, bounds.top + 80))
@@ -71,6 +83,43 @@ def test_inspector_lists_roof_footprint_and_coextensive_effects(studio):
     assert entries["Schaden"] == "16 HP je 2,5 s · Keine Zeitgrenze"
     assert entries["Slow"] == "50 % langsamer"
     assert entries["Boden"] == "bone_corner_tl"
+
+
+def test_inspector_updates_selected_collision_and_blocks_locked_controls(studio):
+    editor, sidebar = studio
+    bounds = pygame.Rect(708, 96, 192, 342)
+    cell = editor.inspected_cell = (4, 3)
+    editor.collisions[cell] = "WALL"
+    sidebar.show("cell")
+    editor.toggle_layer_lock("collision")
+    switch = _action_center(sidebar, editor, bounds, "inspector_collision_barrier")
+    assert _click(sidebar, editor, bounds, switch)
+    assert editor.collisions[cell] == "WALL" and not editor.undo_stack
+    editor.toggle_layer_lock("collision")
+    assert _click(sidebar, editor, bounds, switch)
+    assert editor.collisions[cell] == "BARRIER"
+    editor.undo()
+    assert editor.collisions[cell] == "WALL"
+
+
+def test_layer_controls_restore_visibility_after_solo_and_leave_locks_alone(studio):
+    editor, sidebar = studio
+    bounds = pygame.Rect(708, 96, 192, 342)
+    sidebar.show("layers")
+
+    def click_layer(action_id):
+        assert _click(sidebar, editor, bounds, _action_center(sidebar, editor, bounds, action_id))
+
+    click_layer("layer_visibility_ground")
+    click_layer("layer_lock_objects")
+    click_layer("layer_solo_roof")
+    assert editor.solo_layer == "roof" and not editor.layer_visible("objects")
+    click_layer("layer_exit_solo")
+    assert editor.solo_layer is None and editor.layer_visible("objects")
+    assert not editor.layer_visible("ground")
+    click_layer("layer_show_all")
+    assert editor.layer_visible("ground")
+    assert editor.layer_locked("objects") and not editor.undo_stack
 
 
 def test_sidebar_draw_and_scroll_are_confined_to_its_panel(studio):
@@ -114,16 +163,17 @@ def test_drawn_layer_art_invokes_the_displayed_tools(studio, monkeypatch):
 
     monkeypatch.setattr(sidebar.button_art, "draw", observe)
     sidebar.draw(surface, bounds, editor)
-    assert {"layer_ground", "layer_objects", "layer_roof", "layer_collision",
-            "layer_effects", "view_collision", "view_effects"} <= set(art)
-    assert set(art) <= set(load_editor_button_catalog())
-    for layer in ("roof", "objects", "ground"):
-        target = art[f"layer_{layer}"][0]
-        assert _click(sidebar, editor, bounds, target.center)
-        assert editor.graphic_layer == layer
+    tab_ids = {"sidebar_properties", "sidebar_layers", "sidebar_cell", "sidebar_help", "sidebar_learn"}
+    assert tab_ids <= set(art) and tab_ids <= set(load_editor_button_catalog())
+    for tab in ("properties", "help", "cell", "learn", "layers"):
+        assert _click(sidebar, editor, bounds, art[f"sidebar_{tab}"][0].center)
+        assert sidebar.tab == tab
+    for layer in ("roof", "objects", "ground", "collision", "effects"):
+        action = f"layer_{layer}"
+        target = _action_center(sidebar, editor, bounds, action)
         sidebar.draw(surface, bounds, editor)
-        assert art[f"layer_{layer}"][1]["active"]
-    assert _click(sidebar, editor, bounds, art["layer_collision"][0].center)
-    assert editor.placement_mode == "collision"
-    assert _click(sidebar, editor, bounds, art["view_collision"][0].center)
-    assert not editor.show_collisions
+        assert art[action][0].center == target and action in load_editor_button_catalog()
+        assert _click(sidebar, editor, bounds, target)
+        assert editor.active_layer == layer
+        sidebar.draw(surface, bounds, editor)
+        assert art[action][1]["active"]

@@ -1,7 +1,7 @@
 """Tile-based editor for independent level drafts."""
 
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import time
 
 import pygame
@@ -10,6 +10,7 @@ from config import GRID_HEIGHT, GRID_WIDTH
 from modules.border_builder_ui import BorderBuilderUI
 from modules.editor_buttons import BUTTON_HEIGHT, MAX_ART_WIDTH, EditorButtons
 from modules.editor_layout import MapCamera, StudioLayout
+from modules.editor_layers import LAYER_COLORS, LAYER_LABELS, LayerView
 from modules.editor_sidebar import StudioSidebar
 from modules.effect_settings import EffectSettings, draw_effect_overlay
 from modules.frostage_assets import frostage_assets
@@ -53,8 +54,8 @@ PLACEMENT_TOOLS = (
 )
 EFFECT_TOOLS = (("damage", "Schaden"), ("slow", "Slow"))
 GRAPHIC_LAYERS = (("ground", "Boden", 70), ("objects", "Objekte", 74), ("roof", "Dach / Foreground", 151))
-ERASE_LABELS = {mode: description for mode, _, _, description in PLACEMENT_TOOLS}
-ERASE_LABELS.update({"damage": "Schaden", "slow": "Slow"})
+DOCUMENT_LAYERS = ("ground", "collision", "effects", "objects", "roof", "roof")
+DELETE_COLOR = (248, 111, 122)
 
 @dataclass(frozen=True, slots=True)
 class EditorControl:
@@ -62,6 +63,13 @@ class EditorControl:
     label: str
     rect: pygame.Rect
     action: Callable
+
+
+@dataclass(frozen=True, slots=True)
+class Deletion:
+    layer: str
+    cell: tuple[int, int]
+    effect: str | None = None
 
 
 def _empty_map():
@@ -96,9 +104,8 @@ class LevelEditor:
         self.graphic_layer = "ground"
         self.placement_mode = "graphics"
         self.collision_type = "WALL"
-        self.show_collisions = True
-        self.show_effects = True
-        self.show_roofs = True
+        self.layer_view = LayerView()
+        self.eraser_active = False
         self.damage_brush = DamageField()
         self.slow_brush = SlowField()
         self.effect_settings = None
@@ -147,6 +154,87 @@ class LevelEditor:
     def library_search_focused(self):
         return self.tile_library is not None and self.tile_library.search_focused
 
+    @property
+    def active_layer(self):
+        if self.placement_mode == "collision":
+            return "collision"
+        if self.placement_mode in ("damage", "slow"):
+            return "effects"
+        return self.graphic_layer
+
+    @property
+    def solo_layer(self):
+        return self.layer_view.solo
+
+    @property
+    def show_collisions(self):
+        return self._overlay_visible("collision")
+
+    @property
+    def show_effects(self):
+        return self._overlay_visible("effects")
+
+    @property
+    def show_roofs(self):
+        return self.layer_visible("roof")
+
+    def layer_visible(self, layer):
+        return self.layer_view.visible(layer)
+
+    def _overlay_visible(self, layer):
+        if self.playtest is not None:
+            return layer not in self.layer_view.hidden
+        return self.layer_visible(layer)
+
+    def layer_locked(self, layer):
+        return layer in self.layer_view.locked
+
+    def layer_editable(self, layer):
+        return self.layer_visible(layer) and not self.layer_locked(layer)
+
+    def _require_editable(self, *layers):
+        for layer in layers:
+            name = LAYER_LABELS[layer]
+            if self.layer_locked(layer):
+                self.info = f"{name} ist gesperrt."
+                return False
+            if not self.layer_visible(layer):
+                self.info = f"{name} ist ausgeblendet."
+                return False
+        return True
+
+    def toggle_layer_visibility(self, layer):
+        if self.solo_layer is not None:
+            self.info = "Zuerst den Solo-Modus beenden, um einzelne Ebenen ein- oder auszublenden."
+            return
+        self._stroke_button = None
+        self.layer_view.hidden.symmetric_difference_update((layer,))
+        self.info = f"{LAYER_LABELS[layer]} {'ausgeblendet' if layer in self.layer_view.hidden else 'sichtbar'}."
+
+    def toggle_layer_lock(self, layer):
+        self._stroke_button = None
+        self.layer_view.locked.symmetric_difference_update((layer,))
+        self.info = f"{LAYER_LABELS[layer]} {'gesperrt' if self.layer_locked(layer) else 'entsperrt'}."
+
+    def toggle_layer_solo(self, layer):
+        self._stroke_button = None
+        current = self.solo_layer
+        self.layer_view.solo = None if layer == current else layer
+        self.info = "Solo-Modus beendet." if self.solo_layer is None else f"Solo · {LAYER_LABELS[layer]}"
+
+    def show_all_layers(self):
+        self._stroke_button = None
+        self.layer_view.show_all()
+        self.info = "Alle Ebenen sichtbar."
+
+    def toggle_eraser(self):
+        self._stroke_button = None
+        self._stop_object_move()
+        self.inspect_mode = False
+        self.eraser_active = not self.eraser_active
+        self.info = (f"Radierer an · {LAYER_LABELS[self.active_layer]}" if self.eraser_active
+                     else "Radierer aus.")
+
     def resize(self, size):
         self._layout_controls(size)
         self._reset_pointer()
@@ -189,6 +277,7 @@ class LevelEditor:
         self.inspect_mode = not self.inspect_mode
         self._stroke_button = None
         if self.inspect_mode:
+            self.eraser_active = False
             self._stop_object_move()
             self.sidebar.show("cell")
             if not self.show_inspector:
@@ -215,7 +304,7 @@ class LevelEditor:
             for action_id, label, action in controls:
                 width, button_height = self.button_art.preferred_size(action_id, label)
                 if navigation:
-                    width, button_height = min(width, 148), 36
+                    width, button_height = min(width, 140), 36
                 else:
                     width = min(width, tool_width)
                 width = min(width, max(1, window_width - 24))
@@ -258,7 +347,8 @@ class LevelEditor:
                     ("build_move_objects", "Objekt verschieben", self._toggle_object_move),
                     ("build_object_size", "Objektgröße", self._open_object_size),
                     ("build_transfer_roof", "Auf Dachebene", self._toggle_roof_transfer),
-                    ("build_tile_library", "Tile-Bibliothek", self.open_tile_library))
+                    ("build_tile_library", "Tile-Bibliothek", self.open_tile_library),
+                    ("build_eraser", "Radierer", self.toggle_eraser))
         if self.section == "nav_layers":
             return (
                 *((f"layer_{layer}", label, lambda layer=layer: self._set_graphic_layer(layer))
@@ -295,30 +385,26 @@ class LevelEditor:
             return
         self._stroke_button = None
         self.inspect_mode = False
+        self.eraser_active = False
         self._stop_object_move()
         self.placement_mode = mode
 
     def _set_graphic_layer(self, layer):
         self._set_placement_mode("graphics")
         self.graphic_layer = layer
-        if layer == "roof":
-            self.show_roofs = True
 
     def _set_collision_type(self, kind):
         self._stroke_button = None
         self.collision_type = kind
 
     def _toggle_collision_overlay(self):
-        self.show_collisions = not self.show_collisions
-        self.info = "Kollisionsansicht ein" if self.show_collisions else "Kollisionsansicht aus"
+        self.toggle_layer_visibility("collision")
 
     def _toggle_effect_overlay(self):
-        self.show_effects = not self.show_effects
-        self.info = "Effektmarkierungen ein" if self.show_effects else "Effektmarkierungen aus"
+        self.toggle_layer_visibility("effects")
 
     def _toggle_roof_overlay(self):
-        self.show_roofs = not self.show_roofs
-        self.info = "Dächer in der Bearbeitung sichtbar" if self.show_roofs else "Dächer in der Bearbeitung ausgeblendet"
+        self.toggle_layer_visibility("roof")
 
     def open_effect_settings(self):
         self._blur_library()
@@ -327,7 +413,43 @@ class LevelEditor:
         self._dialog = {"kind": "effects"}
         pygame.key.start_text_input()
 
+    def edit_inspected_effect(self, kind):
+        cell = self.inspected_cell
+        existing = self.effects.get(cell)
+        if existing is None or getattr(existing, kind) is None or not self._require_editable("effects"):
+            return
+        self._blur_library()
+        self._stroke_button = None
+        self.effect_settings = EffectSettings(existing.damage or self.damage_brush, existing.slow or self.slow_brush,
+                                              self.layout.bounds, kind=kind)
+        self._dialog = {"kind": "effects", "cell": cell, "effect": kind}
+        pygame.key.start_text_input()
+
+    def edit_inspected_collision(self, kind):
+        cell = self.inspected_cell
+        if (cell in self.collisions and self.collisions[cell] != kind and kind in COLLISION_TYPES
+                and self._require_editable("collision")):
+            self._stroke_button = None
+            self._store_undo()
+            self.collisions[cell] = kind
+            self.info = f"Kollision auf {kind} geändert."
+
+    def select_inspected_object(self, layer):
+        if self.inspected_cell is None or not self._require_editable(layer):
+            return
+        objects = self.roofs if layer == "roof" else self.objects
+        anchor = object_anchor_at(objects, self.inspected_cell)
+        if anchor is None:
+            return
+        self._set_graphic_layer(layer)
+        self._moving_objects = True
+        self._move_anchor = anchor
+        self._move_offset = (0, 0)
+        self.info = "Ziel anklicken oder Objektgröße öffnen."
+
     def open_roof_settings(self):
+        if not self._require_editable("roof"):
+            return
         self._blur_library()
         self._stroke_button = None
         self._stop_object_move()
@@ -502,7 +624,6 @@ class LevelEditor:
         self.objects = {} if objects is None else objects
         self.roofs = {} if roofs is None else roofs
         self.roof_visibility = RoofVisibility() if roof_visibility is None else roof_visibility
-        self.show_roofs = True
         self._saved_layers = self._snapshot()
         self._saved_name = saved_name
         self._legacy = legacy
@@ -577,6 +698,7 @@ class LevelEditor:
             return
         self.current_tile = key
         self.inspect_mode = False
+        self.eraser_active = False
         self._object_brush = None
         self._stop_object_move()
         asset = self.frost_assets.get(key)
@@ -595,6 +717,9 @@ class LevelEditor:
         if item is None:
             self.info = "Zuerst eine FrostAge-Grafik aus der Bibliothek auswählen."
             return
+        layer = self.graphic_layer
+        if anchor is not None and not self._require_editable(layer):
+            return
 
         def validate(value):
             try:
@@ -607,6 +732,8 @@ class LevelEditor:
             if anchor is None:
                 self._object_brush = updated
             elif updated != item:
+                if not self._require_editable(layer):
+                    return
                 if not can_place_graphic_object(layer_objects, anchor, updated, moving=anchor):
                     self.info = "Die Größe reicht aus der Karte oder über ein anderes Objekt."
                     return
@@ -631,9 +758,11 @@ class LevelEditor:
             self._stop_object_move()
             if self.graphic_layer == "ground":
                 self._set_graphic_layer("objects")
-            elif self.graphic_layer == "roof":
-                self.show_roofs = True
+            else:
+                self._set_graphic_layer(self.graphic_layer)
             self._moving_objects = True
+            if not self._require_editable(self.graphic_layer):
+                return
             self.info = "Objekt der aktiven Ebene anklicken."
 
     def _selected_layer_objects(self):
@@ -646,9 +775,13 @@ class LevelEditor:
             return
         self._set_graphic_layer("objects")
         self._transferring_roof = True
+        if not self._require_editable("objects", "roof"):
+            return
         self.info = "Ein vorhandenes Dach auf der Objektebene anklicken."
 
     def _transfer_roof_at(self, cell):
+        if not self._require_editable("objects", "roof"):
+            return
         anchor = object_anchor_at(self.objects, cell)
         if anchor is None or not is_roof_asset(self.objects[anchor].asset_id):
             self.info = "Hier liegt kein FrostAge-Dach auf der Objektebene."
@@ -663,6 +796,8 @@ class LevelEditor:
         self.info = "Dach auf die Vordergrundebene verschoben"
 
     def _move_object_at(self, cell):
+        if not self._require_editable(self.graphic_layer):
+            return
         objects = self._selected_layer_objects()
         if self._move_anchor is None:
             anchor = object_anchor_at(objects, cell)
@@ -828,6 +963,8 @@ class LevelEditor:
                 self.info = "Objektwerkzeug beendet"
             elif self.inspect_mode:
                 self.toggle_inspect_mode()
+            elif self.eraser_active:
+                self.toggle_eraser()
             else:
                 self.request_close()
         elif not self.preview_active and getattr(event, "mod", 0) & pygame.KMOD_CTRL:
@@ -849,17 +986,19 @@ class LevelEditor:
             return
         if (cell := self._map_cell(pos)) is not None:
             self._hover_cell = cell
+            if button == 3:
+                if not self.inspect_mode and not self._transferring_roof:
+                    self._request_delete(self.active_layer, cell, self.placement_mode)
+                return
             if button == 1:
                 self.inspected_cell = cell
             if self.inspect_mode:
                 return
             if self._transferring_roof:
-                if button == 1:
-                    self._transfer_roof_at(cell)
+                self._transfer_roof_at(cell)
                 return
             if self._moving_objects:
-                if button == 1:
-                    self._move_object_at(cell)
+                self._move_object_at(cell)
                 return
             self._stroke_button = button
             self._stroke_changed = False
@@ -879,45 +1018,41 @@ class LevelEditor:
         cell = self._map_cell((mx, my))
         if cell is None:
             return
-        gx, gy = cell
-        erase = self._stroke_button == 3
-        if self.placement_mode in ("damage", "slow"):
-            self._paint_effect(cell, erase)
+        layer = self.active_layer
+        if self.eraser_active:
+            if self._require_editable(layer):
+                deletion = self._deletion_at(layer, cell, self.placement_mode)
+                if deletion is not None:
+                    self._delete(deletion)
             return
-        if self.placement_mode != "collision" and self.graphic_layer != "ground":
-            objects = self._selected_layer_objects()
-            if erase and (anchor := object_anchor_at(objects, cell)) is not None:
-                self._begin_stroke_change()
-                del objects[anchor]
-                if self.placement_mode == "combined":
-                    self.collisions.pop(cell, None)
-                self.info = "Ganzes Grafikobjekt entfernt"
-                return
-            if not erase and (item := self._selected_object()) is not None:
-                self._paint_object(objects, cell, item)
-                return
-        tile = self.current_tile if not erase and self.current_tile in self.tiles else None
-        collision = None if erase else self.collision_type
-        change_graphics = (self.graphic_layer == "ground" and self.placement_mode != "collision"
-                           and (erase or tile is not None)
-                           and self.map[gy][gx] != tile)
-        change_collision = self.placement_mode != "graphics" and self.collisions.get(cell) != collision
+        layers = (layer, "collision") if self.placement_mode == "combined" else (layer,)
+        if not self._require_editable(*layers):
+            return
+        gx, gy = cell
+        if layer == "effects":
+            value = self.damage_brush if self.placement_mode == "damage" else self.slow_brush
+            self._update_cell_effect(cell, self.placement_mode, value)
+            return
+        if layer in ("objects", "roof") and (item := self._selected_object()) is not None:
+            self._paint_object(self._selected_layer_objects(), cell, item)
+            return
+        tile = self.current_tile if self.current_tile in self.tiles else None
+        collision = self.collision_type
+        change_graphics = layer == "ground" and tile is not None and self.map[gy][gx] != tile
+        change_collision = "collision" in layers and self.collisions.get(cell) != collision
         if not (change_graphics or change_collision):
             return
         self._begin_stroke_change()
         if change_graphics:
             self.map[gy][gx] = tile
         if change_collision:
-            if erase:
-                del self.collisions[cell]
-            else:
-                self.collisions[cell] = collision
+            self.collisions[cell] = collision
         if change_collision and change_graphics:
-            self.info = "Beide Ebenen gelöscht" if erase else f"Kachel und {collision} gesetzt"
+            self.info = f"Kachel und {collision} gesetzt"
         elif change_collision:
-            self.info = "Kollision gelöscht" if erase else f"{collision} gesetzt"
+            self.info = f"{collision} gesetzt"
         else:
-            self.info = "Kachel entfernt" if erase else f"{tile} gesetzt"
+            self.info = f"{tile} gesetzt"
 
     def _paint_object(self, objects, cell, item):
         if self._stroke_changed and self._stroke_button is not None:
@@ -933,14 +1068,9 @@ class LevelEditor:
         else:
             self.info = f"Grafikobjekt {item.width}×{item.height} gesetzt"
 
-    def _paint_effect(self, cell, erase):
+    def _update_cell_effect(self, cell, kind, value):
         existing = self.effects.get(cell, CellEffects())
-        if self.placement_mode == "damage":
-            updated = CellEffects(damage=None if erase else self.damage_brush, slow=existing.slow)
-            label = "Schaden"
-        else:
-            updated = CellEffects(damage=existing.damage, slow=None if erase else self.slow_brush)
-            label = "Slow"
+        updated = replace(existing, **{kind: value})
         if updated == existing:
             return
         self._begin_stroke_change()
@@ -948,7 +1078,52 @@ class LevelEditor:
             del self.effects[cell]
         else:
             self.effects[cell] = updated
-        self.info = f"{label} entfernt" if erase else f"{label} gesetzt"
+        label = "Schaden" if kind == "damage" else "Slow"
+        self.info = f"{label} {'entfernt' if value is None else 'gesetzt'}"
+
+    def _deletion_at(self, layer, cell, effect):
+        x, y = cell
+        if layer == "ground" and self.map[y][x] is not None:
+            return Deletion(layer, cell)
+        if layer == "collision" and cell in self.collisions:
+            return Deletion(layer, cell)
+        if (layer == "effects" and effect in ("damage", "slow") and cell in self.effects
+                and getattr(self.effects[cell], effect) is not None):
+            return Deletion(layer, cell, effect)
+        if layer in ("objects", "roof"):
+            objects = self.roofs if layer == "roof" else self.objects
+            anchor = object_anchor_at(objects, cell)
+            if anchor is not None:
+                return Deletion(layer, anchor)
+        return None
+
+    def delete_inspected(self, layer, effect=None):
+        if self.inspected_cell is not None:
+            self._request_delete(layer, self.inspected_cell, effect)
+
+    def _request_delete(self, layer, cell, effect):
+        if not self._require_editable(layer):
+            return
+        deletion = self._deletion_at(layer, cell, effect)
+        if deletion is not None:
+            self._stroke_button = None
+            self._blur_library()
+            self._dialog = {"kind": "delete", "target": deletion}
+
+    def _delete(self, target):
+        if target.effect is not None:
+            self._update_cell_effect(target.cell, target.effect, None)
+            return
+        self._begin_stroke_change()
+        x, y = target.cell
+        if target.layer == "ground":
+            self.map[y][x] = None
+        else:
+            layer = {"objects": self.objects, "roof": self.roofs, "collision": self.collisions}[target.layer]
+            del layer[target.cell]
+            if self._move_anchor == target.cell and self.graphic_layer == target.layer:
+                self._stop_object_move()
+        self.info = f"{LAYER_LABELS[target.layer]} · Element entfernt."
 
     def _begin_stroke_change(self):
         if self._stroke_button is None or not self._stroke_changed:
@@ -970,24 +1145,29 @@ class LevelEditor:
         self.redo_stack.clear()
 
     def undo(self):
-        self._stroke_button = None
-        self._stop_object_move()
-        if self.undo_stack:
-            self.redo_stack.append(self._layers())
-            self._restore_layers(self.undo_stack.pop())
-            self.info = "Bearbeitung rückgängig gemacht"
+        self._apply_history(self.undo_stack, self.redo_stack, "Bearbeitung rückgängig gemacht")
 
     def redo(self):
+        self._apply_history(self.redo_stack, self.undo_stack, "Bearbeitung wiederholt")
+
+    def _apply_history(self, source, destination, message):
         self._stroke_button = None
         self._stop_object_move()
-        if self.redo_stack:
-            self.undo_stack.append(self._layers())
-            self._restore_layers(self.redo_stack.pop())
-            self.info = "Bearbeitung wiederholt"
+        if not source:
+            return
+        current = self._layers()
+        changed = dict.fromkeys(layer for layer, before, after in zip(DOCUMENT_LAYERS, source[-1], current)
+                                if before != after)
+        if self._require_editable(*changed):
+            destination.append(current)
+            self._restore_layers(source.pop())
+            self.info = message
 
     def fill_middle(self):
         if self.graphic_layer != "ground":
             self.info = "Mittelfeld ist für einzelne Kacheln verfügbar."
+            return
+        if not self._require_editable("ground"):
             return
         if self.current_tile in self.tiles:
             self._store_undo()
@@ -996,6 +1176,8 @@ class LevelEditor:
             self.info = "Mittelfeld gefüllt"
 
     def set_border(self):
+        if not self._require_editable("ground"):
+            return
         self._reset_pointer()
         self._blur_library()
         self._stop_object_move()
@@ -1032,6 +1214,8 @@ class LevelEditor:
             self.info = "Rand-Builder abgebrochen"
 
     def _apply_border(self):
+        if not self._require_editable("ground"):
+            return
         changed = [cell for cell in self.border_builder.plan.preview(self.map) if cell.changed]
         if changed:
             self._store_undo()
@@ -1101,6 +1285,8 @@ class LevelEditor:
             return
         if kind == "name":
             self._handle_name(event)
+        elif kind == "delete":
+            self._handle_delete_dialog(event)
         elif kind == "discard":
             self._handle_discard(event)
         elif kind == "open":
@@ -1112,16 +1298,35 @@ class LevelEditor:
             if result is not None:
                 self._dismiss_dialog()
                 if result is not False:
-                    self.damage_brush, self.slow_brush = result
-                    self.info = "Effektwerte übernommen"
+                    if "effect" not in dialog:
+                        self.damage_brush, self.slow_brush = result
+                        self.info = "Effektwerte übernommen"
+                    elif self._require_editable("effects"):
+                        effect = dialog["effect"]
+                        self._update_cell_effect(dialog["cell"], effect, result[0 if effect == "damage" else 1])
         elif kind == "roof_settings":
             result = self.roof_settings_editor.handle_event(event)
             if result is not None:
                 self._dismiss_dialog()
-                if result is not False and result != self.roof_visibility:
+                if result is not False and result != self.roof_visibility and self._require_editable("roof"):
                     self._store_undo()
                     self.roof_visibility = result
                     self.info = "Dachwerte übernommen"
+
+    def _handle_delete_dialog(self, event):
+        target = self._dialog["target"]
+        cancel, confirm = self._discard_buttons(self._dialog_panel())
+        apply = event.type == pygame.KEYDOWN and event.key in (pygame.K_RETURN, pygame.K_KP_ENTER)
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            if cancel.collidepoint(event.pos):
+                self._dismiss_dialog()
+                return
+            apply = confirm.collidepoint(event.pos)
+        if apply:
+            self._dismiss_dialog()
+            if (self._require_editable(target.layer)
+                    and self._deletion_at(target.layer, target.cell, target.effect) == target):
+                self._delete(target)
 
     def _handle_name(self, event):
         dialog = self._dialog
@@ -1216,6 +1421,7 @@ class LevelEditor:
             "view_panel": self.show_inspector, "view_collision": self.show_collisions,
             "view_effects": self.show_effects, "view_roof": self.show_roofs,
             "build_move_objects": self._moving_objects, "build_transfer_roof": self._transferring_roof,
+            "build_eraser": self.eraser_active,
         }
         mode = self.placement_mode
         layer = f"layer_{self.graphic_layer}" if mode in ("graphics", "combined") else None
@@ -1258,6 +1464,8 @@ class LevelEditor:
                 self._dialog_shade = pygame.Surface(screen.get_size(), pygame.SRCALPHA)
                 self._dialog_shade.fill((6, 11, 18, 135))
             screen.blit(self._dialog_shade, (0, 0))
+            if self._dialog["kind"] == "delete":
+                self._draw_deletion_outline(screen, self._dialog["target"])
             if self._dialog["kind"] == "world":
                 self.world_tree.draw(screen)
             elif self._dialog["kind"] == "effects":
@@ -1285,15 +1493,17 @@ class LevelEditor:
         elif self.preview_active:
             summary, hint = title, "Kartenvorschau · Esc zurück"
         else:
-            layer = next(label for key, label, _ in GRAPHIC_LAYERS if key == self.graphic_layer)
+            layer = LAYER_LABELS[self.active_layer]
+            if self.layer_locked(self.active_layer):
+                layer += " · gesperrt"
+            if not self.layer_visible(self.active_layer):
+                layer += " · ausgeblendet"
             tools = {"graphics": "Grafik", "combined": "Grafik + Kollision", "collision": self.collision_type,
                      "damage": "Schaden", "slow": "Slow"}
             tool = tools[self.placement_mode]
-            if self.placement_mode == "collision":
-                layer = "Kollision"
-            elif self.placement_mode in ("damage", "slow"):
-                layer = "Effekte"
-            if self.inspect_mode:
+            if self.eraser_active:
+                tool = "Radierer"
+            elif self.inspect_mode:
                 tool = "Zellen-Auswahl"
             elif self._moving_objects:
                 tool = "Verschieben"
@@ -1304,15 +1514,19 @@ class LevelEditor:
             asset = self.frost_assets.get(self.current_tile)
             selection = asset.name if asset else self.current_tile or "–"
             summary = f"{saved} · {title}    |    {layer} / {tool}    |    {coordinates}    |    {selection}"
-            if self.inspect_mode:
+            if self.eraser_active:
+                hint = "Radierer aktiv · Links löscht auf der aktiven Ebene · Esc beendet"
+            elif self.inspect_mode:
                 hint = "Linksklick liest die Zelle · Esc beendet die Auswahl"
             elif self._moving_objects:
                 hint = "Grafikobjekt und Ziel anklicken · Esc bricht ab"
             elif self._transferring_roof:
                 hint = "Dach auf der Objektebene anklicken · Esc bricht ab"
             else:
-                hint = f"Links platziert · Rechts löscht {ERASE_LABELS[self.placement_mode]} · Mausrad zoomt"
-        self._draw_text(screen, summary, (12, status.top + 4), max_width=status.width - 24)
+                hint = "Links platziert · Rechts fragt vor dem Löschen · Mausrad zoomt"
+        summary_color = (COLOR_TEXT if self.playtest is not None or self.preview_active
+                         else LAYER_COLORS[self.active_layer])
+        self._draw_text(screen, summary, (12, status.top + 4), summary_color, max_width=status.width - 24)
         message = self.info if not self.preview_active and self.playtest is None and self.info else hint
         if hovered is not None:
             message = self.button_art.hint(hovered.id, hovered.label)
@@ -1331,14 +1545,17 @@ class LevelEditor:
             screen.blit(self._preview_background, board)
         else:
             pygame.draw.rect(screen, (25, 36, 52), board)
-        for y, row in enumerate(self.map):
-            for x, key in enumerate(row):
-                if key in self.tiles:
-                    position = (board.x + x * size, board.y + y * size)
-                    if not viewport.colliderect(pygame.Rect(position, (size, size))):
-                        continue
-                    screen.blit(self._tile_for_view(key, size), position)
-        draw_graphic_objects(screen, board, self.objects)
+        authored_view = self.preview_active or self.playtest is not None
+        if authored_view or self.layer_visible("ground"):
+            for y, row in enumerate(self.map):
+                for x, key in enumerate(row):
+                    if key in self.tiles:
+                        position = (board.x + x * size, board.y + y * size)
+                        if not viewport.colliderect(pygame.Rect(position, (size, size))):
+                            continue
+                        screen.blit(self._tile_for_view(key, size), position)
+        if authored_view or self.layer_visible("objects"):
+            draw_graphic_objects(screen, board, self.objects)
         if self.playtest is None and (self.show_roofs or self.preview_active):
             draw_roof_objects(screen, board, self.roofs, self.roof_visibility)
         if not self.preview_active and self.playtest is None:
@@ -1356,8 +1573,13 @@ class LevelEditor:
         elif self.inspect_mode and self.inspected_cell is not None:
             x, y = self.inspected_cell
             pygame.draw.rect(screen, COLOR_SELECT, (board.x + x * size, board.y + y * size, size, size), 2)
-        elif not self.preview_active and not self.dialog_open:
-            self._draw_object_preview(screen)
+        elif not self.preview_active and not self.dialog_open and self.layer_editable(self.active_layer):
+            if self.eraser_active and self._hover_cell is not None:
+                target = self._deletion_at(self.active_layer, self._hover_cell, self.placement_mode)
+                if target is not None:
+                    self._draw_deletion_outline(screen, target)
+            elif not self.eraser_active and (self.placement_mode != "combined" or self.layer_editable("collision")):
+                self._draw_object_preview(screen)
         screen.set_clip(old_clip)
         pygame.draw.rect(screen, COLOR_FRAME, viewport, 1)
 
@@ -1388,7 +1610,23 @@ class LevelEditor:
         fits = can_place_graphic_object(objects, anchor, item, moving=moving)
         if fits:
             draw_graphic_object(screen, board, anchor, item, preview=True)
-        pygame.draw.rect(screen, COLOR_SELECT if fits else (244, 104, 127), rect, 2)
+        pygame.draw.rect(screen, COLOR_SELECT if fits else DELETE_COLOR, rect, 2)
+
+    def _draw_deletion_outline(self, screen, target):
+        width = height = 1
+        if target.layer in ("objects", "roof"):
+            items = self.roofs if target.layer == "roof" else self.objects
+            item = items.get(target.cell)
+            if item is None:
+                return
+            width, height = item.width, item.height
+        board, size = self.camera.board_rect, self.camera.cell_size
+        x, y = target.cell
+        rect = pygame.Rect(board.x + x * size, board.y + y * size, width * size, height * size)
+        old_clip = screen.get_clip()
+        screen.set_clip(old_clip.clip(self.layout.viewport))
+        pygame.draw.rect(screen, DELETE_COLOR, rect, 2)
+        screen.set_clip(old_clip)
 
     def _draw_dialog(self, screen):
         dialog = self._dialog
@@ -1415,6 +1653,16 @@ class LevelEditor:
             keep, discard = self._discard_buttons(panel)
             self._draw_button(screen, "Weiter bearbeiten", keep)
             self._draw_button(screen, "Verwerfen [V]", discard)
+        elif dialog["kind"] == "delete":
+            target = dialog["target"]
+            label = {"damage": "Schaden", "slow": "Slow"}.get(target.effect, LAYER_LABELS[target.layer])
+            self._draw_text(screen, "Dieses Element löschen?", (x, y), DELETE_COLOR)
+            self._draw_text(screen, f"{label} · X {target.cell[0]} / Y {target.cell[1]}", (x, y + 32))
+            if target.layer in ("objects", "roof"):
+                self._draw_text(screen, "Das gesamte Grafikobjekt wird entfernt.", (x, y + 55))
+            cancel, confirm = self._discard_buttons(panel)
+            self._draw_button(screen, "Abbrechen", cancel)
+            self._draw_button(screen, "Löschen [Enter]", confirm, DELETE_COLOR)
         else:
             self._draw_text(screen, "Entwurf öffnen", (x, y))
             first = self._open_first()
