@@ -87,7 +87,7 @@ Die Dateinamen stehen ohne den gemeinsamen Suffix `-removebg-preview.png` in der
 
 - `GamePICs/DarkSnake-NeueHeads/` enthält 53 Kopfdesigns und `GamePICs/DarkSnake-KörperNeuDesign/` 15 Körperdesigns, darunter Roh-Snips und Referenzen. Die Auswahl geeigneter 30×30-Sprites gehört in einen eigenen PR.
 - Die aktuelle Grafikoption verwendet `ExtendedOptionsMenu`. Sie sucht Ressourcen über `find_asset_directory` und speichert die Auswahl je Spieler. Das ältere `CustomizationMenu` hat vier feste Kopfoptionen und lädt Körperbilder aus einem relativen Pfad.
-- Die geplante Galerie übernimmt geprüfte Sprites mit stabilen Skin-IDs, portablen Pfaden, Scrollen und Vorschau in Spielgröße. Kombinationsprüfung und mögliche Freischaltungen durch Spielerfolge folgen mit eigenen Tests.
+- Die geplante Galerie übernimmt geprüfte Sprites mit stabilen Skin-IDs, portablen Pfaden, Scrollen und Vorschau in Spielgröße. Kombinationsprüfung und mögliche Freischaltungen durch Spielerfolge folgen mit eigenen Tests. **UI-2.0-Bildanalyse, kreatives Skin-Namensschema und Abnahme: [UI_2_0_SCREEN_AUDIT.md](UI_2_0_SCREEN_AUDIT.md).**
 
 ## Agenten-Regeln für jede künftige Asset-Aufgabe
 
