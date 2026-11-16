@@ -296,6 +296,18 @@ Bei 900×620 ist die Karte in der Gesamtansicht kleiner. Mit Zoom und eingeklapp
 4. Mit Rechtsklick oder Ziehen sichtbare und entsperrte Grafik-, Kollisions- und Effektfelder an der Mausposition entfernen. **Build → Rechtsklick** schaltet zwischen allen bearbeitbaren Ebenen und der aktiven Ebene um. Eine mehrteilige Grafik wird vollständig gelöscht. Kollisions- und Effektfelder außerhalb der getroffenen Zellen bleiben erhalten. Der Zelleninspektor erlaubt weiterhin die gezielte, bestätigte Löschung einzelner Einträge. **Strg+Z** nimmt den gesamten Zug zurück, **Strg+Y** stellt ihn wieder her.
 5. Die Sprache bei 900×620 und maximiert prüfen, einen Entwurf speichern und nach einem Neustart erneut öffnen. Die Dach-Demo in **Test (1P)** und **Test (2P)** ausprobieren und danach zu Classic zurückkehren. Vollbild mit Wiederherstellung der Fenstergröße ist als separater Folge-PR geplant.
 
+## World Studio · Mein erstes FrostAge-Level
+
+Im entpackten Windows-Spiel **Level Studio → Learn → My First Level** öffnen. Die Anleitung bleibt rechts. Die Übung hält den bisherigen Entwurf samt Änderungen, Verlauf und Ebenenzustand im Arbeitsspeicher bereit. Eigene Entwürfe stehen nach **Zurück zum Editor** wieder zum Speichern und Öffnen bereit.
+
+1. **Ground** in der Ebenenleiste wählen. Links unter **FrostAge · Ground / Boden** eine 1×1-Kachel wählen. Mit gedrückter linker Maustaste mindestens drei der blau markierten Bodenfelder gestalten.
+2. **Collision → WALL** wählen und eine der orange markierten Zellen bemalen. **BARRIER** lässt sich auf einer weiteren Zelle vergleichen. Die beiden hellen Testwege bleiben frei.
+3. Unter **FrostAge · Roofs / Dächer** ein 4×4-Dach auswählen. Den markierten Anker anklicken. Das Dach im Layer Explorer aus- und wieder einblenden. Anschließend rechts **Learn** öffnen.
+4. **Ground** sperren. Mit einer anderen FrostAge-Kachel auf einem markierten Bodenfeld eine Änderung versuchen und die Ebene wieder entsperren.
+5. **Test (1P)** starten. Im Spieltest bewegen und mit **Stop Test** oder **F2** zurückkehren. Danach erscheint der Abschluss. **Test (2P)** ist optional.
+
+**Weiter** setzt den geprüften Schritt voraus. **Zurück** zeigt frühere Aufgaben. **Beispiel** blendet einen Hinweis ein. **Wiederholen** setzt die markierten Felder des aktuellen Bauschritts über den normalen Undo-Verlauf zurück. Die Ebenensperre und der Spieltest werden über erneute Aktionen geprüft. Undo und Redo aktualisieren die Aufgaben anhand der Karte. Für den Windows-Test die Anleitung bei 900×620 und 1350×930 prüfen und einmal mitten in der Übung DE/EN wechseln.
+
 ## World Studio · Layer Explorer unter Windows prüfen
 
 1. **Level Studio → Layers** öffnen. Für Boden, Objekte, Dach, Kollision und Effekte jeweils **Sichtbar** oder **Verdeckt** sowie **Offen** oder **Gesperrt** wählen. Ebenenauswahl und Sichtbarkeit sind unabhängig. Ein verdecktes Dach bleibt bei der Auswahl verdeckt.
