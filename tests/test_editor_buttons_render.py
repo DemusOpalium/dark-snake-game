@@ -57,10 +57,10 @@ def sample_catalogue(tmp_path, monkeypatch):
 def test_catalogue_artwork_is_exactly_packaged_under_runtime_asset_root():
     catalogue = editor_buttons.load_editor_button_catalog()
     assert "file_save" in catalogue and "border_left" in catalogue
-    assert len(catalogue) == 60
+    assert len(catalogue) == 62
     project_root = Path(__file__).resolve().parents[1]
     physical_assets = set(catalogue.values())
-    assert len(physical_assets) == 56
+    assert len(physical_assets) == 58
     for asset in physical_assets:
         assert asset.path.parent.name == "editor_ui"
         assert asset.path.read_bytes() == (project_root / asset.source).read_bytes()
@@ -100,6 +100,21 @@ def test_bilingual_language_button_renders_the_staged_artwork(renderer):
     button = pygame.Rect(0, 0, 140, 44)
     surface = pygame.Surface(button.size, pygame.SRCALPHA)
     renderer.draw(surface, "nav_language", "Deutsch / English", button)
+    visible = surface.get_bounding_rect()
+    assert visible.width == button.width - 4
+    assert visible.center == button.center
+
+
+@pytest.mark.parametrize(("action_id", "source"), [
+    ("learn_start", "My_FIrst_LvL-removebg-preview.png"),
+    ("learn_example", "Examples-removebg-preview.png"),
+])
+def test_learning_buttons_render_the_staged_artwork(renderer, action_id, source):
+    asset = editor_buttons.load_editor_button_catalog()[action_id]
+    assert asset.source == f"GamePICs/Learn/{source}"
+    button = pygame.Rect(0, 0, 172, 36)
+    surface = pygame.Surface(button.size, pygame.SRCALPHA)
+    renderer.draw(surface, action_id, "Ersatztext", button)
     visible = surface.get_bounding_rect()
     assert visible.width == button.width - 4
     assert visible.center == button.center

@@ -1,6 +1,12 @@
 """English text for World Studio controls, status messages and draft dialogs."""
 
 EDITOR_EN = {
+    "Übung gestartet · Dein Entwurf wartet.": "Practice started · Your draft is kept open.",
+    "Übung beendet · Dein Entwurf ist wieder geöffnet.": "Practice ended · Your draft is open again.",
+    "Beende die Übung, um mit deinen eigenen Entwürfen weiterzuarbeiten.":
+        "Leave practice to work with your own drafts.",
+    "Schritt zur Wiederholung bereit.": "Step ready to try again.",
+    "Dieser Durchgang bleibt für den Leveltest frei.": "This passage stays open for the level test.",
     "Datei": "File",
     "Bauen": "Build",
     "Ebenen": "Layers",

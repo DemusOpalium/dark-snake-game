@@ -1,5 +1,5 @@
 # 🐍 DARK SNAKE – Asset-Legende für Menschen und Coding-Agenten
-**Stand vom 15.11.2026 · World Studio mit Layer Explorer und Sprachschalter**
+**Stand vom 16.11.2026 · World Studio mit Layer Explorer, Sprachschalter und Lernmodus**
 
 > `Dark_Snake/assets/` enthält die Spiel- und EXE-Laufzeitdaten. `GamePICs/` enthält Originale, Entwürfe und Referenzen. Die passenden Laufzeitkataloge dokumentieren die tatsächlich verwendeten Dateien.
 
@@ -12,8 +12,8 @@
 | `Dark_Snake/assets/` | Laufzeitgrafiken, Levelvorlagen, Audio und Kataloge | **Ja**, `--add-data "Dark_Snake/assets;assets"` |
 | `Dark_Snake/assets/graphics/frostage/` | 175 importierte FrostAge-PNGs plus `catalog.json` | **Ja** |
 | `GamePICs/Incoming/Frost_Tiles/` | 175 unveränderte FrostAge-Originale + Importhinweise | **Nein**, nicht direkt |
-| `Dark_Snake/assets/graphics/editor_ui/` | 56 geprüfte Editor-Button-PNGs für 60 Action-IDs mit Herkunftsnachweis | **Ja** |
-| `GamePICs/Build/`, `File/`, `Effects/`, `Layers/` usw. | Alle 81 Originale der englisch beschrifteten Editor-Button-Grafiken | 48 bytegleiche Kopien unter `editor_ui/` |
+| `Dark_Snake/assets/graphics/editor_ui/` | 58 geprüfte Editor-Button-PNGs für 62 Action-IDs mit Herkunftsnachweis | **Ja** |
+| `GamePICs/Build/`, `File/`, `Effects/`, `Layers/` usw. | Alle 81 Originale der englisch beschrifteten Editor-Button-Grafiken | 51 bytegleiche Kopien unter `editor_ui/` |
 | `GamePICs/Nachtrag Fehlende Buttons/` | Sieben Originale aus #173 | Sieben bytegleiche Kopien unter `editor_ui/` |
 | `GamePICs/General/De-En_Language-removebg-preview.png` | Original des Sprachschalters | Bytegleiche Kopie als `editor_ui/nav_language.png` |
 | `GamePICs/DarkSnake-NeueHeads/` | 53 neue Head-Kandidaten / Rohentwürfe | **Nein**, noch nicht registriert |
@@ -41,7 +41,7 @@ Der Katalog dokumentiert für jede Action-ID den Originalpfad, den Laufzeitdatei
 | Ansicht (7) | Karte einpassen `view_fit_map`, Bibliothek `view_library`, Arbeitsbereich `view_panel`, Zelle untersuchen `view_cell`, Kollision `view_collision`, Effekte `view_effects`, Dachansicht `view_roof` |
 | Testen (5) | Vorschau starten `test_preview`, Test 1P `test_player_1`, Test 2P `test_player_2`, Dach-Demo `test_roof_demo`, Test beenden `test_stop` |
 
-**Border (All)** befindet sich bei der Auswahl aller Seiten im Rand-Builder. **Lernen** führt zur vorhandenen Dach-Demo.
+**Border (All)** befindet sich bei der Auswahl aller Seiten im Rand-Builder. **Lernen** öffnet den geführten Kurs und die Dach-Demo.
 
 ## Die sieben Motive aus PR #173
 
@@ -59,9 +59,18 @@ Die Seitenreiter `sidebar_layers`, `sidebar_cell`, `sidebar_help` und `sidebar_l
 
 ## Sprachschalter aus PR D
 
-Der Schalter `nav_language` übernimmt das vorhandene DE/EN-Motiv aus `GamePICs/General/`. Die RGBA-Datei misst 1085 × 230 Pixel. Beide Sprachzustände nutzen dieselbe Kopie und denselben Grafik-Cache. Der Sprachwechsel lokalisiert die UI-Texte, während der Schriftzug Teil der Grafik bleibt. Insgesamt enthält das Paket 20.548.240 Byte an Editor-Button-PNGs. [Laufzeitkatalog](Dark_Snake/assets/graphics/editor_ui/catalog.json)
+Der Schalter `nav_language` übernimmt das vorhandene DE/EN-Motiv aus `GamePICs/General/`. Die RGBA-Datei misst 1085 × 230 Pixel. Beide Sprachzustände nutzen dieselbe Kopie und denselben Grafik-Cache. Der Sprachwechsel lokalisiert die UI-Texte, während der Schriftzug Teil der Grafik bleibt. [Laufzeitkatalog](Dark_Snake/assets/graphics/editor_ui/catalog.json)
 
-## Die 32 reservierten Editor-Grafiken
+## Lernmodus aus PR E
+
+| Original in `GamePICs/Learn/` | Aktion | Abmessungen |
+| --- | --- | --- |
+| `My_FIrst_LvL-removebg-preview.png` | Kurs starten (`learn_start`) | 1222 × 204 |
+| `Examples-removebg-preview.png` | Beispiel ein- und ausblenden (`learn_example`) | 1235 × 202 |
+
+Die beiden RGBA-Grafiken werden bytegleich übernommen. Für `learn_previous`, `learn_next` und `learn_retry` gibt es lokalisierte Textschaltflächen. Falls eine zugeordnete PNG fehlt, zeigt der Renderer die lokalisierte Beschriftung der Aktion an. [Laufzeitkatalog](Dark_Snake/assets/graphics/editor_ui/catalog.json)
+
+## Die 30 reservierten Editor-Grafiken
 
 Die Dateinamen stehen ohne den gemeinsamen Suffix `-removebg-preview.png` in der Tabelle. Die Quelldateien und ihre exakten Pfade stehen im Inventar. [Staging-Snapshot](GamePICs/asset_inventory.json)
 
@@ -72,7 +81,7 @@ Die Dateinamen stehen ohne den gemeinsamen Suffix `-removebg-preview.png` in der
 | `EditorBigs` (8) | `Ceiling`, `Collision`, `Damage`, `Events`, `floor_object`, `Light`, `Roof`, `Slow` | Alternative Großformate für eine spätere Gestaltung. |
 | `General` (4) | `About`, `Exit`, `General`, `Settings` | Konzepte für eigene Studio-Aktionen. Der Editor verwendet seine bestehenden Dialoge sowie F2 und Esc zum Schließen. |
 | `Layers` (3) | `All_Layers`, `Lock_layers`, `Show_Hide` | Reservierte Motive. Der Layer Explorer verwendet kompakte Textschaltflächen, die den aktuellen Zustand der einzelnen Ebenen anzeigen. |
-| `Learn` (4) | `Examples`, `Guided_Build`, `Learn_Tutorial`, `My_FIrst_LvL` | Vorgesehen für den geführten Kurs und weitere Beispiele. |
+| `Learn` (2) | `Guided_Build`, `Learn_Tutorial` | Alternative Entwürfe für künftige Lernfunktionen. |
 | `Miscellaneos` (4) | `Chest`, `Coin_-_Item`, `Miscellaneous`, `Random_D20` | Konzepte für spätere platzierbare Interaktionen und Events. |
 | `View` (1) | `View_Map` | Die vorhandenen Aktionen heißen Karte einpassen und Vorschau starten. |
 
@@ -122,8 +131,8 @@ Die Dateinamen stehen ohne den gemeinsamen Suffix `-removebg-preview.png` in der
 - ⬜ Nacharbeiten: reale Ansicht der beiden Roof-Buttons `layer_roof` und `view_roof` im Windows-Fenster prüfen; beide Action-IDs stehen bereits im Runtime-Katalog, eine noch fehlende Bildzuordnung ist durch die Dateiliste nicht belegt.
 - ⬜ Neue volle **World-Background-Ebene** nach PR H als separates Konzept, nicht mit dem temporären Hintergrund-Spezialeffekt verwechseln.
 - ✅ PR #174 · Sieben ergänzende Editorbilder, grafische Seitenreiter und Layer Explorer.
-- 🔧 PR D · Sprachschalter mit vorhandener DE/EN-Grafik und zweisprachiger Hilfe.
-- ⬜ Interaktiver Lernmodus.
+- ✅ PR #179 · Sprachschalter mit vorhandener DE/EN-Grafik und zweisprachiger Hilfe.
+- 🔧 PR E · Interaktiver Lernmodus mit Grafiken für Start und Beispiele.
 - ⬜ Lighting, Events/Trigger, erweiterte FrostAge-Profile, Snake-Skin-Galerie.
 
 **Hinweis:** Ältere `PROJECT_STATE.md` / `DEV_STRUCTURE.md` enthalten Aussagen aus früheren Alpha-Ständen. Für eine Änderung immer **aktuellen Code, Tests und PRs** prüfen, statt alte Statusangaben ungeprüft zu übernehmen.

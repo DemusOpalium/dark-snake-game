@@ -13,19 +13,21 @@ Hier liegen Originalgrafiken, Uploads und Referenzbilder. Das Windows-Paket bün
 | `File/` | 9 | 9 | 0 |
 | `General/` | 5 | 1 | 4 |
 | `Layers/` | 9 | 6 | 3 |
-| `Learn/` | 5 | 1 | 4 |
+| `Learn/` | 5 | 3 | 2 |
 | `Miscellaneos/` | 4 | 0 | 4 |
 | `Test/` | 6 | 6 | 0 |
 | `View/` | 9 | 8 | 1 |
-| **Gesamt** | **81** | **49** | **32** |
+| **Gesamt** | **81** | **51** | **30** |
 
-Die 49 eingebundenen PNGs aus diesem Bestand liegen bytegleich in `Dark_Snake/assets/graphics/editor_ui/`. Alle 81 Originale behalten ihren Pfad. Der Laufzeitkatalog verbindet die verwendeten Dateien über Action-IDs mit den Editoraktionen. Die Asset-Legende listet die reservierten Grafiken und ihre geplante Verwendung. [Laufzeitkatalog](../Dark_Snake/assets/graphics/editor_ui/catalog.json) · [Asset-Legende](../ASSET_GUIDE.md)
+Die 51 eingebundenen PNGs aus diesem Bestand liegen bytegleich in `Dark_Snake/assets/graphics/editor_ui/`. Alle 81 Originale behalten ihren Pfad. Der Laufzeitkatalog verbindet die verwendeten Dateien über Action-IDs mit den Editoraktionen. Die Asset-Legende listet die reservierten Grafiken und ihre geplante Verwendung. [Laufzeitkatalog](../Dark_Snake/assets/graphics/editor_ui/catalog.json) · [Asset-Legende](../ASSET_GUIDE.md)
 
 ## Nachtrag vom 15.11.2026
 
 Die sieben RGBA-Dateien unter [Nachtrag Fehlende Buttons](Nachtrag%20Fehlende%20Buttons/) wurden in PR #173 hochgeladen. World Studio verwendet sie für Hilfe, Rand-Builder, Dachübertragung, Grafikmodus, kombinierten Grafik-/Kollisionsmodus, Eigenschaften und Vorschau-Ende. Vier Reiter im rechten Arbeitsbereich verwenden dieselben Dateien wie die zugehörigen Hauptaktionen und behalten eigene Action-IDs. [Zuordnung im Laufzeitkatalog](../Dark_Snake/assets/graphics/editor_ui/catalog.json)
 
-PR D verwendet zusätzlich [das vorhandene DE/EN-Motiv](General/De-En_Language-removebg-preview.png) für den Sprachschalter `nav_language`. Der Laufzeitkatalog umfasst damit 56 PNGs für 60 Action-IDs.
+PR D verwendet zusätzlich das vorhandene DE/EN-Motiv für den Sprachschalter `nav_language`. [Originalgrafik](General/De-En_Language-removebg-preview.png)
+
+PR E verwendet die Motive **My First Level** und **Examples** für den Kursstart und das Beispiel im Learn-Reiter. **Zurück**, **Weiter** und **Wiederholen** verwenden übersetzte Textschaltflächen. Der Laufzeitkatalog umfasst damit 58 PNGs für 62 Action-IDs. [My First Level](Learn/My_FIrst_LvL-removebg-preview.png) · [Examples](Learn/Examples-removebg-preview.png)
 
 ## Skin-Entwürfe
 

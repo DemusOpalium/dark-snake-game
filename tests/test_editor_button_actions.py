@@ -46,7 +46,7 @@ def test_drawn_toolbar_controls_fit_and_receive_mouse_at_each_size(studio, size)
     secondary_controls = {
         "border_all", "border_corner", "border_left", "border_right", "border_top", "border_bottom",
         "layer_effects", "test_stop", "preview_stop", "sidebar_properties", "sidebar_layers",
-        "sidebar_cell", "sidebar_help", "sidebar_learn",
+        "sidebar_cell", "sidebar_help", "sidebar_learn", "learn_start", "learn_example",
     }
     assert seen == set(catalog) - secondary_controls
 

@@ -7,13 +7,14 @@ import time
 import pygame
 
 from config import GRID_HEIGHT, GRID_WIDTH
+from modules import studio_tutorial
 from modules.border_builder_ui import BorderBuilderUI
 from modules.editor_buttons import BUTTON_HEIGHT, MAX_ART_WIDTH, EditorButtons
 from modules.editor_layout import MapCamera, StudioLayout
 from modules.editor_layers import LAYER_COLORS, LAYER_LABELS, LayerView
 from modules.editor_sidebar import StudioSidebar
 from modules.effect_settings import EffectSettings, draw_effect_overlay
-from modules.frostage_assets import frostage_assets
+from modules.frostage_assets import frostage_assets, load_frostage_image
 from modules.graphic_objects import (GraphicObject, can_place_graphic_object, draw_graphic_object,
                                      draw_graphic_objects, object_anchor_at, place_graphic_object)
 from modules.graphics import TILE_IMAGES
@@ -27,6 +28,7 @@ from modules.roof_editor_settings import RoofSettingsEditor
 from modules.roof_render import draw_roof_objects
 from modules.roof_settings import RoofVisibility, is_roof_asset
 from modules.studio_locale import StudioLocale
+from modules.studio_tutorial_text import TUTORIAL_TITLE
 from modules.tile_library import TileLibrary
 
 BTN_H = 30
@@ -57,6 +59,10 @@ EFFECT_TOOLS = (("damage", "Schaden"), ("slow", "Slow"))
 GRAPHIC_LAYERS = (("ground", "Boden", 70), ("objects", "Objekte", 74), ("roof", "Dach / Foreground", 151))
 DOCUMENT_LAYERS = ("ground", "collision", "effects", "objects", "roof", "roof")
 DELETE_COLOR = (248, 111, 122)
+PRACTICE_FILE_ACTIONS = frozenset((
+    "file_new", "file_open", "file_save", "file_worlds", "file_use_classic", "file_classic_default",
+    "test_roof_demo",
+))
 
 @dataclass(frozen=True, slots=True)
 class EditorControl:
@@ -71,6 +77,21 @@ class Deletion:
     layer: str
     cell: tuple[int, int]
     effect: str | None = None
+
+
+@dataclass(slots=True)
+class SuspendedDraft:
+    layers: tuple
+    saved_layers: tuple
+    name: str
+    saved_name: str | None
+    legacy: bool
+    undo: list
+    redo: list
+    layer_view: LayerView
+    camera: MapCamera
+    tool: tuple
+    workspace: tuple
 
 
 def _empty_map():
@@ -115,6 +136,8 @@ class LevelEditor:
         self.roof_settings_editor = None
         self.border_builder = None
         self.playtest = None
+        self.tutorial = None
+        self._suspended_draft = None
         self.name = ""
         self._saved_name = None
         self._legacy = False
@@ -222,12 +245,16 @@ class LevelEditor:
             return
         self._stroke_button = None
         self.layer_view.hidden.symmetric_difference_update((layer,))
+        if self.tutorial is not None and layer == "roof":
+            self.tutorial.roof_visibility_changed(self.show_roofs, self.roofs)
         message = "{name} ausgeblendet." if layer in self.layer_view.hidden else "{name} sichtbar."
         self.info = self.tr(message, name=self.tr(LAYER_LABELS[layer]))
 
     def toggle_layer_lock(self, layer):
         self._stroke_button = None
         self.layer_view.locked.symmetric_difference_update((layer,))
+        if self.tutorial is not None:
+            self.tutorial.layer_lock_changed(layer, self.layer_locked(layer))
         message = "{name} gesperrt." if self.layer_locked(layer) else "{name} entsperrt."
         self.info = self.tr(message, name=self.tr(LAYER_LABELS[layer]))
 
@@ -240,7 +267,10 @@ class LevelEditor:
 
     def show_all_layers(self):
         self._stroke_button = None
+        roof_was_hidden = "roof" in self.layer_view.hidden
         self.layer_view.show_all()
+        if self.tutorial is not None and roof_was_hidden:
+            self.tutorial.roof_visibility_changed(True, self.roofs)
         self.info = self.tr("Alle Ebenen sichtbar.")
 
     def toggle_eraser(self):
@@ -285,7 +315,7 @@ class LevelEditor:
         self.section = section
         panel = {"nav_layers": "layers", "nav_effects": "properties",
                  "nav_learn": "learn", "nav_help": "help"}.get(section)
-        if panel:
+        if panel and not (self.tutorial is not None and panel in ("layers", "properties")):
             self.sidebar.show(panel)
             if not self.show_inspector:
                 self._toggle_sidebar("inspector")
@@ -506,6 +536,10 @@ class LevelEditor:
             self.info = self.tr("Editor geöffnet")
 
     def request_close(self, on_close=None):
+        if self.tutorial is not None:
+            self.leave_tutorial()
+            if on_close is None:
+                return True
         if self.playtest is not None:
             self.stop_playtest()
         if self.dialog_open:
@@ -552,7 +586,115 @@ class LevelEditor:
             raise FileExistsError(self.tr("Ein Entwurf mit dem Namen {name} existiert bereits.", name=name))
         return name
 
+    def _reject_practice_file_action(self):
+        if self.tutorial is None:
+            return False
+        self.info = self.tr("Beende die Übung, um mit deinen eigenen Entwürfen weiterzuarbeiten.")
+        return True
+
+    def start_tutorial(self):
+        if (not self.active or self.tutorial is not None or self.dialog_open
+                or self.playtest is not None or self.preview_active):
+            return False
+        practice = studio_tutorial.practice_document()
+        self._suspended_draft = SuspendedDraft(
+            self._layers(), self._saved_layers, self.name, self._saved_name, self._legacy,
+            self.undo_stack, self.redo_stack, self.layer_view, self.camera,
+            (self.current_tile, self._object_brush, self.graphic_layer, self.placement_mode, self.collision_type,
+             self.damage_brush, self.slow_brush, self.eraser_active, self.inspect_mode, self.inspected_cell),
+            (self.section, self.show_library, self.show_inspector, self.sidebar.tab),
+        )
+        self.tutorial = studio_tutorial.Tutorial()
+        self.undo_stack, self.redo_stack = [], []
+        self.layer_view = LayerView()
+        self.camera = MapCamera(self.layout.viewport)
+        self._set_document(TUTORIAL_TITLE, practice.graphics, collisions=practice.collision,
+                           effects=practice.effects, objects=practice.objects, roofs=practice.roofs,
+                           roof_visibility=practice.roof_visibility)
+        self._set_graphic_layer("ground")
+        self._set_collision_type("WALL")
+        self.current_tile = next(iter(self.tiles), None)
+        self._object_brush = None
+        self.section = "nav_layers"
+        self.show_library = self.show_inspector = True
+        self.sidebar.show("learn")
+        self._blur_library()
+        self.resize(self.layout.bounds.size)
+        self.camera.reset()
+        self.camera.zoom_at(self.camera.board_rect.center, 3)
+        self.info = self.tr("Übung gestartet · Dein Entwurf wartet.")
+        return True
+
+    def leave_tutorial(self):
+        saved = self._suspended_draft
+        if saved is None:
+            return False
+        if self.dialog_open:
+            self._dismiss_dialog()
+        self.tutorial = self._suspended_draft = None
+        self.playtest = None
+        self.preview_active = False
+        self._preview_background = None
+        self._stop_object_move()
+        self._restore_layers(saved.layers)
+        self._saved_layers, self.name, self._saved_name, self._legacy = (
+            saved.saved_layers, saved.name, saved.saved_name, saved.legacy)
+        self.undo_stack, self.redo_stack = saved.undo, saved.redo
+        self.layer_view, self.camera = saved.layer_view, saved.camera
+        (self.current_tile, self._object_brush, self.graphic_layer, self.placement_mode, self.collision_type,
+         self.damage_brush, self.slow_brush, self.eraser_active, self.inspect_mode, self.inspected_cell) = saved.tool
+        self.section, self.show_library, self.show_inspector, tab = saved.workspace
+        self.sidebar.show(tab)
+        self._blur_library()
+        self.resize(self.layout.bounds.size)
+        self.info = self.tr("Übung beendet · Dein Entwurf ist wieder geöffnet.")
+        return True
+
+    def tutorial_progress(self):
+        return self.tutorial.progress(self) if self.tutorial is not None else ()
+
+    def tutorial_previous(self):
+        if self.tutorial is not None and self.playtest is None:
+            self.tutorial.previous()
+
+    def tutorial_next(self):
+        if self.tutorial is not None and self.playtest is None:
+            self.tutorial.next(self)
+
+    def tutorial_toggle_example(self):
+        if self.tutorial is not None:
+            self.tutorial.toggle_example()
+
+    def tutorial_retry(self):
+        if self.tutorial is None or self.playtest is not None or self.preview_active:
+            return
+        target = self.tutorial.reset_cells
+        if target is not None:
+            layer, cells = target
+            if not self._require_editable(layer):
+                return
+            if layer == "ground":
+                original = studio_tutorial.practice_document().graphics
+                changed = [(x, y) for x, y in cells if self.map[y][x] != original[y][x]]
+                if changed:
+                    self._store_undo()
+                    for x, y in changed:
+                        self.map[y][x] = original[y][x]
+            else:
+                entries = self.collisions if layer == "collision" else self.roofs
+                changed = entries.keys() & cells
+                if changed:
+                    self._store_undo()
+                    for cell in changed:
+                        del entries[cell]
+        self._stop_object_move()
+        self._reset_pointer()
+        self.tutorial.retry()
+        self.info = self.tr("Schritt zur Wiederholung bereit.")
+
     def new_map(self, name=None):
+        if self._reject_practice_file_action():
+            return False
         if name is None:
             self._name_dialog("Neuer Entwurf", self._suggest_name(), self._new_named_map)
             return False
@@ -571,6 +713,8 @@ class LevelEditor:
         return self._after_discard_confirmation(create)
 
     def save_map(self):
+        if self._reject_practice_file_action():
+            return False
         if self._legacy:
             self._name_dialog("Altformat als Entwurf speichern", self._suggest_name(), self._save_named_map)
             return False
@@ -598,6 +742,8 @@ class LevelEditor:
         return True
 
     def load_map(self, name=None):
+        if self._reject_practice_file_action():
+            return False
         if name is None:
             try:
                 names = list_drafts()
@@ -630,6 +776,9 @@ class LevelEditor:
         )
 
     def _load_document(self, name, read, *, saved_name=None, legacy=False, notice=None):
+        if self._reject_practice_file_action():
+            return False
+
         def load():
             try:
                 document = read()
@@ -670,6 +819,8 @@ class LevelEditor:
         return read_legacy_map()
 
     def _display_name(self):
+        if self.tutorial is not None:
+            return self.tr(self.name)
         if self.world_tree and self.world_tree.library and self._saved_name:
             level = self.world_tree.library.level_for_draft(self._saved_name)
             if level:
@@ -677,6 +828,8 @@ class LevelEditor:
         return self.name
 
     def open_world_tree(self):
+        if self._reject_practice_file_action():
+            return
         from modules.world_tree import WorldTree
 
         if self.world_tree is None:
@@ -743,8 +896,11 @@ class LevelEditor:
             self.graphic_layer = "ground"
             self.info = self.tr("{key}.png ausgewählt", key=key)
             return
-        self._object_brush = GraphicObject(key, *asset.cells)
-        self._set_graphic_layer("roof" if asset.category == "roof" else "objects")
+        if self.tutorial is not None and self.active_layer == "ground" and studio_tutorial.is_frost_floor(key):
+            self._set_graphic_layer("ground")
+        else:
+            self._object_brush = GraphicObject(key, *asset.cells)
+            self._set_graphic_layer("roof" if asset.category == "roof" else "objects")
         self.info = self.tr("{name} · {width}×{height} ausgewählt", name=asset.name,
                             width=asset.cells[0], height=asset.cells[1])
 
@@ -857,6 +1013,8 @@ class LevelEditor:
         self._move_anchor = None
 
     def select_for_classic(self):
+        if self._reject_practice_file_action():
+            return
         if self.dirty or not (self._saved_name or self._legacy):
             self.info = self.tr("Bitte zuerst einen Entwurf speichern oder eine gespeicherte Karte öffnen.")
             return
@@ -866,6 +1024,8 @@ class LevelEditor:
         self.info = self.tr("{name} für den nächsten Classic-Start gewählt", name=name)
 
     def select_classic_default(self):
+        if self._reject_practice_file_action():
+            return
         self.game.choose_classic_background(None, None)
         self.info = self.tr("Standardhintergrund für den nächsten Classic-Start gewählt")
 
@@ -892,6 +1052,8 @@ class LevelEditor:
             self.info = self.tr(str(error))
             return
         self.playtest = session
+        if self.tutorial is not None and all(self.tutorial_progress()[:-1]):
+            self.tutorial.playtest_started(player_count)
         self._stop_object_move()
         self._reset_pointer()
         self._blur_library()
@@ -901,6 +1063,8 @@ class LevelEditor:
     def stop_playtest(self):
         self.playtest = None
         self._preview_background = None
+        if self.tutorial is not None:
+            self.sidebar.show("learn")
         self._layout_controls()
         self.info = self.tr("Leveltest beendet · Entwurf unverändert")
 
@@ -1066,13 +1230,22 @@ class LevelEditor:
 
     def _paint_cell(self, cell):
         layer = self.active_layer
+        gx, gy = cell
+        if (self.tutorial is not None and layer == "ground" and self.layer_locked(layer)
+                and self.layer_visible(layer) and cell in studio_tutorial.FLOOR_CELLS
+                and not self.eraser_active and studio_tutorial.is_frost_floor(self.current_tile)
+                and self.map[gy][gx] != self.current_tile):
+            self.tutorial.blocked_edit(layer)
         if self.eraser_active:
             self._erase_active_cell(cell)
             return
         layers = (layer, "collision") if self.placement_mode == "combined" else (layer,)
         if not self._require_editable(*layers):
             return
-        gx, gy = cell
+        if (self.tutorial is not None and cell in studio_tutorial.PROTECTED_CORRIDOR
+                and ("collision" in layers or layer == "effects")):
+            self.info = self.tr("Dieser Durchgang bleibt für den Leveltest frei.")
+            return
         if layer == "effects":
             value = self.damage_brush if self.placement_mode == "damage" else self.slow_brush
             self._update_cell_effect(cell, self.placement_mode, value)
@@ -1080,7 +1253,7 @@ class LevelEditor:
         if layer in ("objects", "roof") and (item := self._selected_object()) is not None:
             self._paint_object(self._selected_layer_objects(), cell, item)
             return
-        tile = self.current_tile if self.current_tile in self.tiles else None
+        tile = self.current_tile if self._has_ground_art(self.current_tile) else None
         collision = self.collision_type
         change_graphics = layer == "ground" and tile is not None and self.map[gy][gx] != tile
         change_collision = "collision" in layers and self.collisions.get(cell) != collision
@@ -1501,6 +1674,8 @@ class LevelEditor:
                         max_width=rect.width - 15)
 
     def _button_available(self, action_id):
+        if self.tutorial is not None and action_id in PRACTICE_FILE_ACTIONS:
+            return False
         if action_id == "file_undo":
             return bool(self.undo_stack)
         if action_id == "file_redo":
@@ -1652,11 +1827,13 @@ class LevelEditor:
         if authored_view or self.layer_visible("ground"):
             for y, row in enumerate(self.map):
                 for x, key in enumerate(row):
-                    if key in self.tiles:
+                    if self._has_ground_art(key):
                         position = (board.x + x * size, board.y + y * size)
                         if not viewport.colliderect(pygame.Rect(position, (size, size))):
                             continue
-                        screen.blit(self._tile_for_view(key, size), position)
+                        tile = self._tile_for_view(key, size)
+                        if tile is not None:
+                            screen.blit(tile, position)
         if authored_view or self.layer_visible("objects"):
             draw_graphic_objects(screen, board, self.objects)
         if self.playtest is None and (self.show_roofs or self.preview_active):
@@ -1671,6 +1848,12 @@ class LevelEditor:
             draw_collision_overlay(screen, board, self.collisions)
         if self.show_effects and not self.preview_active:
             draw_effect_overlay(screen, board, size, self.effects)
+        if self.tutorial is not None and not authored_view:
+            color = {1: LAYER_COLORS["collision"], 2: LAYER_COLORS["roof"]}.get(
+                self.tutorial.step_index, COLOR_SELECT)
+            for x, y in self.tutorial.marked_cells:
+                marker = pygame.Rect(board.x + x * size, board.y + y * size, size, size)
+                pygame.draw.rect(screen, color, marker.inflate(-2, -2), 2)
         if self.playtest is not None:
             self.playtest.draw(screen, board)
         elif self.inspect_mode and self.inspected_cell is not None:
@@ -1686,10 +1869,18 @@ class LevelEditor:
         screen.set_clip(old_clip)
         pygame.draw.rect(screen, COLOR_FRAME, viewport, 1)
 
+    def _has_ground_art(self, key):
+        return key in self.tiles or (self.tutorial is not None and studio_tutorial.is_frost_floor(key))
+
     def _tile_for_view(self, key, size):
         cached = self._scaled_tiles.get(key)
         if cached is None or cached.get_width() != size:
-            cached = self._scaled_tiles[key] = pygame.transform.scale(self.tiles[key], (size, size))
+            source = self.tiles.get(key)
+            if source is None:
+                source = load_frostage_image(key)
+            if source is None:
+                return None
+            cached = self._scaled_tiles[key] = pygame.transform.scale(source, (size, size))
         return cached
 
     def _draw_object_preview(self, screen):

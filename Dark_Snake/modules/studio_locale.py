@@ -3,6 +3,7 @@
 from modules.editor_buttons import BUTTON_EN
 from modules.studio_editor_text import EDITOR_EN
 from modules.studio_panel_text import PANEL_EN
+from modules.studio_tutorial_text import TUTORIAL_EN
 
 
 DEFAULT_STUDIO_LANGUAGE = "en"
@@ -45,4 +46,4 @@ class StudioLocale:
                 return message
 
 
-_ENGLISH = BUTTON_EN | PANEL_EN | EDITOR_EN
+_ENGLISH = BUTTON_EN | PANEL_EN | EDITOR_EN | TUTORIAL_EN

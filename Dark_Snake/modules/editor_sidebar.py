@@ -9,6 +9,7 @@ from modules.editor_buttons import EditorButtons
 from modules.editor_layers import LAYER_COLORS, LAYER_LABELS
 from modules.graphic_objects import object_anchor_at
 from modules.studio_locale import StudioLocale
+from modules.studio_tutorial_text import TUTORIAL_STEPS, TUTORIAL_TITLE
 
 
 PANEL = (24, 33, 48)
@@ -25,6 +26,7 @@ TABS = (
 )
 TAB_IDS = frozenset(key for key, _ in TABS)
 GRAPHIC_LAYERS = frozenset(("ground", "objects", "roof"))
+LEARN_NAVIGATION = frozenset(("learn_start", "learn_previous", "learn_next", "learn_retry", "learn_exit"))
 
 
 @dataclass(frozen=True, slots=True)
@@ -110,7 +112,7 @@ class StudioSidebar:
             entries.append(_Entry(self.tr("Ebene ausgeblendet"),
                                   self.tr("Die aktive Ebene im Layer Explorer einblenden.")))
         item = editor._selected_object()
-        has_tile = editor.graphic_layer == "ground" and editor.current_tile in editor.tiles
+        has_tile = editor.graphic_layer == "ground" and editor._has_ground_art(editor.current_tile)
         if mode in ("graphics", "combined") and (has_tile or item is not None):
             size = f" · {item.width} × {item.height}" if item is not None else ""
             entries.append(_Entry(self.tr("Gewählte Grafik"), f"{_art_name(editor, editor.current_tile)}{size}"))
@@ -267,6 +269,88 @@ class StudioSidebar:
                    controls=ground_controls, accent=LAYER_COLORS["ground"]),
         ]
 
+    def _learning(self, editor, editing):
+        if editor.tutorial is not None:
+            return self._tutorial(editor, editing)
+        entries = [
+            _Entry(self.tr(TUTORIAL_TITLE),
+                   self.tr("Baue eine Übungskarte in fünf Schritten. Dein aktueller Entwurf bleibt erhalten.")),
+        ]
+        if editing:
+            entries.append(_Entry(self.tr("Übung starten"), action=editor.start_tutorial, action_id="learn_start"))
+        entries.extend((
+            _Entry(self.tr("Dachbogen ausprobieren"),
+                   self.tr("Öffne die Dach-Demo und schalte im Layer Explorer Dach und Kollision einzeln um. "
+                           "So siehst du den freien Durchgang zwischen den Säulen.")),
+            _Entry(self.tr("Durch den Bogen fahren"),
+                   self.tr("Starte Test (1P) oder Test (2P). Mit der Standardbelegung lenkt W Spieler 1 "
+                           "und ↑ Spieler 2 durch den Bogen. Esc oder F2 beendet den Test.")),
+        ))
+        if editing:
+            entries.append(_Entry(self.tr("Dach-Demo öffnen"), action=editor.load_roof_demo,
+                                  action_id="test_roof_demo"))
+        return entries
+
+    def _tutorial_control(self, action_id, label, action, *, hint=None, enabled=True, active=False):
+        return _Control(action_id, self.tr(label), action,
+                        self.tr(hint or self.button_art.hint(action_id, label)), active, enabled)
+
+    def _tutorial(self, editor, editing):
+        progress = editor.tutorial_progress()
+        index = editor.tutorial.step_index
+        last_step = index == len(TUTORIAL_STEPS) - 1
+        previous_complete = all(progress[:index])
+        complete = previous_complete and progress[index]
+        title, task, example = (self.tr(source) for source, _ in TUTORIAL_STEPS[index])
+        entries = [
+            _Entry(title,
+                   self.tr("Schritt {step}/{total} · {checked} geprüft",
+                           step=index + 1, total=len(TUTORIAL_STEPS), checked=sum(progress)),
+                   accent=FOCUS if complete else None),
+        ]
+        if not editing:
+            if editor.playtest is not None:
+                entries.append(_Entry(self.tr("Test läuft"),
+                                      self.tr("Esc oder F2 beendet den Test und zeigt deinen Fortschritt.")))
+            else:
+                entries.append(_Entry(self.tr("Beende die Vorschau, um mit der Übung fortzufahren.")))
+            return entries
+
+        control = self._tutorial_control
+        leave = _Entry(self.tr("Zurück zum Editor"), action=editor.leave_tutorial, action_id="learn_exit")
+        show_example = editor.tutorial.example_visible
+        finished = last_step and complete
+        if finished:
+            entries.extend((_Entry(self.tr("Glückwunsch! Dein erstes FrostAge-Level ist fertig.")), leave))
+        else:
+            entries.append(_Entry(self.tr("Beispiel") if show_example else "", example if show_example else task))
+        if last_step:
+            entries.append(_Entry("", controls=(
+                control("test_player_1", "Test (1P)", lambda: editor.start_playtest(1),
+                        hint="Starte den 1P-Test für diesen Schritt.", enabled=previous_complete),
+                control("test_player_2", "Test (2P)", lambda: editor.start_playtest(2),
+                        hint="Probiere die Übungskarte zu zweit aus.", enabled=complete),
+            )))
+        entries.extend((
+            _Entry("", controls=(
+                control("learn_previous", "Zurück", editor.tutorial_previous, enabled=index > 0),
+                control("learn_next", "Weiter", editor.tutorial_next, enabled=complete and not last_step,
+                        hint="Schließe diesen und die vorherigen Schritte ab." if not complete else None),
+            )),
+            _Entry("", controls=(
+                control("learn_retry", "Wiederholen", editor.tutorial_retry),
+                control("learn_example", "Beispiel", editor.tutorial_toggle_example,
+                        active=editor.tutorial.example_visible),
+            )),
+        ))
+        if finished and show_example:
+            entries.append(_Entry(self.tr("Beispiel"), example))
+        if not previous_complete:
+            entries.append(_Entry(self.tr("Öffne zuerst die vorherigen Schritte und prüfe ihre Aufgaben.")))
+        if not finished:
+            entries.append(leave)
+        return entries
+
     def _entries(self, editor):
         editing = not editor.preview_active and editor.playtest is None
         if self.tab == "properties":
@@ -276,18 +360,7 @@ class StudioSidebar:
         if self.tab == "cell":
             return self._cell(editor, editing)
         if self.tab == "learn":
-            entries = [
-                _Entry(self.tr("Dachbogen ausprobieren"),
-                       self.tr("Öffne die Dach-Demo und schalte im Layer Explorer Dach und Kollision einzeln um. "
-                               "So siehst du den freien Durchgang zwischen den Säulen.")),
-                _Entry(self.tr("Durch den Bogen fahren"),
-                       self.tr("Starte Test (1P) oder Test (2P). Mit der Standardbelegung lenkt W Spieler 1 "
-                               "und ↑ Spieler 2 durch den Bogen. Esc oder F2 beendet den Test.")),
-            ]
-            if editing:
-                entries.append(_Entry(self.tr("Dach-Demo öffnen"), action=editor.load_roof_demo,
-                                      action_id="test_roof_demo"))
-            return entries
+            return self._learning(editor, editing)
         return [
             _Entry(self.tr("Layer Explorer"),
                    self.tr("Wähle die aktive Ebene zum Malen. Sichtbarkeit und Sperre funktionieren unabhängig. "
@@ -476,5 +549,7 @@ class StudioSidebar:
                         if target.collidepoint(local_pos):
                             if control.enabled:
                                 control.action()
+                                if control.action_id in LEARN_NAVIGATION:
+                                    self._scroll = 0
                             return True
         return True

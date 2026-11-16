@@ -391,6 +391,32 @@
         223
       ]
     },
+    "learn_example": {
+      "file": "learn_example.png",
+      "source": "GamePICs/Learn/Examples-removebg-preview.png",
+      "sha256": "eb8b8ea07c94990970fe85cf73a22c0714840fbd70ccd6818a0715b79f9535b7",
+      "width": 1235,
+      "height": 202,
+      "art_bounds": [
+        3,
+        1,
+        1232,
+        200
+      ]
+    },
+    "learn_start": {
+      "file": "learn_start.png",
+      "source": "GamePICs/Learn/My_FIrst_LvL-removebg-preview.png",
+      "sha256": "faf091a4da2996faa6317eb5056d8c131a0f2ff0f0952d6b7bbb0a67fa19b5e5",
+      "width": 1222,
+      "height": 204,
+      "art_bounds": [
+        2,
+        6,
+        1216,
+        196
+      ]
+    },
     "nav_build": {
       "file": "nav_build.png",
       "source": "GamePICs/Build/Build-removebg-preview.png",
