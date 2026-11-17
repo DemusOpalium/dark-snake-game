@@ -106,7 +106,7 @@ def test_respawn_protection_ignores_normal_enemy_until_expiry(monkeypatch, playe
     game, clock = make_game(monkeypatch, players)
     game.respawn_invincible_until = clock.now + 0.5
     frame_without_movement(game, clock)
-    assert game.player_health == 100 if players == 1 else game.player_health_p1 == 100
+    assert (game.player_health if players == 1 else game.player_health_p1) == 100
 
     clock.now += 0.5
     frame_without_movement(game, clock)
