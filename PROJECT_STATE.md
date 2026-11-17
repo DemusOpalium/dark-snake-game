@@ -1,4 +1,6 @@
-# Dark Snake – Projektstatus Alpha 2
+# Dark Snake – Historischer Projektstatus Alpha 2
+
+> **Historische Momentaufnahme, nicht der aktuelle Featurestand.** Für die aktuelle spielbare Alpha und die neueren World-Studio-PRs bis einschließlich #180 siehe [README.de.md](README.de.md), [ROADMAP.md](ROADMAP.md) und [GitHub Pull Requests](https://github.com/DemusOpalium/dark-snake-game/pulls?q=is%3Apr+is%3Amerged). Die folgenden Punkte beschreiben einen früheren Alpha-2-Entwicklungsstand und wurden bewusst nicht rückwirkend umgedeutet.
 
 ## Erledigt
 
