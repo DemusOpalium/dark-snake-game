@@ -462,6 +462,7 @@ class Game:
         self.clock = pygame.time.Clock()
         self.metrics = FrameMetrics()
         self.respawn = RespawnCountdown()
+        self._respawn_recent = False
         self._respawn_visual = None  # Lazy, only loads FrostAge PNG on the first respawn.
         self.effect_manager = EffectManager()
         self.frost = FrostPrototype()
@@ -781,6 +782,7 @@ class Game:
 
     def reset_game(self):
         self.respawn.clear()
+        self._respawn_recent = False
         self._menu_suspended = False
         self.frost.clear()
         self.metrics.cancel_pending()
@@ -855,6 +857,7 @@ class Game:
     def clear_game_state(self):
         """Drop every object belonging to a round before showing a menu."""
         self.respawn.clear()
+        self._respawn_recent = False
         self._menu_suspended = False
         self.metrics.cancel_pending()
         self._reset_snake_stalls()
@@ -1274,6 +1277,8 @@ class Game:
         return None
 
     def _resolve_boss_flame_hits(self, projectile):
+        if self._respawn_protection_active():
+            return False
         hit = False
         for (x, y), health_attr in self._player_heads_with_health():
             head_rect = pygame.Rect(x * GRID_SIZE, y * GRID_SIZE, GRID_SIZE, GRID_SIZE)
@@ -1495,6 +1500,8 @@ class Game:
             
         # [KS_TAG: BOSS_FLAME_COLLISION]        # ----- ENEMY PROJECTILE COLLISION -----
         for proj in self.enemy_projectiles[:]:
+            if self._respawn_protection_active():
+                continue
             if self.player_count == 1 and self.snake:
                 head_rect = pygame.Rect(self.snake[0][0] * GRID_SIZE, self.snake[0][1] * GRID_SIZE, GRID_SIZE, GRID_SIZE)
                 if proj.rect.colliderect(head_rect):
@@ -1835,10 +1842,15 @@ class Game:
         self._reset_snake_interpolation()
         now = time.time()
         self.respawn.begin(now)
+        self._respawn_recent = True
         self.respawn_invincible_until = now + RESPAWN_SECONDS + POST_RESPAWN_PROTECTION
         self._effect_update_time = time.monotonic()
         if not self.headless and SOUNDS.get("dice"):
             SOUNDS["dice"].play()
+
+    def _respawn_protection_active(self):
+        """Protect only the new countdown respawn from all hostile shots."""
+        return self._respawn_recent and time.time() < self.respawn_invincible_until
 
     def _tick_respawn(self):
         """Advance the overlay clock without updating enemies or moving either head."""
