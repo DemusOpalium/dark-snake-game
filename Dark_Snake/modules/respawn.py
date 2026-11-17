@@ -175,6 +175,7 @@ class FrostRespawnVisual:
 
         # Reuse the panel and pre-rendered digits; no font or Surface allocation
         # at 60 FPS, only two small blits on this frame.
+        self.card.fill((0, 0, 0, 0))  # Clear old digit: alpha-blitting alone would ghost.
         self.card.blit(self.card_background, (0, 0))
         digit = self.digits[countdown.number]
         self.card.blit(digit, digit.get_rect(center=(205, 103)))
