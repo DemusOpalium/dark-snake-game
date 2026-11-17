@@ -10,4 +10,6 @@
 - Start at [ASSET_GUIDE.md](ASSET_GUIDE.md) before using newly uploaded artwork, buttons, snake heads or bodies; it distinguishes source artwork from bundled runtime assets and from planned functionality.
 - [GamePICs/README.md](GamePICs/README.md) explains staging, and [GamePICs/asset_inventory.json](GamePICs/asset_inventory.json) is a **dated snapshot** of 81 staged UI buttons plus 68 candidate head/body images (not a live game mapping).
 - Do not import `GamePICs/` by runtime paths, move source PNGs, or turn unimplemented events/skins into working features merely because artwork exists.
-- Check current code/tests and [ROADMAP.md](ROADMAP.md) for feature status; older [PROJECT_STATE.md](PROJECT_STATE.md) and [DEV_STRUCTURE.md](DEV_STRUCTURE.md) may describe earlier alphas.
+- Check current code/tests and [ROADMAP.md](ROADMAP.md) for feature status; [PROJECT_STATE.md](PROJECT_STATE.md) and parts of [ARCHITECTURE_AUDIT.md](ARCHITECTURE_AUDIT.md) are historical snapshots. The guides do not supersede the implementation.
+- Work on a dedicated branch and open a **draft PR**; do not auto-merge. Before removing apparently unused code, check UI action IDs, Pygame callbacks, dynamic imports and PyInstaller bundled resources. Keep the changes small and testable.
+- Maintenance findings and ordering: [Issue #181](https://github.com/DemusOpalium/dark-snake-game/issues/181), [#183](https://github.com/DemusOpalium/dark-snake-game/issues/183), [#184](https://github.com/DemusOpalium/dark-snake-game/issues/184).
