@@ -1,5 +1,5 @@
 # 📦 DARK SNAKE – Entwicklerstruktur und Code-Navigation
-**Standprüfung:** 15.11.2026 · `main` nach PR #173. **PR #174 ist ein separater, noch offener Draft** – nicht als Releasebestand zählen.
+**Standprüfung:** 17.11.2026 · `main` nach PR #180. Die World-Studio-PRs #174 (Layer Explorer), #179 (Sprache/Pinsel) und #180 (Lernsystem) sind gemergt. Der veröffentlichte Windows-Alpha-Tag vom 13.11.2026 ist älter.
 
 > Das ist eine **Orientierung zu vorhandenen Pfaden**, keine vollständig automatisch erzeugte Baumansicht. Bei Änderungen immer aktuellen Code und Tests lesen; die Quellcode-Navigation ersetzt weder [Roadmap](ROADMAP.md) noch [Asset-Legende](ASSET_GUIDE.md).
 
@@ -23,6 +23,9 @@ dark-snake-game/
 │  │  ├─ editor_buttons.py            # UI-PNGs / stabile Action-IDs / Cache
 │  │  ├─ level_drafts.py              # JSON-Level-Format, Lesen / Schreiben
 │  │  ├─ level_playtest.py            # Isolierter 1P-/2P-Leveltest
+│  │  ├─ studio_tutorial.py           # Interaktiver FrostAge-Übungskurs
+│  │  ├─ studio_locale.py             # Editorübersetzung DE/EN
+│  │  ├─ editor_layers.py             # Layer Explorer, Sperren und Solo
 │  │  ├─ level_effects.py             # Editor-Effektfelder
 │  │  ├─ frostage_assets.py           # FrostAge-Laufzeitkatalog
 │  │  ├─ aoe_zones.py                 # AoE-Bausteine
@@ -30,7 +33,7 @@ dark-snake-game/
 │  │  └─ simulation_reports.py        # Entwicklerberichte
 │  └─ assets/                          # Eingebundene EXE-Ressourcen
 │     └─ graphics/
-│        ├─ editor_ui/                # Derzeit 48 aktive PNG-Buttons + catalog.json
+│        ├─ editor_ui/                # 58 registrierte PNGs / 62 Action-IDs + catalog.json
 │        └─ frostage/                 # 175 FrostAge-PNGs + catalog.json
 ├─ GamePICs/                           # Konzeptgrafiken, Originale, Uploads
 │  ├─ Incoming/Frost_Tiles/           # 175 FrostAge-Original-PNGs
@@ -63,7 +66,7 @@ Technische Ziele und die Pflicht-Messungen stehen im [Qualitätsplan](QUALITY_PE
 ## Offene Architektur-Grenzen
 
 - Die historische `game.py` enthält weiterhin eng gekoppelte Systeme; neue Mechaniken möglichst in getestete Module/Datenprofile ausgliedern. Keine großflächige Umschreibung ohne Messung und Regressionstests.
-- Der neue Layer Explorer wird **in PR #174** bearbeitet. Seine noch nicht gemergten Dateien nicht vorzeitig als `main`-Bestand aufführen.
+- Der Layer Explorer ist seit **PR #174** integriert; Sprache/Pinsel seit **#179**, geführtes Tutorial seit **#180**. Globale UI-Übersetzung und eigenständiger Adventure-Modus bleiben offene Ziele.
 - Das vorhandene Grafik-/Levelsynchronisationssystem unterscheidet Classic, isolierten Editor-Leveltest und späteren Adventure-Modus. Nicht unbemerkt koppeln.
 - Ein optionales **Mikro-Raster** war früher eine Idee. Aktuell bleibt das logische Raster unverändert. Eine spätere reine Zeicheninterpolation darf weder gespeicherte Kollisionen noch Simulatorabläufe verschieben.
 
