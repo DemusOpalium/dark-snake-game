@@ -52,16 +52,19 @@ def safe_spawn_cells(players, width, height, safe):
 class RespawnCountdown:
     """Sampled active-gameplay timer. Pauses while menus/tools are on top."""
     elapsed: float = 0.0
+    began_at: float | None = None
     last_sample: float | None = None
     active: bool = False
 
     def begin(self, now):
         self.elapsed = 0.0
+        self.began_at = now
         self.last_sample = now
         self.active = True
 
     def clear(self):
         self.elapsed = 0.0
+        self.began_at = None
         self.last_sample = None
         self.active = False
 
