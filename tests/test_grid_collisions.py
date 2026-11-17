@@ -80,8 +80,9 @@ def place_item(game, kind, position):
     return item
 
 
-def respawn_position():
-    return [(game_module.GRID_WIDTH // 2, game_module.GRID_HEIGHT // 2)]
+def respawn_position(players=1, suffix=""):
+    x, y = game_module.GRID_WIDTH // 2, game_module.GRID_HEIGHT // 2
+    return [(x, y + 2 if players == 2 and suffix == "2" else y)]
 
 
 @pytest.mark.parametrize("players,suffix", PLAYER_CASES)
@@ -125,7 +126,7 @@ def test_body_block_preserves_position_and_health_until_three_seconds(monkeypatc
     assert game.lives == 2
     assert game.game_state == GameState.GAME
     assert getattr(game, health_attr) == 100
-    assert getattr(game, f"snake{suffix}") == getattr(game, f"previous_snake{suffix}") == respawn_position()
+    assert getattr(game, f"snake{suffix}") == getattr(game, f"previous_snake{suffix}") == respawn_position(players, suffix)
     assert game.respawn_invincible_until > clock.now
 
 
@@ -250,7 +251,8 @@ def test_two_expiring_body_block_timers_cost_one_shared_life(monkeypatch):
 
     advance_frames(clock, game.update, 1)
     assert game.lives == 2
-    assert game.snake1 == game.snake2 == respawn_position()
+    assert game.snake1 == respawn_position(2, "1")
+    assert game.snake2 == respawn_position(2, "2")
     advance_frames(clock, game.update, 1)
     assert game.lives == 2
 
@@ -276,7 +278,8 @@ def test_first_player_escape_does_not_change_second_players_deadline(monkeypatch
 
     advance_frames(clock, game.update, 1)
     assert game.lives == 2
-    assert game.snake1 == game.snake2 == respawn_position()
+    assert game.snake1 == respawn_position(2, "1")
+    assert game.snake2 == respawn_position(2, "2")
 
 
 @pytest.mark.parametrize("players,suffix", [(1, ""), (2, "1")])
@@ -304,7 +307,7 @@ def test_teleport_restarts_the_timer_for_a_new_body_block(monkeypatch, players, 
 
     advance_frames(clock, game.update, 1)
     assert game.lives == 2
-    assert getattr(game, f"snake{suffix}") == respawn_position()
+    assert getattr(game, f"snake{suffix}") == respawn_position(players, suffix)
 
 
 @pytest.mark.parametrize("round_change", ["restart", "respawn"])
@@ -321,6 +324,11 @@ def test_new_body_block_after_round_change_gets_a_fresh_timer(monkeypatch, round
         assert game.snake == respawn_position()
         assert game.lives == 2
         remaining_lives = 2
+        # A completed respawn must finish its three-second countdown before
+        # a fresh body-block timer can start.
+        clock.now += 3
+        game.update()
+        assert not game.respawn.active
 
     game.snake = list(BODY_CONTACT)
     game.next_direction = Direction.RIGHT
