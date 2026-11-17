@@ -21,7 +21,7 @@
 
 # 🐍 DARK SNAKE – WORLD 2 GO
 ## Master-Ideenliste · Entwicklungstafel · Roadmap
-**Stand: 15.11.2026 · geprüftes `main` nach PR #176; PR #174–#176 sind gemergt. UI 2.0 ist bisher geplant, nicht umgesetzt.**
+**Standabgleich: 17.11.2026 · geprüftes `main` nach PR #180. World Studio PR C (#174), D (#179) und E (#180) sind gemergt. UI 2.0 und Adventure-Ziele bleiben geplant.**
 
 **Projektziel:** DARK Snake vom klassischen Arcade-Spiel zu einem modularen Spiel mit eigenen Welten, Spezialwaffen, individuellen Bossen, einem Level-Baukasten und dem späteren Adventure-Modus **Mycelium Age** weiterentwickeln.
 
@@ -230,7 +230,7 @@
 - ⬜ **Ebenenvergleich.** Mehrere Ebenen mit abgestufter Deckkraft zur Orientierung anzeigen.
 - ✅ **#179 · PR D · Deutsch / English und Hilfe.** Editor-Sprache im laufenden Betrieb wechseln und speichern. Hilfe und Lernen erklären Werkzeuge, Ebenen, Kollision, Dächer, Entwürfe und Leveltests.
 - ⬜ **Fullscreen / Windowed · separater Folge-PR.** Die bestehende Fenstersteuerung für den Editor erweitern. Vorherige Fenstergröße speichern, beim Wechsel den sichtbaren Kartenausschnitt anpassen und beim Verlassen wiederherstellen. Spielraster, Entwurf und Verlauf erhalten. Resize-Ereignisse, DPI-Skalierung und mehrere Monitore unter Windows prüfen.
-- 🔧 **PR E · Learning System.** „Mein erstes FrostAge-Level“ mit fünf geprüften Schritten, eigener Übungskarte und direkter Rückkehr zum offenen Entwurf. Die Übung verwendet die vorhandenen Editorwerkzeuge und Leveltests.
+- ✅ **#180 · PR E · Learning System.** „Mein erstes FrostAge-Level“ mit fünf geprüften Schritten, eigener Übungskarte und direkter Rückkehr zum offenen Entwurf. Die Übung verwendet vorhandene Editorwerkzeuge und 1P-/2P-Leveltests. Merge bestätigt; gesonderte sichtbare Windows-Gesamtabnahme bleibt zu dokumentieren.
 - ⬜ **PR F · Lighting & Atmosphere.** Helligkeit, platzierbare und spielergebundene Lichtquellen, Flackern, Nebel und Schattenflächen. Darstellung und HUD mit mehreren Lichtquellen bei 1350×930 prüfen.
 - ⬜ **PR G · Trigger und Fallen.** Datenbasierte Auslöser, Bedingungen und Aktionen mit bestehenden Schadens- und Verlangsamungsregeln verbinden. Beispielkette: Druckplatte → Tor öffnet → Spezialgegner erscheint → Truhe wird freigeschaltet.
 - ⬜ **Interaktive Levelobjekte.** Truhen, Fallen, Druckplatten, Schalter, Tore, Schlüssel und Portale mit eigenen Interaktionsregeln. Normale Gegner, Bosse und zufällige Items behalten die regulären Spawnmechanismen.
@@ -441,7 +441,7 @@
 - ✅ `titel2.png` ist bereits als Fenster-Icon eingebunden; EXE-Dateiicon gesondert prüfen.
 - ⬜ Neue, unfertige PNG-Dateien zunächst in `GamePICs/Incoming/` nach Projektilen, Bossen, Gegnern, AoE, Heads, Bodies, Hintergründen und Animationen ablegen.
 - ✅ Neue Bilder über GitHub-Uploads gesammelt; 48 geeignete Editorbilder nach Prüfung in separate Runtime-Assets übernommen.
-- 🔧 Stabile Katalog-IDs und Herkunft für 48 Editor-Buttons sowie 175 FrostAge-Grafiken dokumentiert; weitere Rohbilder teils mit `ksnip_`-Namen, noch nicht vollständig geprüft.
+- ✅ Stabile Katalog-IDs und Herkunft für derzeit **58 Editor-PNGs / 62 Action-IDs** sowie 175 FrostAge-Grafiken dokumentiert; weitere Rohbilder teils mit `ksnip_`-Namen noch nicht vollständig geprüft.
 - ✅ Originalbilder bleiben in `GamePICs`; 48 Editor-Grafiken als Laufzeitkopien und skalierte Cache-Darstellung integriert.
 - ✅ PNG-Abmessungen, transparente Bildbereiche und Original-Hashes der 48 integrierten Buttons durch Katalog und Tests geprüft.
 - ✅ FrostAge- und Editorgrafiken über explizite Integrations-PRs eingebunden; neue Gegner-/Projektilmechaniken bleiben offen.
@@ -470,8 +470,8 @@
 # 🗺️ ENTWICKLUNGSREIHENFOLGE
 
 **PHASE 1 – AKTUELLE ARBEIT**
-✅ Frost, Simulator 2.0 und World Studio nach PR #174 auf `main`: 1P/2P-Test, Roof/Foreground, Rand-Builder, 55 registrierte Editor-Bildaktionen (48 + 7), Ebenensperren und Solo-Modus. ✅ PR #175 aktualisierte die Qualitätsdokumentation.
-⬜ **Nächster Kontrollpunkt:** Sichtbare Windows-Abnahme des Layer Explorers und die erste Performance-Baseline auf dem gemergten Stand dokumentieren. [Messplan](QUALITY_PERFORMANCE_PLAN.md).
+✅ Frost, Simulator 2.0 und World Studio nach PR #180 auf `main`: 1P-/2P-Test, Roof/Foreground, Rand-Builder, Layer Explorer, DE/EN im Editor, Frost-Pinsel und interaktiver Lernkurs. Laufzeitkatalog: **58 Editor-PNGs für 62 Action-IDs**.
+⬜ **Nächster Kontrollpunkt:** Sichtbare Windows-Abnahme des PR-E-Lernkurses und erste reproduzierbare Performance-Baseline. Qualitätswartung: [Classic-Regeln #181](https://github.com/DemusOpalium/dark-snake-game/issues/181), [Security #183](https://github.com/DemusOpalium/dark-snake-game/issues/183), [Code-/Dokumentationspflege #184](https://github.com/DemusOpalium/dark-snake-game/issues/184). [Messplan](QUALITY_PERFORMANCE_PLAN.md).
 💡 **Neue Testbeobachtungen (15.11.):** FrostAge-Objekte sind einzeln zu stempeln, Classic-Ground-Tiles lassen sich durch Ziehen malen; langfristig UX vereinfachen, World Backgrounds vor einzelner Massen-Kachelkunst priorisieren. Bossfight 2.0 als gesondertes datenbasiertes Spielsystem planen.
 
 **PHASE 2 – EFFECT & WEAPON SYSTEM 2.0**
