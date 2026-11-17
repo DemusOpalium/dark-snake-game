@@ -133,9 +133,22 @@ class FrostRespawnVisual:
     """A small lightweight graphic, cached once and rendered above gameplay."""
 
     def __init__(self):
-        self.title = pygame.font.SysFont("Segoe UI", 29, bold=True)
-        self.number = pygame.font.SysFont("Segoe UI", 70, bold=True)
-        self.hint = pygame.font.SysFont("Segoe UI", 20)
+        title_font = pygame.font.SysFont("Segoe UI", 29, bold=True)
+        number_font = pygame.font.SysFont("Segoe UI", 70, bold=True)
+        hint_font = pygame.font.SysFont("Segoe UI", 20)
+        self.card = pygame.Surface((410, 208), pygame.SRCALPHA)
+        self.card.fill((8, 21, 43, 200))
+        pygame.draw.rect(self.card, (102, 190, 235, 220),
+                         self.card.get_rect(), 2, border_radius=15)
+        pygame.draw.rect(self.card, (40, 88, 136, 105),
+                         (7, 7, 396, 194), 1, border_radius=12)
+        title = title_font.render("FROSTAGE  ·  RESPAWN", True, (185, 233, 255))
+        hint = hint_font.render("RICHTUNG JETZT WÄHLEN", True, (198, 223, 235))
+        self.card.blit(title, title.get_rect(center=(205, 35)))
+        self.card.blit(hint, hint.get_rect(center=(205, 170)))
+        self.card_background = self.card.copy()
+        self.digits = {n: number_font.render(str(n), True, (240, 250, 255))
+                       for n in (1, 2, 3)}
         art = load_frostage_image(FROST_ART_ID)
         self.art = (pygame.transform.smoothscale(art, (110, 110))
                     if art is not None else None)
@@ -160,14 +173,9 @@ class FrostRespawnVisual:
                 origin = (x - frame.get_width() // 2, y - frame.get_height() // 2)
                 surface.blit(frame, origin)
 
-        card = pygame.Surface((410, 208), pygame.SRCALPHA)
-        card.fill((8, 21, 43, 200))
-        pygame.draw.rect(card, (102, 190, 235, 220), card.get_rect(), 2, border_radius=15)
-        pygame.draw.rect(card, (40, 88, 136, 105), (7, 7, 396, 194), 1, border_radius=12)
-        title = self.title.render("FROSTAGE  ·  RESPAWN", True, (185, 233, 255))
-        digit = self.number.render(str(countdown.number), True, (240, 250, 255))
-        hint = self.hint.render("RICHTUNG JETZT WÄHLEN", True, (198, 223, 235))
-        card.blit(title, title.get_rect(center=(205, 35)))
-        card.blit(digit, digit.get_rect(center=(205, 103)))
-        card.blit(hint, hint.get_rect(center=(205, 170)))
-        surface.blit(card, card.get_rect(center=(width // 2, height // 2)))
+        # Reuse the panel and pre-rendered digits; no font or Surface allocation
+        # at 60 FPS, only two small blits on this frame.
+        self.card.blit(self.card_background, (0, 0))
+        digit = self.digits[countdown.number]
+        self.card.blit(digit, digit.get_rect(center=(205, 103)))
+        surface.blit(self.card, self.card.get_rect(center=(width // 2, height // 2)))
