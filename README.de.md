@@ -58,6 +58,6 @@ Tasten lassen sich im Spiel anpassen. Mehr unter [Steuerung](CONTROLS.md). Das H
 
 DARK SNAKE entsteht Stück für Stück als langfristiges Hobbyprojekt. Ich spiele selbst, entdecke Fehler und interessante Ideen und entwickle das Spiel weiter. Wer testen, Rückmeldung geben oder mitentwickeln möchte, ist herzlich willkommen. Es geht um Spaß am Spielen und Gestalten — nicht darum, das perfekte Spiel zu behaupten.
 
-**[💬 Discussions](https://github.com/DemusOpalium/dark-snake-game/discussions)** · **[🐛 Issues](https://github.com/DemusOpalium/dark-snake-game/issues)** · **[🛣️ Roadmap](ROADMAP.md)** · **[📷 Galerie](GALLERY.md)**
+**[💬 Discussions](https://github.com/DemusOpalium/dark-snake-game/discussions)** · **[🐛 Issues](https://github.com/DemusOpalium/dark-snake-game/issues)** · **[🛣️ Roadmap](ROADMAP.md)** · **[☕ Developer Blackboard](DEVELOPMENT_BLACKBOARD.md)** · **[📷 Galerie](GALLERY.md)**
 
 **Lizenz:** [MIT](LICENSE). Entstanden mit Python, pygame und der Zusammenarbeit von Mensch und KI. 🐍
