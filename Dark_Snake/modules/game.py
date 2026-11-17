@@ -982,6 +982,8 @@ class Game:
         return True
 
     def _advance_snakes(self, invincible):
+        if self.respawn.active:
+            return
         players = (("", self.snake),) if self.player_count == 1 else (
             ("1", self.snake1), ("2", self.snake2))
         for player, (suffix, snake) in enumerate(players, start=1):
@@ -1846,7 +1848,9 @@ class Game:
         playing = (self.game_state in (GameState.GAME, GameState.BOSS_FIGHT)
                    and not self.admin_panel.active and not self.level_editor.active)
         if self.respawn.step(now, playing=playing):
-            shift_round_timers(self, self.respawn.elapsed)
+            # Include time in PAUSE/editor: the world was frozen for that, too.
+            frozen_wall_seconds = max(0.0, now - self.respawn.began_at)
+            shift_round_timers(self, frozen_wall_seconds)
             self.last_update_time = now
             self._effect_update_time = time.monotonic()
             self.respawn_invincible_until = now + POST_RESPAWN_PROTECTION
@@ -2157,8 +2161,9 @@ class Game:
             if self._respawn_visual is None:
                 self._respawn_visual = FrostRespawnVisual()
             heads = self._player_heads_with_health()
-            head_centers = [((pos[0] + 0.5) * GRID_SIZE,
-                             (pos[1] + 0.5) * GRID_SIZE) for pos, _ in heads]
+            head_centers = [(pos[0] * GRID_SIZE + GRID_SIZE // 2,
+                             pos[1] * GRID_SIZE + GRID_SIZE // 2)
+                            for pos, _ in heads]
             self._respawn_visual.draw(self.screen, self.respawn, head_centers)
         self.admin_panel.draw(self.screen)
 
