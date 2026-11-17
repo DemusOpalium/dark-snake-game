@@ -196,3 +196,65 @@ def test_frostage_overlay_draws_fallback_and_centered_countdown(monkeypatch):
     assert state.number == 3
     state.step(102.1, playing=True)
     assert state.number == 1
+
+
+def test_respawn_shield_protects_against_boss_flames_for_one_second(monkeypatch):
+    game, clock = round_with_clock(monkeypatch, 1)
+    lose_life(game)
+    clock.now += RESPAWN_SECONDS
+    game.update()
+    assert not game.respawn.active
+
+    projectile = SimpleNamespace(
+        damage=20,
+        collides_with=lambda rect: True,
+    )
+    assert not game._resolve_boss_flame_hits(projectile)
+    assert game.player_health == 100
+
+    clock.now += 1.01
+    assert game._resolve_boss_flame_hits(projectile)
+    assert game.player_health == 80
+
+
+def test_respawn_shield_protects_against_enemy_projectiles(monkeypatch):
+    game, clock = round_with_clock(monkeypatch, 1)
+    lose_life(game)
+    clock.now += RESPAWN_SECONDS
+    game.update()
+    assert not game.respawn.active
+
+    head_x, head_y = game.snake[0]
+    projectile = SimpleNamespace(
+        damage=15,
+        rect=pygame.Rect(head_x * GRID_SIZE, head_y * GRID_SIZE, GRID_SIZE, GRID_SIZE),
+        update=lambda: True,
+    )
+    game.enemy_projectiles.append(projectile)
+    monkeypatch.setattr(game, "spawn_fire_explosion", lambda *_: None)
+    game.last_update_time = clock.now
+    game.update()
+    assert game.player_health == 100
+    assert projectile in game.enemy_projectiles
+
+    clock.now += 1.01
+    game.last_update_time = clock.now
+    game.update()
+    assert game.player_health == 85
+    assert projectile not in game.enemy_projectiles
+
+
+def test_world_timers_also_freeze_during_pause_inside_respawn(monkeypatch):
+    game, clock = round_with_clock(monkeypatch, 1)
+    timer = game.boss_spawn_timer
+    lose_life(game)
+    clock.now += 1
+    game.update()
+    game.set_state(GameState.PAUSE)
+    clock.now += 20
+    game.update()
+    game.set_state(GameState.GAME)
+    clock.now += 2
+    game.update()
+    assert not game.respawn.active
+    assert game.boss_spawn_timer == pytest.approx(timer + 23)
