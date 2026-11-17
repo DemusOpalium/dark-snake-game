@@ -65,6 +65,8 @@ from modules.projectile_config import (
 )
 
 ENEMY_LIMIT = {1: 12, 2: 16}
+NORMAL_ENEMY_CONTACT_DAMAGE = 10
+NORMAL_ENEMY_CONTACT_INTERVAL = 1.0
 BOSS_BODY_DAMAGE = 10
 BOSS_BODY_HIT_INTERVAL = 1.0
 BOSS_SPAWN_PROTECTION = 3.0
@@ -810,6 +812,7 @@ class Game:
         self.boss = None
         self.boss_fight_active = False
         self._boss_contact_ready_at = {}
+        self._normal_enemy_contact_ready_at = {}
         self.boss_spawn_timer = time.time() + 60
         self.game_over_time = 0
         self.pause_time = 0
@@ -1270,6 +1273,28 @@ class Game:
             return boss_rect.collidepoint(head_x, head_y)
         return False
 
+    def _resolve_normal_enemy_contact(self, now):
+        """Limit normal-enemy overlap damage to one hit per second per player."""
+        if (not self.enemies or self.game_state == GameState.GAME_OVER
+                or now < self.respawn_invincible_until):
+            return False
+
+        targets = []
+        for (x, y), health_attr in self._player_heads_with_health():
+            if now < self._normal_enemy_contact_ready_at.get(health_attr, 0):
+                continue
+            head = pygame.Rect(x * GRID_SIZE, y * GRID_SIZE, GRID_SIZE, GRID_SIZE)
+            if any(head.colliderect(enemy.get_hitbox()) for enemy in self.enemies):
+                targets.append(health_attr)
+
+        for health_attr in targets:
+            self._normal_enemy_contact_ready_at[health_attr] = now + NORMAL_ENEMY_CONTACT_INTERVAL
+            setattr(self, health_attr, getattr(self, health_attr) - NORMAL_ENEMY_CONTACT_DAMAGE)
+        # Apply all simultaneous 2P hits before resolving the shared life.
+        if targets and any(getattr(self, attr) <= 0 for attr in targets):
+            self.handle_death()
+        return bool(targets)
+
     def _resolve_boss_body_contact(self, now):
         if (self.boss is None or self.game_state == GameState.GAME_OVER
                 or now < self.respawn_invincible_until
@@ -1476,43 +1501,27 @@ class Game:
 
         # … (Spieler‑ und Boss‑Kollisionen, AoE‑Handling, Bewegung,
         #     Item‑Aufnahme, Boss‑Logik, Projektil‑Update usw. – unverändert wie besprochen) …
-        # Kollisionsprüfung Spieler (Singleplayer)
+        # Portal interactions run before normal-enemy contact resolution.
         if self.player_count == 1 and self.snake:
-            head_rect = pygame.Rect(self.snake[0][0] * GRID_SIZE,
-                                    self.snake[0][1] * GRID_SIZE,
-                                    GRID_SIZE, GRID_SIZE)
+            head = self.snake[0]
+            head_rect = pygame.Rect(head[0] * GRID_SIZE, head[1] * GRID_SIZE, GRID_SIZE, GRID_SIZE)
             if self.portal and head_rect.colliderect(self.portal.get_rect()):
                 self.activate_portal(self.portal.event)
                 self.portal_effect_active = True
                 self.portal = None
-            # Zusätzlich die herkömmliche Kollisionsprüfung mit Gegnern:
-            # (Falls der Kopf mit einem Gegner kollidiert)
-            for enemy in self.enemies:
-                if not invincible and head_rect.colliderect(enemy.get_hitbox()):
-                    self.player_health -= 10
-                    if self.player_health <= 0:
-                        self.handle_death()
-                    break
         elif self.player_count == 2:
-            # Mehrspieler-Kollisionen (unverändert)
-            for snake, health_attr in [(self.snake1, 'player_health_p1'),
-                                         (self.snake2, 'player_health_p2')]:
+            for snake in (self.snake1, self.snake2):
                 if snake:
-                    head_rect = pygame.Rect(snake[0][0] * GRID_SIZE,
-                                            snake[0][1] * GRID_SIZE,
-                                            GRID_SIZE, GRID_SIZE)
+                    head = snake[0]
+                    head_rect = pygame.Rect(head[0] * GRID_SIZE, head[1] * GRID_SIZE, GRID_SIZE, GRID_SIZE)
                     if self.portal and head_rect.colliderect(self.portal.get_rect()):
                         self.activate_portal(self.portal.event)
                         self.portal_effect_active = True
                         self.portal = None
-                    for enemy in self.enemies:
-                        if not invincible and head_rect.colliderect(enemy.get_hitbox()):
-                            current_health = getattr(self, health_attr)
-                            current_health -= 10
-                            setattr(self, health_attr, current_health)
-                            if current_health <= 0:
-                                self.handle_death()
-                            break
+        if self._resolve_normal_enemy_contact(current_time):
+            invincible = current_time < self.respawn_invincible_until
+        if self.game_state == GameState.GAME_OVER:
+            return
         if self._resolve_boss_body_contact(current_time):
             invincible = current_time < self.respawn_invincible_until
         if self.projectiles and current_time >= self.respawn_invincible_until and self.game_state != GameState.GAME_OVER:
