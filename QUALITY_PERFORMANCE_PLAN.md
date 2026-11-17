@@ -1,6 +1,6 @@
 # 🧪 DARK SNAKE – Qualitäts- und Performanceplan
-**Erstellt:** 15.11.2026 · **Verifizierte Codebasis:** `main` `de66d0676d3b` (nach PR #173).  
-**Offener Entwurf:** PR #174 (World Studio Layer Explorer und sieben zusätzliche UI-Bilder) – Stand dieser Bestandsaufnahme **nicht gemergt**.
+**Erstellt:** 15.11.2026 · **Dokumentenabgleich:** 17.11.2026 · `main` nach PR #180 (`b964ff5`).  
+**Historische Referenz:** Der ursprüngliche Messplan basierte auf `de66d0676d3b` (nach PR #173). PR #174, #179 und #180 sind inzwischen gemergt. Früheren Messwerten wird dadurch **keine neue Windows-Leistungsmessung** zugeschrieben.
 
 > Dies ist das **Mess- und Prüfprotokoll** zur [zentralen Roadmap](ROADMAP.md), **keine zweite Aufgabenliste**. Alle Spielziele, Entwicklungsphasen und Prioritäten werden in der Roadmap gepflegt. Werte werden **erst nach Messung** als bestanden markiert.
 
@@ -12,7 +12,7 @@
 | Wiederholbarer Benchmark | `scripts/benchmark_game.py`: 1P, 2P, `load` (Boss + 12 Effekte + 24 Projektile), feste Seeds, Warmup, JSON-Ausgabe, optional `--uncapped` und `--overlay`. | Nach jedem relevanten PR mit **gleichem Testsystem** vorher/nachher ausführen, Diff und Interpretation dokumentieren. |
 | Basis-Qualitätstests | `tests/test_frame_metrics.py`, `tests/test_smoke.py`, Simulatorprüfungen, Python-Tests im Windows-CI. | Spielnahe Szenarien, die Fehlverhalten **und** Messregressionen sichtbar machen, erweitern. |
 | Windows-Auslieferung | `.github/workflows/python-app.yml`: Compile, pytest, FrostAge-Katalogprüfung, PyInstaller-EXE, Archiv und SHA-256. | Bildqualität, Eingabegefühl, tatsächliche Frametimes und subjektive Bedienbarkeit im geöffneten Windows-Spiel zusätzlich testen. |
-| Assetverwaltung | Runtime unter `Dark_Snake/assets`, Konzeptbilder unter `GamePICs`; nach PR #169 48 aktive Editor-PNGs, 33 Altvorlagen reserviert. | Neue PR-#174-Grafiken erst **nach Merge** als aktive Runtimegrafiken zählen; weitere Assets immer auf sichtbaren Nutzen und Größe prüfen. |
+| Assetverwaltung | Runtime unter `Dark_Snake/assets`, Konzepte unter `GamePICs`; nach PR #180 sind 58 Editor-PNGs für 62 Action-IDs katalogisiert. | Bei neuen Assets Laufzeitkatalog, Datei-Hashes, tatsächliche Nutzung und Windows-Paketierung prüfen. |
 
 **Wichtig:** Grüne Unit-Tests und CI beweisen **nicht** konstante 60 FPS, geringe Latenz oder einen flüssigen Windows-Build. Bis zur ersten Vergleichsmessung lautet der Leistungsstatus **NICHT GEMESSEN**.
 
