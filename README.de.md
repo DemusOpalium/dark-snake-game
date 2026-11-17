@@ -23,15 +23,17 @@ Allein oder lokal zu zweit spielen, die Schlange gestalten und eigene Hintergrun
 <p align="center"><img src="GamePICs/World%20Studio%20DarkSnake.png" alt="Echter World-Studio-3.0-Editor vom 14. November 2026 mit grafischen Werkzeugen und FrostAge-Level" width="820"></p>
 <p align="center"><em>World Studio am 14. November 2026: größerer Editor, Bild-Buttons und FrostAge-Dach-Demo. Der Screenshot zeigt einen Entwicklungsstand, nicht zwingend die Vorabversion vom 13. November.</em></p>
 
-Mit **F2** öffnet sich der Editor. Bereits vorhanden: **495 Classic-Tiles**, **175 FrostAge-PNGs**, große **Multi-Tile-Objekte**, benannte JSON-Entwürfe, Themenwelten, Undo/Redo und isolierte **1P-/2P-Leveltests** mit WALL/BARRIER, Schaden und Slow. Das World Studio besitzt jetzt ein **größenveränderbares Fenster**, eine durchsuchbare Tile-Bibliothek, Kartenzoom, einzeln gestaltbare Randseiten und Ecken mit Vorschau sowie **48 eigene grafische Editor-Buttons** für echte Aktionen. Weitere 33 Motive sind reserviert. Das Hauptmenü verwendet ebenfalls FrostAge-Grafiken.
+Mit **F2** öffnet sich der Editor. Bereits vorhanden: **495 Classic-Tiles**, **175 FrostAge-PNGs**, große **Multi-Tile-Objekte**, benannte JSON-Entwürfe, Themenwelten, Undo/Redo und isolierte **1P-/2P-Leveltests** mit WALL/BARRIER, Schaden und Slow. Das World Studio besitzt jetzt ein **größenveränderbares Fenster**, eine durchsuchbare Tile-Bibliothek, Kartenzoom, einzeln gestaltbare Randseiten und Ecken mit Vorschau sowie **58 grafische Editor-PNGs** im Laufzeitkatalog (für **62 Action-IDs** einschließlich gemeinsam genutzter Bilder). Das Hauptmenü verwendet ebenfalls FrostAge-Grafiken.
 
 **Bereits spielbar im isolierten Leveltest:** eine eigene **Roof-/Foreground-Ebene** mit weichem, spielerbezogenem Sichtfenster im Dach. In der Dachbogen-Demo fahren beide Schlangen unter dem Dach hindurch. Dachgrafiken und Sichtfenstereinstellungen können auch für den Classic-Hintergrund gewählt werden. Die selbst entworfenen Kollisionen und Effekte unterliegen im regulären Classic-Modus allerdings weiterhin anderen Regeln als im Editor-Leveltest.
 
-**Noch geplant:** Ebenensperren/Solo, vollständige DE/EN-Übersetzung, geführte Übungen, großflächige Landschaftshintergründe unter den Tiles, dynamisches Licht und Nebel, neue Gameplay-Profile für FrostAge-Gegner/Projektile/Items sowie ein vollständiger Roguelite-Adventure-Modus. [Roadmap](ROADMAP.md) und [Asset-Legende](ASSET_GUIDE.md) trennen spielbare Funktionen und Konzeptgrafiken.
+**Bereits in `main` nach PR #174, #179 und #180:** Layer Explorer mit Sichtbarkeit, Sperren und Solo-Ansicht, DE/EN-Umschaltung **im World Studio**, Pinsel-/Löschzüge mit Undo/Redo und der geführte Kurs **Lernen → Mein erstes FrostAge-Level** mit fünf Übungsschritten. Diese Editorfunktionen sind **neuer als das Release vom 13. November**. Eine vollständige Übersetzung des gesamten Spiels ist damit nicht behauptet.
+
+**Noch geplant:** großflächige Landschaftshintergründe unter den Tiles, dynamisches Licht und Nebel, konfigurierbare FrostAge-Gegner/Projektile/Items, interaktive Trigger und ein vollständiger Roguelite-Adventure-Modus. [Roadmap](ROADMAP.md) und [Asset-Legende](ASSET_GUIDE.md) trennen spielbare Funktionen und Konzeptgrafiken.
 
 ## ⬇️ Windows-Alpha ausprobieren
 
-Die **[FrostAge Alpha-Vorabversion vom 13. November 2026](https://github.com/DemusOpalium/dark-snake-game/releases/tag/frostage-alpha-2026-11-13)** steht unter GitHub Releases direkt zum Herunterladen bereit. `DARK-Snake-v1.0.0-Windows-x64.zip` herunterladen, vollständig entpacken und `DARK-Snake.exe` starten. Mit der zugehörigen `.sha256`-Datei lässt sich der Download prüfen. **Die EXE ist nicht digital signiert**; Windows oder der Browser können Warnungen anzeigen. Ein stabiles, signiertes Release gibt es **noch nicht**. Weitere Test-Builds entstehen über [GitHub Actions](https://github.com/DemusOpalium/dark-snake-game/actions/workflows/python-app.yml). Siehe [Windows-Anleitung](WINDOWS_BUILD.md).
+Die **[FrostAge Alpha-Vorabversion vom 13. November 2026](https://github.com/DemusOpalium/dark-snake-game/releases/tag/frostage-alpha-2026-11-13)** steht unter GitHub Releases direkt zum Herunterladen bereit. `DARK-Snake-v1.0.0-Windows-x64.zip` herunterladen, vollständig entpacken und `DARK-Snake.exe` starten. Mit der zugehörigen `.sha256`-Datei lässt sich der Download prüfen. **Die EXE ist nicht digital signiert**; Windows oder der Browser können Warnungen anzeigen. Ein stabiles, signiertes Release gibt es **noch nicht**. Neuere Test-Builds (auch mit Funktionen, die in diesem Release noch fehlen) entstehen über [GitHub Actions](https://github.com/DemusOpalium/dark-snake-game/actions/workflows/python-app.yml). Siehe [Windows-Anleitung](WINDOWS_BUILD.md).
 
 Alternativ aus dem Python-Quellcode:
 
@@ -45,7 +47,7 @@ python Dark_Snake/main.py
 | Aktion | Standard |
 | --- | --- |
 | Bewegung Spieler 1 / Spieler 2 | WASD / Pfeiltasten |
-| Schießen | Leertaste (P1), + (P2) |
+| Schießen | Leertaste (P1), Enter / + (P2) |
 | World Studio | F2 |
 | Entwickler-Panel | Tab |
 | Pause / Navigation | P / Esc |

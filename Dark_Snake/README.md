@@ -1,80 +1,48 @@
-Complete Snake Game – Dark Art Edition
-Willkommen zum Complete Snake Game – Dark Art Edition! Dieses Snake-Spiel vereint klassische Spielmechaniken mit einem düsteren, künstlerischen Look. Entwickelt mit Pygame unter Linux Mint, bietet es nicht nur ein nostalgisches Snake-Erlebnis, sondern auch einzigartige Features wie Totenschädel-Elemente, Spezial-Level mit Portalen und Bosskämpfen, eine erweiterte, flipperartige UI und eine funktionierende Bestenliste.
+# DARK SNAKE – Spielverzeichnis
 
-Projektstruktur
-Das Projekt folgt einer modularen Architektur, die eine einfache Erweiterung und Wartung ermöglicht. Die wichtigsten Bestandteile sind:
+> Diese README ersetzt eine historische Anleitung der frühen „Complete Snake Game – Dark Art Edition“. Der frühere Entwicklungsstand bleibt über die Git-Historie nachvollziehbar.
 
-bash
-Kopieren
-complete-snake-game/
-├── main.py                # Einstiegspunkt und Spiel-Loop
-├── config.py              # Konfiguration, Konstanten und Farbdefinitionen
-├── assets/
-│   ├── sounds/            # Sounddateien (z. B. eat.wav, powerup.wav, boss.wav, gameover.wav, dice.wav)
-│   └── graphics/          # Grafiken, Sprites, Animationen und Icons
-├── modules/
-│   ├── game.py            # Zentrale Spiel-Logik (Level, Quests, Gegner, Spezial-Level)
-│   ├── ui.py              # UI-Komponenten (Buttons, Slider, HUD)
-│   ├── graphics.py        # Grafik-Rendering und Spriteladen
-│   ├── controls.py        # Steuerungslogik (Tastatur, Touch, ggf. Gamepad)
-│   └── audio.py           # Soundmanagement
-└── leaderboard.txt        # Speicherung der Bestenliste
+**Aktueller Projektüberblick:** [README auf Deutsch](../README.de.md) · [README in English](../README.md) · [Roadmap](../ROADMAP.md) · [Entwicklerstruktur](../DEV_STRUCTURE.md)
 
-Installation & Anforderungen
-Python 3.12 (oder höher)
+## Quellcode starten
 
-Pygame – installiere es über:
+Vom **Repository-Stammverzeichnis** aus (Python 3.12):
 
-bash
-Kopieren
-python3 -m pip install pygame
-Es wird empfohlen, Linux Mint zu verwenden. Für den Android-Port können zusätzlich pygame_sdl2 oder Kivy/Buildozer zum Einsatz kommen.
+```bash
+python -m pip install -r requirements.txt
+python Dark_Snake/main.py
+```
 
-Um das Spiel zu starten, navigiere in den Projektordner und führe aus:
+Unter Windows ist auch die separat veröffentlichte, entpackte [Windows-Alpha](https://github.com/DemusOpalium/dark-snake-game/releases) verfügbar. Der letzte fest veröffentlichte Tag muss nicht alle aktuellen Änderungen aus `main` enthalten.
 
-bash
-Kopieren
-cd complete-snake-game
-python3 main.py
-Features
-Grafikstil: Dark Art
-Das Spiel besticht durch einen düsteren, kontrastreichen Look – Totenschädel und dunkle, atmosphärische Grafiken verleihen dem Snake-Klassiker eine ganz neue Dimension.
+## Hier liegt was?
 
-Spezial-Level
-Zusätzliche Portale öffnen zeitlich begrenzte Level, in denen besondere Herausforderungen warten. Bosskämpfe und vermehrter Loot sorgen für zusätzlichen Nervenkitzel.
+| Bereich | Funktion |
+| --- | --- |
+| `main.py` | Initialisierung, Crash-Reporting und Spieleinstieg |
+| `config.py` | Raster, Fenstergrößen, Spielkonstanten |
+| `modules/game.py` | Classic-Spielablauf, Gegner, Items, Bosskämpfe und Rendering |
+| `modules/input_manager.py` / `modules/controls.py` | Tastatur-/Controllerbelegung und Bedienoberfläche |
+| `modules/level_editor.py` | World Studio und Editorsteuerung |
+| `modules/studio_tutorial.py` | Geführtes FrostAge-Übungslevel |
+| `modules/level_drafts.py` / `modules/world_library.py` | Level-JSONs und Weltverwaltung |
+| `modules/resources.py` | Ressourcenpfade für Quellcode und PyInstaller |
+| `assets/` | Ins Windows-Paket übernommene Laufzeitgrafiken und Audio |
 
-Erweiterte UI
-Eine extra Anzeige im oberen Bereich (ähnlich einem Flipper) präsentiert Effekte, Animationen und Spezialereignisse und macht das Spielerlebnis dynamischer.
+**Hinweis:** `GamePICs/` im Repository-Stamm enthält auch Quell- und Konzeptbilder und wird nicht pauschal in die EXE eingebunden. [Asset-Leitfaden](../ASSET_GUIDE.md).
 
-Bestenliste
-Nach Spielende kann der Spieler seinen Namen eingeben. Die Bestenliste verfügt über eine einfache Navigation (inklusive „Zurück“-Button).
+## Einstellungen und Benutzerdateien
 
-Steuerung
-Das Spiel unterstützt sowohl Tastatur (WASD und Pfeiltasten) als auch Touch-Eingaben – ideal auch für mobile Geräte.
+Aktuelle Einstellungen, Eingabebelegungen und Levelentwürfe werden über `modules/resources.py` in einem Benutzerverzeichnis verwaltet, üblicherweise `~/.dark-snake/`. Ältere Dateien wie `settings.txt` und `leaderboard.txt` im Spielverzeichnis sind **nicht automatisch die aktive Benutzerkonfiguration**. Vor einer Löschung Verweise und Migration prüfen.
 
-Modulare Architektur
-Die klare Trennung der Funktionalitäten ermöglicht es, dass unterschiedliche Entwicklerbereiche unabhängig voneinander erweitert werden können:
+## Qualität
 
-main.py – Einstiegspunkt und Hauptspiel-Loop.
-config.py – Alle Konstanten, Variablen und Farbdefinitionen.
-modules/audio.py – Laden und Abspielen der Sounddateien.
-modules/controls.py – Steuerungslogik für Tastatur, Touch und Gamepad.
-modules/graphics.py & modules/ui.py – Rendering der Grafiken, Sprites, Animationen sowie die UI-Komponenten.
-modules/game.py – Zentrale Spiel-Logik: Level, Quests, Gegner und Spezial-Level.
-Entwicklung & Erweiterungsmöglichkeiten
-Dank der modularen Struktur kannst du den Code leicht in einzelne Bereiche aufteilen und weiterentwickeln – sei es durch zusätzliche Level, neue Gegner, verbesserte Grafiken oder eine erweiterte Benutzeroberfläche.
+```bash
+python -m compileall -q Dark_Snake tests
+python -m pytest -q
+python scripts/frostage_catalog.py --check
+```
 
-Lizenz
-Dieses Projekt steht unter der MIT-Lizenz. Details dazu findest du in der Datei LICENSE.
+Windows-Build, Hashprüfung und Tests: [Workflow](../.github/workflows/python-app.yml) · [Windows-Anleitung](../WINDOWS_BUILD.md). Bitte neue Funktionen mit 1P-/2P-Proben und Tests absichern.
 
-Hinweise
-Sounddateien:
-Stelle sicher, dass alle benötigten Sounddateien im Ordner assets/sounds/ vorhanden sind. Bei fehlenden Dateien kannst du Dummy-WAV-Dateien verwenden.
-
-Grafiken:
-Platziere deine Grafiken und Sprites (z. B. Totenschädel, Portale) im Ordner assets/graphics/ und passe ggf. die Pfade in den entsprechenden Modulen an.
-
-Android-Port:
-Für den Port auf Android schaue dir pygame_sdl2 oder Kivy mit Buildozer an.
-
-Viel Spaß beim Spielen und Weiterentwickeln des Complete Snake Game – Dark Art Edition!
+**Stand:** 17.11.2026, `main` nach World Studio PR E (#180). Kein Ersatz für die aktuelle Roadmap.
