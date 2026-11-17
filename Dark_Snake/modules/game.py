@@ -2491,37 +2491,3 @@ if __name__ == "__main__":
     game = Game()
     game.run()
     input("\n[Drücke Enter zum Schließen des Spiels...]")
-
-    # [KS_TAG: ADMIN_HOOKS]
-    def spawn_item_at(self, item_type, x, y):
-        from modules.enums import ItemType
-        from modules.items import Item
-        if hasattr(self, "items"):
-            self.items.append(Item(item_type, x, y))
-            print("[ADMIN] Item gespawnt an", x, y)
-
-    def create_damage_zone(self, x, y):
-        from modules.aoe_zones import DamageZone
-        if hasattr(self, "aoe_zones"):
-            self.aoe_zones.append(DamageZone(x, y, radius=2))
-            print("[ADMIN] DamageZone erzeugt")
-
-    def create_slow_zone(self, x, y):
-        from modules.aoe_zones import SlowZone
-        if hasattr(self, "aoe_zones"):
-            self.aoe_zones.append(SlowZone(x, y, radius=2))
-            print("[ADMIN] SlowZone erzeugt")
-
-    def spawn_explosive_projectile(self):
-        from modules.special_projectiles import ExplosiveProjectile
-        if hasattr(self, "projectiles"):
-            x, y = self.snake.head.x, self.snake.head.y
-            self.projectiles.append(ExplosiveProjectile(x, y, direction=(0, -1)))
-            print("[ADMIN] Explosiver Schuss gespawnt")
-
-    def start_boss_fight(self):
-        from modules.bosses import Boss
-        if not self.boss_fight_active:
-            self.boss = Boss()
-            self.boss_fight_active = True
-            print("[ADMIN] Bossfight gestartet")
