@@ -114,8 +114,9 @@ def shift_round_timers(game, seconds):
     if game.boss is not None:
         shift(game.boss, "spawn_time", "last_move", "last_frame_time",
               "special_attack_timer", "next_aoe", "next_proj")
-        if game.boss.aoe_effect is not None:
-            game.boss.aoe_effect["start_time"] += seconds
+        aoe = getattr(game.boss, "aoe_effect", None)
+        if aoe is not None:
+            aoe["start_time"] += seconds
     if game.portal is not None:
         shift(game.portal, "start_time")
     for zone in game.aoe_zones:
