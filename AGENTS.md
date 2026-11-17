@@ -5,6 +5,14 @@
 - Resource locations belong in `Dark_Snake/modules/resources.py`; do not add cwd- or OS-specific paths.
 - Keep the Windows PyInstaller workflow and its bundled `Dark_Snake/assets` directory working.
 
+## Shared developer blackboard / Kaffeerunde
+
+- **Read [DEVELOPMENT_BLACKBOARD.md](DEVELOPMENT_BLACKBOARD.md)** before planning larger changes. It contains the current team decision log, user-verified gameplay observations and an optional **coffee-round area for freely proposed ideas**.
+- Agents are welcome to propose **useful observations beyond their immediate task** (bugs, possible performance improvements, game-design ideas or questions), but must label speculation versus verified behavior, give code references where possible, and keep suggestions brief and non-blocking.
+- Do **not** invent messages, autonomous discussions, human approvals or agent work that did not occur. Agents communicate only when explicitly invoked and via actual GitHub comments/PRs; **no automatic background collaboration** is implied.
+- **This repository and its PRs are public.** Do not add secrets, confidential transcripts, private personal details, credentials or security exploits to the board. Truly private notes belong in an access-controlled private repository.
+- Offer new blackboard notes in small documentation PRs or existing issue/PR comments; respect the owner's review/merge authority. Ideas are **not** authorization to make gameplay changes. Existing code, tests and current PR/issue state take precedence over dated notes.
+
 ## Asset lifecycle and agent context
 
 - Start at [ASSET_GUIDE.md](ASSET_GUIDE.md) before using newly uploaded artwork, buttons, snake heads or bodies; it distinguishes source artwork from bundled runtime assets and from planned functionality.

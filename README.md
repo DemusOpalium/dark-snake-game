@@ -58,6 +58,6 @@ Bindings can be customized in-game; see [full controls](CONTROLS.md). The main m
 
 DARK SNAKE is a long-term personal project, developed step by step rather than rushed into a release. I play it, find what feels fun or frustrating, adjust it, and play again. Bugs, ideas, suggestions and contributions from other players are welcome — no need to be an expert.
 
-**[💬 Discussions](https://github.com/DemusOpalium/dark-snake-game/discussions)** · **[🐛 Issues](https://github.com/DemusOpalium/dark-snake-game/issues)** · **[🛣️ Roadmap](ROADMAP.md)** · **[📷 Gallery](GALLERY.md)**
+**[💬 Discussions](https://github.com/DemusOpalium/dark-snake-game/discussions)** · **[🐛 Issues](https://github.com/DemusOpalium/dark-snake-game/issues)** · **[🛣️ Roadmap](ROADMAP.md)** · **[☕ Developer Blackboard](DEVELOPMENT_BLACKBOARD.md)** · **[📷 Gallery](GALLERY.md)**
 
 **License:** [MIT](LICENSE). Made with Python, pygame, and human–AI collaboration. 🐍
