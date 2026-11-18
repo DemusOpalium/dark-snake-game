@@ -3,6 +3,14 @@
 
 > `Dark_Snake/assets/` enthält die Spiel- und EXE-Laufzeitdaten. `GamePICs/` enthält Originale, Entwürfe und Referenzen. Die passenden Laufzeitkataloge dokumentieren die tatsächlich verwendeten Dateien.
 
+> **Status-Nachtrag 18.11.2026:** Nach PR #211 sind **72 Heads und 20 Bodies**
+> über `Dark_Snake/assets/graphics/skin_registry.json` als
+> Runtime-Skins registriert. Die Staging-Originale unter `GamePICs/`
+> bleiben dennoch separate Quellen. PR #213 hat **17 neue
+> FrostAge-Gegnerbilder** direkt in `GamePICs/` aufgenommen:
+> **nur Staging, noch keine spielbaren Gegner**. Siehe
+> [Spieltest- und Gegnerkonzept](PLAYTEST_BALANCE_2026-11-18.md).
+
 ## Verbindliche Wege
 
 | Pfad | Tatsächliche Aufgabe | Gehört derzeit zur Windows-EXE? |
@@ -16,8 +24,9 @@
 | `GamePICs/Build/`, `File/`, `Effects/`, `Layers/` usw. | Alle 81 Originale der englisch beschrifteten Editor-Button-Grafiken | 51 bytegleiche Kopien unter `editor_ui/` |
 | `GamePICs/Nachtrag Fehlende Buttons/` | Sieben Originale aus #173 | Sieben bytegleiche Kopien unter `editor_ui/` |
 | `GamePICs/General/De-En_Language-removebg-preview.png` | Original des Sprachschalters | Bytegleiche Kopie als `editor_ui/nav_language.png` |
-| `GamePICs/DarkSnake-NeueHeads/` | 53 neue Head-Kandidaten / Rohentwürfe | **Nein**, noch nicht registriert |
-| `GamePICs/DarkSnake-KörperNeuDesign/` | 15 Body-Kandidaten / Rohentwürfe | **Nein**, noch nicht registriert |
+| `GamePICs/DarkSnake-NeueHeads/` | 53 ursprüngliche Head-Kandidaten / Rohentwürfe | **Nein**, nur geprüfte separate Runtime-Kopien sind registriert |
+| `GamePICs/DarkSnake-KörperNeuDesign/` | 15 ursprüngliche Body-Kandidaten / Rohentwürfe | **Nein**, nur geprüfte separate Runtime-Kopien sind registriert |
+| `GamePICs/` (17 neue FrostAge-Gegner-PNGs, PR #213) | 17 Einzelbild-Gegnerkonzepte, noch ohne neue Spieleigenschaften | **Nein**, zuerst Runtime-Import + Gegnerprofil-PR |
 | `GamePICs/` (weitere Bilder) | Projekt-Screenshots, Referenzen, Konzeptgrafiken; einige in README verlinkt | Nur wenn separat in `assets/` importiert |
 | `tests/` | Headless- und Funktionstests | Nein |
 | `scripts/` | Build, Asset-Import, Benchmarks, Diagnose | Nein, soweit nicht separat mit eingebunden |
