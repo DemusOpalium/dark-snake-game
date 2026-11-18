@@ -386,6 +386,9 @@ class ExtendedOptionsMenu(OptionsMenu):
         self.display_panel = self.inventory_panel
         self._frost_view = FrostAgeOptionsView(self)
         self._last_click_pos = None
+        # Establish clickable geometry before the first draw/event.  Audio and
+        # input tests (and fast clicks after opening Options) use widget rects.
+        self._frost_view.layout(game.screen.get_size())
 
     def handle_event(self, event):
         self._frost_view.layout(self.game.screen.get_size())
