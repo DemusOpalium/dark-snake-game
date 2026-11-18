@@ -51,17 +51,16 @@ class FrostDiceResultVisual:
         width, height = CARD_SIZE
         panel = pygame.Surface(CARD_SIZE, pygame.SRCALPHA)
 
-        # Frosted panel with a restrained blue-black gradient and crystalline rim.
-        for y in range(height):
+        # Frosted, rounded gradient: pre-rendered once per outcome.
+        pygame.draw.rect(panel, (7, 17, 33, 234), (0, 0, width, height), border_radius=17)
+        pygame.draw.rect(panel, (24, 40, 67, 232), (7, 7, width - 14, height - 14), border_radius=13)
+        for y in range(16, height - 16):
             t = y / height
             pygame.draw.line(
                 panel,
-                (int(12 + 9 * t), int(27 + 7 * t), int(49 + 12 * t), 234),
-                (0, y), (width - 1, y),
+                (int(18 + 9 * t), int(34 + 6 * t), int(58 + 12 * t), 224),
+                (17, y), (width - 18, y),
             )
-        # Keep the rounded silhouette; the game below remains softly visible.
-        pygame.draw.rect(panel, (7, 17, 33, 234), (0, 0, width, height), border_radius=17)
-        pygame.draw.rect(panel, (24, 40, 67, 232), (7, 7, width - 14, height - 14), border_radius=13)
         pygame.draw.rect(panel, (*accent, 174), (1, 1, width - 2, height - 2), 2, border_radius=17)
         pygame.draw.rect(panel, (141, 201, 233, 74), (8, 8, width - 16, height - 16), 1, border_radius=13)
         pygame.draw.line(panel, (*accent, 185), (26, 49), (width - 27, 49), 2)
