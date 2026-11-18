@@ -31,7 +31,7 @@ IMPORTED = [entry for entry in CATALOG["candidates"]
 
 def _git_sha(data):
     """Git SHA, deliberately not SHA-256."""
-    return hashlib.sha1(f"blob {len(data)}\\0".encode("ascii") + data).hexdigest()
+    return hashlib.sha1(f"blob {len(data)}".encode("ascii") + bytes([0]) + data).hexdigest()
 
 
 def test_skin_catalog_explains_all_staged_candidates():
