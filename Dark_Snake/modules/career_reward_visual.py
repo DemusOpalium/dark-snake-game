@@ -40,15 +40,13 @@ class MysticRewardPanel:
 
     @staticmethod
     def _fit(font, text, width, color):
-        text = str(text)
-        while len(text) > 1 and font.size(text)[0] > width:
-            text = text[:-1]
-        if font.size(text)[0] > width:
-            text = "…"
-        elif text and len(text) > 1 and font.size(text)[0] <= width:
-            # Add an ellipsis only when the original did not fit.
-            pass
-        return font.render(text, True, color)
+        original = str(text)
+        label = original
+        if font.size(label)[0] > width:
+            while len(label) > 1 and font.size(label + "…")[0] > width:
+                label = label[:-1]
+            label += "…"
+        return font.render(label, True, color)
 
     def _picture(self, career):
         if career is None or career.reward_state != "granted":
@@ -162,9 +160,8 @@ class MysticRewardPanel:
             else:
                 progress = (f"NOCH {career.xp_to_next_rank:,} XP "
                             f"BIS RANG {career.rank_after + 1}").replace(",", ".")
-                previous_threshold = career.total_xp - (career.total_xp % 1)
-                # Ranks 1-40 use the verified current career threshold, not
-                # guessed session scores. Derive bar fill via career boundaries.
+                # Ranks 1-40 use verified career thresholds, not guessed
+                # scores. Only prepare the bar when the immutable data changes.
                 from modules.career_ranks import RANK_MIN_XP
                 origin = RANK_MIN_XP[career.rank_after - 1]
                 span = career.next_rank_xp - origin
