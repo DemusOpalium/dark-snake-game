@@ -159,6 +159,9 @@ def test_game_over_renders_verified_card_and_keeps_highscore_name(
     assert ceremony.reward_state == "granted"
     assert game.leaderboard_mode
     game.name_input = "NameStays"
+    # The actual game plays its death-soul/fog transition BEFORE the
+    # Dark Abyss appears. Complete that transition for this UI test.
+    game._death_soul_event = None
     game.draw()
     assert game._game_over_visual._career_card_cache is not None
     first_card = game._game_over_visual._career_card_cache
@@ -196,6 +199,7 @@ def test_inventory_failure_shows_pending_reward_without_losing_xp(
     assert game.round_career_result.earned_xp == 1413
     assert game.round_career_result.reward_state == "pending"
     assert game.skin_inventory_error == "skin inventory unavailable"
+    game._death_soul_event = None
     game.draw()
     assert game._game_over_visual._career_card_cache is not None
 
