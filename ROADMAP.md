@@ -20,9 +20,15 @@
   `GamePICs/` angenommen; **Staging, nicht im Spiel aktiv!**
   Vorgesehener erster Vertical Slice: Standardgegner, flinker
   Spezialgegner und ein Boss mit weltabhängigem Spawn-Gate.
-- ⬜ **Nächster funktionaler PR D:** Rang, verdiente XP und bereits
-  bestätigter neuer Head/Body im Dark-Abyss-Game-Over anzeigen;
-  Top-10-Namenseingabe erhalten. Kein erfundener Achievement-Auslöser.
+- ✅ **Karriere-Dark-Abyss D (#215, gemergt):** bestätigte XP,
+  Rang vorher/nachher und neuer Head/Body als Bild direkt im Game Over;
+  Namenseingabe/Top-10 erhalten. **Manuell am 18.11. getestet:** der
+  kompakte 65px-Block war noch zu gedrängt.
+- 🔧 **Dark-Abyss E (#217, Draft):** eigenständiges mystisches
+  violett-grünes Belohnungsfenster **unter der Namenseingabe** im
+  hellen Abgrund; Titel, verifizierte Freischaltbedingung, Lobzeile,
+  echte Skin-Grafik und sanfter 7+2-Sekunden-Fade. Kompaktlayout
+  bleibt als Fallback für kleine Fenster. Kein neuer Achievement-Trigger.
 - ⬜ **Separater Komfort-PR:** `Spielstände öffnen` öffnet per
   Klick den Nutzer-Datenordner `~/.dark-snake`, ohne JSON zu verändern.
 - ⬜ **Separates UI-2D:** alte Top-10-Bestenliste optisch zu
