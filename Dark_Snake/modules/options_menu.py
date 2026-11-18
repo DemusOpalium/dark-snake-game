@@ -269,6 +269,16 @@ class OptionsMenu:
             SOUNDS["eat"].play()
 
     def save(self):
+        # Assignment buttons are not the only way a stale value can reach the
+        # UI. Keep the save path protected, too, without changing JSON keys.
+        for player in (1, 2):
+            for tab, attr in (
+                ("Heads", f"selected_head_p{player}"),
+                ("Bodies", f"selected_body_p{player}"),
+            ):
+                name = getattr(self, attr)
+                if name and not self.skin_allowed(tab, name):
+                    setattr(self, attr, None)
         self.game.settings['initial_speed'] = self.speed_slider.current_val
         self.game.settings['difficulty'] = self.difficulty_slider.current_val
         self.game.settings['projectile_speed_factor'] = self.projectile_slider.current_val
