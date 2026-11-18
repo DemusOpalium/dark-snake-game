@@ -57,7 +57,6 @@ def prepare_world(players):
 @pytest.mark.parametrize(("state", "shade"), [
     (GameState.GAME, 0),
     (GameState.PAUSE, 180),
-    (GameState.GAME_OVER, 200),
 ])
 def test_game_draw_composites_world_then_screen_overlay_then_hud(players, state, shade):
     game = prepare_world(players)
@@ -71,7 +70,7 @@ def test_game_draw_composites_world_then_screen_overlay_then_hud(players, state,
         assert_bar(screen, 20, 150, (127, 255, 0))
         assert_bar(screen, screen.get_width() - 220, 120, (0, 128, 255))
 
-    # The pause/game-over shade darkens the world but leaves the HUD at full color.
+    # Pause shade darkens the world but leaves the existing game HUD intact.
     expected = pygame.Surface((1, 1), pygame.SRCALPHA)
     expected.fill(EFFECT_COLOR)
     overlay = pygame.Surface((1, 1), pygame.SRCALPHA)
@@ -89,6 +88,25 @@ def test_game_draw_composites_world_then_screen_overlay_then_hud(players, state,
     score_area = screen.subsurface((20, 10, 145, 31))
     assert pygame.mask.from_threshold(score_area, WHITE, (1, 1, 1, 255)).count() > 0
 
+
+def test_game_over_replaces_world_hud_with_cinematic_abyss():
+    game = prepare_world(2)
+    game.game_state = GameState.GAME_OVER
+    game.leaderboard_mode = False
+    game.score = 814
+    game.level = 4
+    game.draw()
+
+    assert game._game_over_visual is not None
+    # Outside the central ceremony, the full-screen image replaces both world
+    # and live HP bars; no bright HUD should reappear over Game Over.
+    backdrop = game._game_over_visual._image_for(game.screen.get_size())
+    for point in ((24, 84), (game.screen.get_width() - 24, 84),
+                  (24, game.screen.get_height() - 35)):
+        assert game.screen.get_at(point)[:3] == backdrop.get_at(point)[:3]
+
+    # Keep the score and the rest of the game state; rendering is read-only.
+    assert (game.score, game.level, game.round_enemies_defeated) == (814, 4, 0)
 
 def test_draw_game_keeps_hud_for_direct_callers():
     game = prepare_world(1)
