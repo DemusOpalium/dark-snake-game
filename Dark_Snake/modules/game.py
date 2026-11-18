@@ -394,22 +394,44 @@ class Item:
 class AchievementManager:
     def __init__(self, game):
         self.game = game
+        self._event_font = pygame.font.SysFont("Arial", 18, bold=True)
+
+    def _draw_notice(self, surface, text, *, right=False, y=142, tint=(236, 167, 78)):
+        """Keep temporary notices outside the health-bar area (y=80..100)."""
+        max_text_width = max(40, min(380, surface.get_width() // 2 - 36))
+        label = str(text)
+        if self._event_font.size(label)[0] > max_text_width:
+            while len(label) > 1 and self._event_font.size(label + "…")[0] > max_text_width:
+                label = label[:-1]
+            label += "…"
+        rendered = self._event_font.render(label, True, tint)
+        width = rendered.get_width() + 26
+        height = max(30, rendered.get_height() + 10)
+        x = surface.get_width() - width - 12 if right else 12
+        rect = pygame.Rect(x, y, width, height)
+        pygame.draw.rect(surface, (23, 16, 38), rect, border_radius=6)
+        pygame.draw.rect(surface, (111, 81, 145), rect, 1, border_radius=6)
+        pygame.draw.rect(surface, tint, (x + 5, y + 5, 3, height - 10), border_radius=1)
+        surface.blit(rendered, (x + 14, y + (height - rendered.get_height()) // 2))
+        return height
 
     def draw_achievements(self, surface):
-        y_offset = 90
-        for achievement in self.game.achievement_messages[:]:
-            message, expire_time = achievement
-            if time.time() > expire_time:
-                self.game.achievement_messages.remove(achievement)
-            else:
-                txt = pygame.font.SysFont('Arial', 20).render(message, True, ORANGE)
-                surface.blit(txt, (20, y_offset))
-                y_offset += 25
+        now = time.time()
+        self.game.achievement_messages[:] = [
+            (message, expires) for message, expires in self.game.achievement_messages
+            if expires >= now
+        ]
+        y = 142
+        # Newest messages first; avoid flooding the playfield after repeated hits.
+        for message, _ in reversed(self.game.achievement_messages[-4:]):
+            y += self._draw_notice(surface, message, y=y) + 6
 
     def draw_portal_event(self, surface):
         if self.game.portal_effect_active and self.game.portal_effect_type:
-            txt = pygame.font.SysFont('Arial', 24, bold=True).render("Portal: " + str(self.game.portal_effect_type), True, PURPLE)
-            surface.blit(txt, (WINDOW_WIDTH - txt.get_width() - 20, 60))
+            self._draw_notice(
+                surface, "Portal: " + str(self.game.portal_effect_type),
+                right=True, y=142, tint=(218, 147, 245),
+            )
         # === Health-Bar-Funktion für 2-Spieler-Modus ===
 
 def draw_health_bar_two(game):
@@ -2387,7 +2409,10 @@ class Game:
             desc = pygame.font.SysFont('Arial', 20).render("Kleiner Erfolg", True, WHITE)
         else:
             desc = pygame.font.SysFont('Arial', 20).render("Fehlschlag", True, RED)
-        self.screen.blit(desc, (WINDOW_WIDTH // 2 - desc.get_width() // 2, WINDOW_HEIGHT // 2 + 40))
+        # Keep the caption below the dice card, not on top of its lower edge.
+        caption = desc.get_rect(midtop=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 + 62))
+        pygame.draw.rect(self.screen, (23, 16, 38), caption.inflate(18, 10), border_radius=6)
+        self.screen.blit(desc, caption)
 
 
 
