@@ -77,7 +77,8 @@ def test_game_draw_composites_world_then_screen_overlay_then_hud(players, state,
     overlay = pygame.Surface((1, 1), pygame.SRCALPHA)
     overlay.fill((0, 0, 0, shade))
     expected.blit(overlay, (0, 0))
-    assert_region(screen, (230, 86, 20, 12), expected.get_at((0, 0)))
+    # Pixel outside the health bar and the new P1 portrait remains world-tinted.
+    assert_region(screen, (223, 86, 5, 12), expected.get_at((0, 0)))
     # Life HUD now uses cached snake-head portraits, framed by a FrostAge border.
     if players == 1:
         assert_region(screen, (screen.get_width() - 41, 22, 2, 8), (153, 123, 186))
