@@ -1931,7 +1931,7 @@ class Game:
         self.round_death_count += 1
         self._death_soul_event = DeathSoulEvent(
             centers=centers,
-            tier=min(3, self.round_death_count),
+            tier=3 if final else min(3, self.round_death_count),
             began_at=time.time(),
             final=final,
         )
