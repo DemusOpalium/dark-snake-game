@@ -1,5 +1,43 @@
 # 🛣️ ROADMAP.md – Entwicklungsfahrplan
 
+## 📌 Aktueller Projektabgleich · 18.11.2026
+
+> **Dieser aktuelle Abgleich ergänzt die historischen Abschnitte weiter unten.**
+> [Anonymisierte Spieltest- und Balanceauswertung](PLAYTEST_BALANCE_2026-11-18.md) ·
+> [Karriere-Regeln](CAREER_RANKS_DESIGN.md) ·
+> [Skin-Inventar](SKIN_UNLOCK_DESIGN.md). Für den letzten Status gelten
+> der tatsächliche `main`-Code, aktuelle Tests und offene PRs.
+
+- ✅ **Progress A / A.1 / B (#208–#210):** bestätigte Runden-ID,
+  atomare Speicherung/OS-Sperren, 40 versionierte Karriereränge und
+  einmalige XP-Gutschriften über die Rundenchronik.
+- ✅ **Inventory C (#211):** 92 Head-/Body-Bilder in der Runtime-Bibliothek,
+  sechs freie Starter-Skins, Freischaltung über Rang-Rewards,
+  maximal eine kosmetische Belohnung je beendeter Spielrunde,
+  Bestandsschutz und Schloss-Kacheln. **Windows-Sichtprobe 18.11.:**
+  Schlossanzeige und 1P-Abschluss bestätigt; vollständiger 2P-Test offen.
+- ✅ **FrostAge-New-Enemy-ART (#213):** 17 neue Gegner-PNGs unter
+  `GamePICs/` angenommen; **Staging, nicht im Spiel aktiv!**
+  Vorgesehener erster Vertical Slice: Standardgegner, flinker
+  Spezialgegner und ein Boss mit weltabhängigem Spawn-Gate.
+- ⬜ **Nächster funktionaler PR D:** Rang, verdiente XP und bereits
+  bestätigter neuer Head/Body im Dark-Abyss-Game-Over anzeigen;
+  Top-10-Namenseingabe erhalten. Kein erfundener Achievement-Auslöser.
+- ⬜ **Separater Komfort-PR:** `Spielstände öffnen` öffnet per
+  Klick den Nutzer-Datenordner `~/.dark-snake`, ohne JSON zu verändern.
+- ⬜ **Separates UI-2D:** alte Top-10-Bestenliste optisch zu
+  FrostAge umgestalten; historische `name,score`-Daten kompatibel
+  beibehalten.
+- ⬜ **FrostAge-Gegnerprofile:** zuerst Bilder/Kollision/Spawn-Modus/
+  Balance validieren, drei ausgewählte Profile implementieren, restliche
+  14 später. Classic nicht unbeabsichtigt mit FrostAge spawnen lassen.
+- 💡 **Messdaten längerfristig:** Offline-/Entwicklerstatistik
+  anonymisiert exportierbar machen; aktive Spielzeit erst verlässlich
+  messen, anschließend geeignete Achievements planen.
+  Spielbalance **nicht automatisch** aus nur drei Runden verändern.
+
+---
+
 ## Historischer Quartalsplan (keine aktuellen Fristen)
 - ✅ 2025 Q2: README und Screenshot-Galerie veröffentlicht; aktuelle Screenshots am 14.11.2026 ergänzt.
 - 💡 2025 Q3: Prompt-System und automatisierte Debug-Dokumentation waren als Idee notiert; aktuellen Restbedarf separat prüfen.
