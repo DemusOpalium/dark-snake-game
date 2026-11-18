@@ -61,6 +61,7 @@ from modules.respawn import (RespawnCountdown, FrostRespawnVisual, RESPAWN_SECON
                              safe_spawn_cells, shift_round_timers)
 from modules.game_over_visual import DarkAbyssGameOver
 from modules.death_soul import DeathSoulEvent, DeathSoulVisual, SOUL_SECONDS
+from modules.death_fog import AbyssFogVisual, FINAL_DEATH_SECONDS
 from modules.dice_visual import FrostDiceResultVisual
 from modules.projectile_config import (
     MAX_BOSS_FLAMES, MAX_BOSS_GRID_PROJECTILES, MAX_ENEMY_PROJECTILES,
@@ -493,6 +494,7 @@ class Game:
         self._game_over_visual = None  # Lazy, cached Dark Abyss backdrop + fonts.
         self._death_soul_event = None
         self._death_soul_visual = None  # Keep scaled frames cached between lives.
+        self._death_fog_visual = None  # Three translucent overlays, final life only.
         self._death_soul_frozen_world = None
         self._dice_banner = None  # Lazy, one-time scaled D20 art from bundled HUD assets.
         self._dice_visual = None  # Cached FrostAge result card; old purple box is retired.
@@ -2040,9 +2042,8 @@ class Game:
             if (self.game_state == GameState.GAME_OVER and
                     self._death_soul_event is not None and
                     self._death_soul_event.final and
-                    self._death_soul_event.active(
-                        time.time() - self._death_soul_event.began_at
-                    )):
+                    0 <= time.time() - self._death_soul_event.began_at
+                    < FINAL_DEATH_SECONDS):
                 continue
             if self.game_state == GameState.CONTROLS:
                 self.controls_menu.handle_event(event)
@@ -2242,13 +2243,18 @@ class Game:
             self.draw_pause()
         elif self.game_state == GameState.GAME_OVER:
             death = self._death_soul_event
-            if death is not None and death.final and death.active(
-                    time.time() - death.began_at):
-                # Snapshot the final world only once. Nothing moves behind the soul.
+            if (death is not None and death.final and
+                    0 <= time.time() - death.began_at < FINAL_DEATH_SECONDS):
+                # Freeze the world throughout the entire three-layer transition.
                 if self._death_soul_frozen_world is None:
                     self.draw_game(include_hud=False)
                     self._death_soul_frozen_world = self.screen.copy()
                 self.screen.blit(self._death_soul_frozen_world, (0, 0))
+                if self._death_fog_visual is None:
+                    self._death_fog_visual = AbyssFogVisual()
+                self._death_fog_visual.draw(
+                    self.screen, time.time() - death.began_at
+                )
             else:
                 self.draw_game_over()
         elif self.game_state == GameState.SETTINGS:
