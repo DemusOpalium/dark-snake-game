@@ -827,5 +827,11 @@
       "starter_proposal": false,
       "unlock_rule": null
     }
+  ],
+  "starter_heads_proposal": [
+    "Items1.png",
+    "SnakeHead1G60.png",
+    "SnakeHead2blauG60.png",
+    "SnakeHead3gruenG60.png"
   ]
 }
