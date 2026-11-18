@@ -12,6 +12,8 @@ CATALOG_PATH = "assets/graphics/frostage/catalog.json"
 ROOF_DEMO_PATH = "assets/levels/frostage_roof_demo.json"
 EDITOR_UI_DIR = "assets/graphics/editor_ui/"
 D20_HUD_PATH = "assets/graphics/hud/Random_D20-removebg-preview.png"
+ABYSS_ART_PATH = "assets/graphics/game_over/dark_abyss.png"
+ABYSS_RITES_PATH = "assets/text/game_over_rites.json"
 EXPECTED_PNG_COUNT = 175
 
 
@@ -59,6 +61,16 @@ def check(executable: Path) -> None:
     expected_hash = hashlib.sha256(original.read_bytes()).hexdigest()
     if actual_hash != expected_hash:
         raise ValueError("Random D20 HUD artwork in EXE does not match source.")
+    # Dark Abyss is a real offline, bundled Game Over background, not GamePICs staging.
+    for asset in (ABYSS_ART_PATH, ABYSS_RITES_PATH):
+        if asset not in names:
+            raise ValueError(f"Dark Abyss runtime asset missing from EXE: {asset}")
+        original = Path(__file__).resolve().parents[1] / "Dark_Snake" / asset
+        digest = hashlib.sha256(archive.extract(names[asset])).hexdigest()
+        if digest != hashlib.sha256(original.read_bytes()).hexdigest():
+            raise ValueError(f"Dark Abyss asset in EXE differs: {asset}")
+    if not json.loads(archive.extract(names[ABYSS_RITES_PATH])).get("common"):
+        raise ValueError("Dark Abyss epitaph library must be non-empty.")
     if ROOF_DEMO_PATH not in names:
         raise ValueError(f"Roof demo missing from {executable.name}.")
     demo = json.loads(archive.extract(names[ROOF_DEMO_PATH]))
