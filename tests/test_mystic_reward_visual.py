@@ -86,7 +86,8 @@ def test_compact_fallback_keeps_name_and_buttons_uncovered(size):
         (size[0] - panel_width) // 2 + 90,
         panel_top + 480, panel_width - 180, 51,
     )
-    assert result.get_at((input_rect.x + 2, input_rect.y + 2))[:3] == (6, 14, 29)
+    # Sample the dark interior, not the intentionally cyan input border.
+    assert result.get_at((input_rect.right - 25, input_rect.y + 9))[:3] == (6, 14, 29)
     # Real mouse-button hitboxes at y520..572 stay available.
     visual_no_entry = DarkAbyssGameOver()
     draw(visual_no_entry, size, realistic_career(), highscore=False)
