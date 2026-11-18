@@ -6,6 +6,7 @@ rectangles, draws them in a quieter theme and caches scaled images.
 from __future__ import annotations
 
 import math
+import time
 
 import pygame
 
@@ -33,6 +34,24 @@ def _label(surface, font, message, x, y, color=TEXT, max_width=None):
         surface.blit(font.render(value, True, color), (x, y))
 
 
+def snake_preview_positions(stage, cell_size, step, elapsed_seconds, *,
+                            body_count=5, speed=32, phase=0):
+    """Head first, body behind it, all on a single continuous horizontal track.
+
+    Travel starts one sprite-width outside left and wraps only once the last
+    body segment has exited right. Returning rectangles rather than pixels
+    keeps visual tests deterministic and prevents stretched body spacing.
+    """
+    travel = stage.width + body_count * step + 2 * cell_size
+    distance = (max(0.0, elapsed_seconds) * speed + phase) % travel
+    head_x = stage.left - cell_size + round(distance)
+    y = stage.centery - cell_size // 2
+    return tuple(
+        pygame.Rect(head_x - index * step, y, cell_size, cell_size)
+        for index in range(body_count + 1)
+    )
+
+
 class FrostAgeOptionsView:
     def __init__(self, menu):
         self.menu = menu
@@ -41,6 +60,7 @@ class FrostAgeOptionsView:
         self._sprite_cache = {}
         self._thumb_cache = {}
         self._music_scroll = 0
+        self._preview_epoch = time.monotonic()
         self._source_background = getattr(
             getattr(menu.game, "main_menu", None), "_background_source", None
         )
@@ -298,6 +318,55 @@ class FrostAgeOptionsView:
             )
         return self._sprite_cache[key]
 
+    def _preview_sprite(self, tab, filename, size, player):
+        """Match the real in-game fallback for players with no custom skin."""
+        image = self._image(tab, filename, size)
+        if image is not None:
+            return image
+        from modules.graphics import SNAKE_BODY_IMG, SNAKE_HEAD_BETA, SNAKE_HEAD_IMG
+
+        key = ("default", tab, player if tab == "Heads" else 0, size)
+        if key not in self._sprite_cache:
+            source = (SNAKE_BODY_IMG if tab == "Bodies" else
+                      (SNAKE_HEAD_BETA if player == 2 else SNAKE_HEAD_IMG))
+            self._sprite_cache[key] = pygame.transform.smoothscale(
+                source, (size, size)
+            )
+        return self._sprite_cache[key]
+
+    def _draw_moving_snake(self, surface, rect, player, head, body,
+                           image_top, image_size):
+        """Decorative 6-segment Snake: fixed track, no game-state updates."""
+        top = image_top + image_size + 9
+        available = rect.bottom - 69 - top
+        if available < 25:
+            return
+        stage = pygame.Rect(rect.x + 14, top, rect.width - 28,
+                            min(90, available))
+        if stage.width < 80:
+            return
+        pygame.draw.rect(surface, (10, 27, 43), stage, border_radius=7)
+        pygame.draw.rect(surface, BORDER, stage, 1, border_radius=7)
+
+        sprite_size = max(16, min(39, stage.height - 8, stage.width // 7))
+        step = max(1, round(sprite_size * .83))  # overlap transparent sprite edges
+        if stage.height >= 58:
+            _label(surface, self._font(12), "BEWEGTE VORSCHAU · ZOOM",
+                   stage.x + 9, stage.y + 5, MUTED, stage.width - 18)
+        sprite_head = self._preview_sprite("Heads", head, sprite_size, player)
+        sprite_body = self._preview_sprite("Bodies", body, sprite_size, player)
+        elapsed = time.monotonic() - self._preview_epoch
+        segments = snake_preview_positions(
+            stage, sprite_size, step, elapsed, phase=stage.width * (.64 if player == 1 else .34)
+        )
+        # A single connected chain. Render tail first, head on top.
+        previous_clip = surface.get_clip()
+        surface.set_clip(stage.inflate(-2, -2).clip(previous_clip))
+        for index in range(len(segments) - 1, -1, -1):
+            surface.blit(sprite_head if index == 0 else sprite_body,
+                         segments[index])
+        surface.set_clip(previous_clip)
+
     def _draw_gallery(self, surface):
         m = self.menu
         grid = m.inventory_grid_rect
@@ -344,7 +413,7 @@ class FrostAgeOptionsView:
         head_img = self._image("Heads", head, display_size)
         body_img = self._image("Bodies", body, display_size)
         images = [img for img in (head_img, body_img) if img is not None]
-        top_y = min(rect.bottom - display_size - 45, rect.y + (70 if compact else 82))
+        top_y = min(rect.bottom - display_size - 45, rect.y + (56 if compact else 82))
         total = len(images) * display_size + max(0, len(images) - 1) * sprite_gap
         at_x = rect.centerx - total // 2
         for img in images:
@@ -353,11 +422,13 @@ class FrostAgeOptionsView:
         if not images:
             _label(surface, small, "Noch kein Skin gewählt",
                    rect.left + 14, top_y + 10, MUTED, rect.width - 28)
+        self._draw_moving_snake(surface, rect, player, head, body,
+                                top_y, display_size)
         # This row uses the unchanged GRID_SIZE from config: genuine in-game scale.
         from config import GRID_SIZE
         _label(surface, small, f"IM SPIEL · {GRID_SIZE} px",
                rect.x + 14, rect.bottom - 61, MUTED, rect.width - 28)
-        actual = [self._image(tab, name, GRID_SIZE)
+        actual = [self._preview_sprite(tab, name, GRID_SIZE, player)
                   for tab, name in (("Heads", head), ("Bodies", body))]
         actual = [img for img in actual if img is not None]
         x = rect.centerx - (len(actual) * GRID_SIZE + max(0, len(actual)-1) * 6) // 2
