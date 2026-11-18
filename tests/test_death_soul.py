@@ -21,6 +21,7 @@ pygame.display.set_mode((1, 1))
 from config import GRID_SIZE, WINDOW_HEIGHT, WINDOW_WIDTH
 from modules.death_soul import (DeathSoulEvent, DeathSoulVisual, FRAME_COUNT,
                                 SIZES, SOUL_ART, SOUL_SECONDS)
+from modules.death_fog import FINAL_DEATH_SECONDS
 from modules.enums import GameState
 from modules.game import Game
 from modules.resources import find_asset
@@ -135,6 +136,13 @@ def test_final_life_freezes_real_world_then_yields_to_dark_abyss():
     # Advance the original event without sleeping or updating gameplay.
     game._death_soul_event = replace(
         event, began_at=time.time() - SOUL_SECONDS - 0.1
+    )
+    game.draw()
+    assert game._death_fog_visual is not None
+    assert game._game_over_visual is None  # Fog continues after soul fades.
+
+    game._death_soul_event = replace(
+        event, began_at=time.time() - FINAL_DEATH_SECONDS - 0.1
     )
     game.draw()
     assert game._game_over_visual is not None
