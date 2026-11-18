@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import os
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from tempfile import NamedTemporaryFile
@@ -111,8 +112,40 @@ def _empty_progress() -> dict:
             "totals": _totals([])}
 
 
+@contextmanager
+def _journal_lock(path: Path):
+    """Cross-process transaction lock. The OS releases it after a crash.
+
+    A persistent small .lock file is intentional. Do not unlink a lock file:
+    two active processes could otherwise lock different inodes.
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    lock_path = path.with_name(path.name + ".lock")
+    with lock_path.open("a+b") as handle:
+        if os.name == "nt":
+            import msvcrt
+            handle.seek(0, os.SEEK_END)
+            if handle.tell() == 0:
+                handle.write(b"0")
+                handle.flush()
+            handle.seek(0)
+            msvcrt.locking(handle.fileno(), msvcrt.LK_LOCK, 1)
+            try:
+                yield
+            finally:
+                handle.seek(0)
+                msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+        else:
+            import fcntl
+            fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+            try:
+                yield
+            finally:
+                fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+
+
 class RoundJournal:
-    """Single-process, crash-safe JSON journal with replay protection.
+    """Crash-safe JSON journal with cross-process locking and replay defense.
 
     The format is deliberately independent of settings.json and leaderboard.txt.
     Future XP, ranks, titles and rewards must be added through explicit schema
@@ -151,36 +184,36 @@ class RoundJournal:
         return data
 
     def append(self, record: dict) -> bool:
-        """Persist one final round atomically; False means exact replay already exists.
+        """Atomically commit once, even if two game instances run concurrently.
 
-        Raises on an invalid/unsupported journal instead of deleting the past.
-        An already-used UUID with different contents is never silently accepted.
+        Returns False if this exact recorded round already exists; a reused UUID
+        with different contents is invalid.  Never delete historical entries.
         """
         validate_round(record)
-        old = self.read()
-        for previous in old["rounds"]:
-            if previous["round_id"] == record["round_id"]:
-                if previous == record:
-                    return False
-                raise ValueError("A completed round ID cannot be rewritten.")
-
-        rounds = [*old["rounds"], dict(record)]
-        data = {"schema_version": SCHEMA_VERSION,
-                "rounds": rounds, "totals": _totals(rounds)}
         path = self.path
-        temp = None
-        try:
-            path.parent.mkdir(parents=True, exist_ok=True)
-            with NamedTemporaryFile("w", encoding="utf-8", dir=path.parent,
-                                    prefix=".round-progress-", suffix=".tmp",
-                                    delete=False) as handle:
-                temp = Path(handle.name)
-                json.dump(data, handle, ensure_ascii=False, indent=2)
-                handle.flush()
-                os.fsync(handle.fileno())
-            os.replace(temp, path)
+        with _journal_lock(path):
+            old = self.read()  # always re-read *inside* the OS lock
+            for previous in old["rounds"]:
+                if previous["round_id"] == record["round_id"]:
+                    if previous == record:
+                        return False
+                    raise ValueError("A completed round ID cannot be rewritten.")
+
+            rounds = [*old["rounds"], dict(record)]
+            data = {"schema_version": SCHEMA_VERSION,
+                    "rounds": rounds, "totals": _totals(rounds)}
             temp = None
-        finally:
-            if temp is not None:
-                temp.unlink(missing_ok=True)
-        return True
+            try:
+                with NamedTemporaryFile("w", encoding="utf-8", dir=path.parent,
+                                        prefix=".round-progress-", suffix=".tmp",
+                                        delete=False) as handle:
+                    temp = Path(handle.name)
+                    json.dump(data, handle, ensure_ascii=False, indent=2)
+                    handle.flush()
+                    os.fsync(handle.fileno())
+                os.replace(temp, path)
+                temp = None
+            finally:
+                if temp is not None:
+                    temp.unlink(missing_ok=True)
+            return True
