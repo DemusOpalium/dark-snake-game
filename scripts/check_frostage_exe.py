@@ -11,6 +11,7 @@ from PyInstaller.archive.readers import CArchiveReader
 CATALOG_PATH = "assets/graphics/frostage/catalog.json"
 ROOF_DEMO_PATH = "assets/levels/frostage_roof_demo.json"
 EDITOR_UI_DIR = "assets/graphics/editor_ui/"
+D20_HUD_PATH = "assets/graphics/hud/Random_D20-removebg-preview.png"
 EXPECTED_PNG_COUNT = 175
 
 
@@ -51,6 +52,13 @@ def check(executable: Path) -> None:
         path = EDITOR_UI_DIR + entry["file"]
         if hashlib.sha256(archive.extract(names[path])).hexdigest() != entry["sha256"]:
             raise ValueError(f"Hash mismatch in EXE: {path}")
+    if D20_HUD_PATH not in names:
+        raise ValueError("Random D20 HUD artwork missing from Windows EXE.")
+    original = Path(__file__).resolve().parents[1] / "Dark_Snake" / D20_HUD_PATH
+    actual_hash = hashlib.sha256(archive.extract(names[D20_HUD_PATH])).hexdigest()
+    expected_hash = hashlib.sha256(original.read_bytes()).hexdigest()
+    if actual_hash != expected_hash:
+        raise ValueError("Random D20 HUD artwork in EXE does not match source.")
     if ROOF_DEMO_PATH not in names:
         raise ValueError(f"Roof demo missing from {executable.name}.")
     demo = json.loads(archive.extract(names[ROOF_DEMO_PATH]))
