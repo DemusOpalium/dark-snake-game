@@ -83,6 +83,14 @@ def user_data_path(filename: str) -> str:
         return bundled_path(filename)
 
 
+def progress_file_path() -> Path:
+    """Persistent Classic round history, never in PyInstaller's temporary bundle."""
+    path = DATA_DIR / "round_progress.json"
+    if is_temporary_bundle_path(path):
+        raise OSError("Progress cannot be written into a temporary game bundle.")
+    return path
+
+
 def custom_level_path(*, for_write: bool = False) -> str:
     saved = Path(user_data_path("custom_level.json"))
     if for_write or saved.is_file():

@@ -63,6 +63,7 @@ from modules.game_over_visual import DarkAbyssGameOver
 from modules.death_soul import DeathSoulEvent, DeathSoulVisual, SOUL_SECONDS
 from modules.death_fog import AbyssFogVisual, FINAL_DEATH_SECONDS
 from modules.dice_visual import FrostDiceResultVisual
+from modules.round_progress import RoundJournal, begin_round, completed_round
 from modules.projectile_config import (
     MAX_BOSS_FLAMES, MAX_BOSS_GRID_PROJECTILES, MAX_ENEMY_PROJECTILES,
     MAX_PLAYER_GRID_PROJECTILES,
@@ -468,6 +469,10 @@ class Game:
     def __init__(self, headless=False):
         global WINDOW_WIDTH, WINDOW_HEIGHT, GRID_WIDTH, GRID_HEIGHT
         self.headless = headless
+        # Progress persists at confirmed final Game Over, not during frames.
+        # Headless development simulations do not affect real player history.
+        self._round_journal = RoundJournal()
+        self._record_completed_rounds = not headless
         if headless:
             # Gameplay code deliberately continues to execute while simulating and
             # some of it renders status information during update().  A plain
@@ -759,6 +764,7 @@ class Game:
         self._roof_objects = self._classic_roof_objects.copy()
         self._roof_visibility = self._classic_roof_visibility
         self.background = self.build_background_from_map()
+        self._round_token = begin_round(players)
         self.set_state(GameState.GAME)
 
     def choose_classic_background(self, name, level_map, *, roof_objects=None, roof_visibility=None):
@@ -873,6 +879,10 @@ class Game:
         self.round_items_collected = 0
         self.round_enemies_defeated = 0
         self.round_bosses_defeated = 0
+        # A reset is never an automatic completed run or reward.
+        self._round_token = None
+        self._round_recorded = False
+        self.round_progress_error = None
         self.dice_result = None
         self.dice_display_until = 0
         self.last_boss_effect_time = 0
@@ -1946,6 +1956,30 @@ class Game:
             self._death_soul_visual = DeathSoulVisual()
         self._death_soul_visual.draw(self.screen, self._death_soul_event, elapsed)
 
+    def _finalize_round_progress(self, reason):
+        """Snapshot only authoritative counters, once, after final Game Over."""
+        token = self._round_token
+        if (not self._record_completed_rounds or token is None
+                or self._round_recorded or self.game_state != GameState.GAME_OVER):
+            return False
+        try:
+            snapshot = completed_round(
+                token, reason=reason, score=self.score, level=self.level,
+                enemies=self.round_enemies_defeated,
+                bosses=self.round_bosses_defeated,
+                items=self.round_items_collected,
+                lives_lost=self.round_death_count,
+            )
+            # No rank/XP/achievement rewards yet.  Only record truth.
+            self._round_journal.append(snapshot)
+            self._round_recorded = True
+            self.round_progress_error = None
+            return True
+        except (OSError, ValueError, TypeError) as exc:
+            self.round_progress_error = str(exc)
+            record_event(f"Rundenfortschritt konnte nicht gespeichert werden: {exc}")
+            return False
+
     def handle_self_collision(self):
         if self.respawn.active:
             return
@@ -1966,6 +2000,7 @@ class Game:
             self.metrics.cancel_pending()
             self.game_state = GameState.GAME_OVER
             self.game_over_time = time.time()
+            self._finalize_round_progress("self_stall")
         if len(self.leaderboard) < 10 or self.score > self.leaderboard[-1][1]:
             self.leaderboard_mode = True
 
@@ -1999,6 +2034,7 @@ class Game:
             self.metrics.cancel_pending()
             self.game_state = GameState.GAME_OVER
             self.game_over_time = time.time()
+            self._finalize_round_progress("life_depleted")
             if len(self.leaderboard) < 10 or self.score > self.leaderboard[-1][1]:
                 self.leaderboard_mode = True
         else:
