@@ -59,7 +59,8 @@ class DeathSoulVisual:
             fraction = (index + 1) / FRAME_COUNT
             final_size = self.target_size(tier)
             diameter = max(18, round(18 + (final_size - 18) * fraction ** 0.7))
-            opacity = min(255, round(255 * min(
+            # 90% maximum opacity reads as a spirit, not a solid creature.
+            opacity = min(230, round(230 * min(
                 1.0, fraction / 0.15, (1.0 - fraction) / 0.22,
             )))
             if self._image is not None:
