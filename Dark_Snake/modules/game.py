@@ -59,6 +59,7 @@ from modules.frame_metrics import FrameMetrics
 from modules.respawn import (RespawnCountdown, FrostRespawnVisual, RESPAWN_SECONDS,
                              POST_RESPAWN_PROTECTION, preferred_spawn_cells,
                              safe_spawn_cells, shift_round_timers)
+from modules.game_over_visual import DarkAbyssGameOver
 from modules.dice_visual import FrostDiceResultVisual
 from modules.projectile_config import (
     MAX_BOSS_FLAMES, MAX_BOSS_GRID_PROJECTILES, MAX_ENEMY_PROJECTILES,
@@ -488,6 +489,7 @@ class Game:
         self.respawn = RespawnCountdown()
         self._respawn_recent = False
         self._respawn_visual = None  # Lazy, only loads FrostAge PNG on the first respawn.
+        self._game_over_visual = None  # Lazy, cached Dark Abyss backdrop + fonts.
         self._dice_banner = None  # Lazy, one-time scaled D20 art from bundled HUD assets.
         self._dice_visual = None  # Cached FrostAge result card; old purple box is retired.
         self.effect_manager = EffectManager()
@@ -660,9 +662,9 @@ class Game:
                    color=RED, action=lambda: sys.exit())
         ]
         self.game_over_buttons = [
-            Button(WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT // 2 + 100, button_width, button_height, "NEUSTART",
+            Button(WINDOW_WIDTH // 2 - 228, 520, 212, 52, "NEUSTART",
                    action=lambda: self.start_game(self.player_count)),
-            Button(WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT // 2 + 180, button_width, button_height, "HAUPTMENÜ",
+            Button(WINDOW_WIDTH // 2 + 16, 520, 212, 52, "HAUPTMENÜ",
                    color=PURPLE, action=lambda: self.set_state(GameState.INTRO))
         ]
         self.leaderboard_back_button = Button(
@@ -858,6 +860,10 @@ class Game:
         self.game_over_time = 0
         self.pause_time = 0
         self.lives = 3
+        # Round statistics are real collected items / confirmed kills, not estimates.
+        self.round_items_collected = 0
+        self.round_enemies_defeated = 0
+        self.round_bosses_defeated = 0
         self.dice_result = None
         self.dice_display_until = 0
         self.last_boss_effect_time = 0
@@ -1008,6 +1014,7 @@ class Game:
         else:
             self.handle_item_pickup(self.items[item_index])
             self.items.pop(item_index)
+            self.round_items_collected += 1
         return True
 
     def _advance_snakes(self, invincible):
@@ -1136,6 +1143,7 @@ class Game:
         self.effects['boss_loot'] = time.time() + 10
         self.effect_manager.spawn("explosion", center)
         self.log_combat_event("boss_defeated", source=source, score=100 * self.level)
+        self.round_bosses_defeated += 1
         return True
 
     def activate_portal(self, event):
@@ -1297,6 +1305,7 @@ class Game:
                 enemy.health -= flame.damage
                 if enemy.health <= 0:
                     self.enemies.remove(enemy)
+                    self.round_enemies_defeated += 1
                     self.score += 20
                     self.add_achievement("Enemy roasted!")
                 return "enemy"
@@ -1503,6 +1512,7 @@ class Game:
                     enemy.health -= 1
                     if enemy.health <= 0 and enemy in self.enemies:
                         self.enemies.remove(enemy)
+                        self.round_enemies_defeated += 1
                         self.score += 20
                         self.add_achievement("!")
                     if SOUNDS.get("gegner"):
@@ -2177,7 +2187,7 @@ class Game:
             self.draw_game(include_hud=False)
             self.draw_pause()
         elif self.game_state == GameState.GAME_OVER:
-            self.draw_game(include_hud=False)
+            # The cinematic backdrop replaces the old world, not merely a shade.
             self.draw_game_over()
         elif self.game_state == GameState.SETTINGS:
             self.options_menu.draw(self.screen)
@@ -2190,7 +2200,7 @@ class Game:
                 cooldown = int(self.boss_spawn_timer - time.time())
                 cd_txt = pygame.font.SysFont('Arial', 16, bold=True).render(f"Boss spawn in: {cooldown}s", True, ORANGE)
                 self.screen.blit(cd_txt, (10, WINDOW_HEIGHT - 30))
-        if self.game_state in (GameState.GAME, GameState.BOSS_FIGHT, GameState.PAUSE, GameState.GAME_OVER):
+        if self.game_state in (GameState.GAME, GameState.BOSS_FIGHT, GameState.PAUSE):
             self.draw_hud()
             self.achievement_manager.draw_achievements(self.screen)
             self.achievement_manager.draw_portal_event(self.screen)
@@ -2453,27 +2463,22 @@ class Game:
             btn.draw(self.screen)
 
     def draw_game_over(self):
-        overlay = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 200))
-        self.screen.blit(overlay, (0, 0))
-        go_txt = pygame.font.SysFont('Arial', 50).render("GAME OVER", True, RED)
-        self.screen.blit(go_txt, (WINDOW_WIDTH // 2 - go_txt.get_width() // 2, 100))
-        score_txt = pygame.font.SysFont('Arial', 30).render(f"Dein Score: {self.score}", True, WHITE)
-        self.screen.blit(score_txt, (WINDOW_WIDTH // 2 - score_txt.get_width() // 2, 180))
-        if self.leaderboard_mode:
-            in_txt = pygame.font.SysFont('Arial', 30).render("Gib deinen Namen ein:", True, WHITE)
-            self.screen.blit(in_txt, (WINDOW_WIDTH // 2 - in_txt.get_width() // 2, 230))
-            input_rect = pygame.Rect(WINDOW_WIDTH // 2 - 150, 270, 300, 40)
-            pygame.draw.rect(self.screen, DARK_GREY, input_rect)
-            pygame.draw.rect(self.screen, WHITE, input_rect, 2)
-            name_txt = pygame.font.SysFont('Arial', 30).render(self.name_input, True, WHITE)
-            self.screen.blit(name_txt, (input_rect.x + 10, input_rect.y + 5))
-            if int(time.time() * 2) % 2 == 0:
-                cur_x = input_rect.x + 10 + name_txt.get_width()
-                pygame.draw.line(self.screen, WHITE, (cur_x, input_rect.y + 5), (cur_x, input_rect.y + 35), 2)
-        else:
-            for btn in self.game_over_buttons:
-                btn.draw(self.screen)
+        """Abyss farewell, preserving leaderboard input and existing button actions."""
+        if self._game_over_visual is None:
+            self._game_over_visual = DarkAbyssGameOver()
+        self._game_over_visual.draw(
+            self.screen,
+            score=self.score,
+            level=self.level,
+            enemies=self.round_enemies_defeated,
+            items=self.round_items_collected,
+            bosses=self.round_bosses_defeated,
+            players=self.player_count,
+            highscore_entry=self.leaderboard_mode,
+            name_input=self.name_input,
+            buttons=self.game_over_buttons,
+        )
+
 
     def draw_leaderboard(self):
         self.screen.fill(DARK_GREY)
