@@ -15,6 +15,7 @@ D20_HUD_PATH = "assets/graphics/hud/Random_D20-removebg-preview.png"
 ABYSS_ART_PATH = "assets/graphics/game_over/dark_abyss.png"
 ABYSS_RITES_PATH = "assets/text/game_over_rites.json"
 DEATH_SOUL_PATH = "assets/graphics/death/soul_of_fallen.png"
+SKINS_CATALOG_PATH = "assets/graphics/skins_catalog.json"
 DEATH_FOG_PATHS = tuple(f"assets/graphics/death/fog_{index:02}.png" for index in (1, 2, 3))
 EXPECTED_PNG_COUNT = 175
 
@@ -87,6 +88,27 @@ def check(executable: Path) -> None:
         expected_hash = hashlib.sha256(original_fog.read_bytes()).hexdigest()
         if actual_hash != expected_hash:
             raise ValueError(f"Death Transition fog PNG differs in EXE: {fog_path}")
+    # The new Snake Gallery must use bundled runtime sprites, never GamePICs/.
+    if SKINS_CATALOG_PATH not in names:
+        raise ValueError("Skin provenance catalogue missing from Windows EXE.")
+    skin_catalog = json.loads(archive.extract(names[SKINS_CATALOG_PATH]))
+    candidates = skin_catalog.get("candidates", [])
+    if len(candidates) != 68:
+        raise ValueError(f"Expected 68 staged skin candidates, found {len(candidates)}.")
+    runtime_skins = [skin for skin in candidates if skin["runtime_asset"]]
+    if len(runtime_skins) != 64:
+        raise ValueError(f"Expected 64 available staged sprites, found {len(runtime_skins)}.")
+    for skin in runtime_skins:
+        archive_path = "assets/" + skin["runtime_asset"]
+        if archive_path not in names:
+            raise ValueError(f"Skin missing from bundled EXE: {archive_path}")
+        content = archive.extract(names[archive_path])
+        digest = hashlib.sha1(
+            f"blob {len(content)}".encode("ascii") + bytes([0]) + content
+        ).hexdigest()
+        if digest != skin["git_blob_sha"]:
+            raise ValueError(f"Skin source differs in EXE: {archive_path}")
+    print(f"Verified {len(runtime_skins)} staged Head/Body sprites in Windows EXE.")
     if ROOF_DEMO_PATH not in names:
         raise ValueError(f"Roof demo missing from {executable.name}.")
     demo = json.loads(archive.extract(names[ROOF_DEMO_PATH]))
