@@ -76,6 +76,37 @@ Diese Leitlinien ergänzen [AGENTS.md](AGENTS.md), die technische [Roadmap](ROAD
 - **Risiko:** Zu frühe Umgestaltung könnte Anzeige und Rasterkoordinaten durcheinanderbringen.
 - **Status:** Zum Prüfen, kein Bugfix versprochen.
 
+### 18.11.2026 · Spieltest/Belohnungssystem & FrostAge-Gegner · geprüfter Befund
+- **Art:** manuelle Windows-Beobachtung + anonymisierte Auswertung lokaler
+  Testdateien; nicht gleichzusetzen mit allgemeingültigem Balance-Beweis.
+- **BESTÄTIGT:** Rundenjournal/Karriere/Inventar verknüpfen drei
+  unterschiedliche abgeschlossene 1P-Runden; gesamt 8.640 Punkte,
+  102 besiegte Gegner, 8 Bosse und 156 Item-Aufnahmen.
+  Die XP-Formel ergibt 4.263 XP, Rang 4, und das Inventar weist
+  genau drei einmalige Rangfreischaltungen aus.
+- **BEOBACHTET:** FrostAge-Optionen zeigen abgedunkelte gesperrte
+  Snake-Skins, Rangmarkierung sowie P1/P2-Skinvorschau. Die
+  historische Top-10-Anzeige funktioniert, entspricht aber noch nicht
+  dem geplanten Design. Dark Abyss zeigt Rundenwerte, derzeit
+  **keine Rang-/Skin-Belohnungszeremonie**.
+- **ARCHIVIERT:** Zwei ältere Simulator-Berichte aus September und
+  November sind **unterschiedliche Testprofile**; ihre fehlerfreien
+  Läufe ersetzen keinen aktuellen Regressionstest des letzten Builds.
+- **NEU IM STAGING:** PR #213 brachte 17 FrostAge-Gegnerbilder in
+  `GamePICs/`; noch **keine** freigegebenen Gegner-Klassen.
+  Zunächst drei Profile (Standard/Agil/Boss) mit eigenem Spawn-Gate,
+  spätere Animationen und 14 weitere Profile.
+- **VORSCHLAG:** Als nächster Code-PR die verifizierten XP/Rang/Skin-
+  Abschlussdaten im Dark Abyss darstellen. Separat einen
+  `Spielstände öffnen`-Button für `resources.DATA_DIR` ergänzen.
+  Gegnerprofile in eigenem Vertical-Slice-PR, ohne Classic-Verhalten
+  unbeabsichtigt zu verändern.
+- **Grenze:** Keine personenbezogenen JSONs, vollständigen
+  Spielaufzeichnungen, Namen oder `round_id` ins öffentliche Repo;
+  nur aggregierte, überprüfbare Beobachtungen.
+- **Nachweis:** [Spieltest- und Balancebericht 18.11.](PLAYTEST_BALANCE_2026-11-18.md)
+- **Status:** Auswertung dokumentiert, funktionale Folgearbeiten offen.
+
 ### Agenten-Freifläche
 Noch keine weiteren Beiträge. **Keine erfundenen „Agenten-Rückmeldungen“ eintragen.** Wenn ein Agent bei seiner tatsächlichen Arbeit eine brauchbare Idee findet, darf er hier eine neue Notiz per separatem PR vorschlagen oder im passenden Issue/PR kommentieren.
 
