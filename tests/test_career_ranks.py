@@ -223,12 +223,14 @@ def test_game_recovery_after_award_write_failure(tmp_path, monkeypatch):
     game.score = 1000
     game.lives = 1
     game.player_health = 0
-    original_replace = os.replace
+    # Reject only the career commit; patching os.replace globally would also
+    # block the independent authoritative round journal's first save.
+    original_sync = CareerLedger.sync
 
     def reject(*_args):
         raise OSError("Career disk blocked")
 
-    monkeypatch.setattr("modules.career_ranks.os.replace", reject)
+    monkeypatch.setattr(CareerLedger, "sync", reject)
     game.handle_death()
     assert game.game_state == GameState.GAME_OVER
     assert game._round_recorded
@@ -237,7 +239,7 @@ def test_game_recovery_after_award_write_failure(tmp_path, monkeypatch):
     assert RoundJournal().read()["totals"]["rounds_completed"] == 1
     assert not resources.career_file_path().exists()
 
-    monkeypatch.setattr("modules.career_ranks.os.replace", original_replace)
+    monkeypatch.setattr(CareerLedger, "sync", original_sync)
     # A freshly created real GUI instance reconciles the saved round on boot.
     restarted = Game()
     assert restarted.career_progress_error is None
