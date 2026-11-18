@@ -7,6 +7,48 @@ Spielcode auf `main` abgeglichen. **Keine Original-Spielstände, Spieler-/Profil
 UUIDs, Geräteserien, Screenshots oder persönlichen Einstellungen in dieses
 öffentliche Repository übernehmen.**
 
+## Ergänzung 18.11. · Vierte Windows-Runde / Dark Abyss D
+
+**BEOBACHTET** im Windows-Screenshot: PR #215 zeigt tatsächlich
+`KARRIERE · RANG 4 → 4 · +130 XP` und
+`4.393 / 5.000 XP · NOCH 607 BIS RANG 5`. Die Daten liegen
+im 65px-Abschlussfeld direkt unter den Rundenmetriken; **technisch
+richtig, gestalterisch stark gequetscht**. Der Projektinhaber
+wünscht deshalb ein eigenständiges, schimmerndes violett-grünes
+Belohnungsfenster **unter der Namen-Eingabe**, im hellen Bereich
+des Dark-Abyss-Hintergrunds. Keine Änderung der Rang-/XP-Logik.
+
+**DATEIEN GEPRÜFT:** Die vierte Classic-1P-Runde:
+308 Punkte, Level 2, 4 normale Gegner, 0 Bosse, 12 Items,
+3 Lebensverluste (`life_depleted`); 1:27 UTC-Wanduhrdifferenz.
+Prüfung: `308//10 + 4*10 + 0*200 + 12*5 = 30+40+60 = 130 XP`.
+
+**NEUER GESAMTSTAND:** 4 Runden, 8.948 Punkte, 106 Gegner,
+8 Bosse, 168 Items, **4.393 XP**, Rang 4, **607 XP bis Rang 5**.
+Alle vier Runden sind im Inventar als verarbeitet geführt,
+aber **nur drei tatsächliche Skin-Grants** in drei verschiedenen
+früheren Runden. Somit **kein neuer Skin in Runde 4** und
+weiter **13 von 92** im Besitz (6 Starter + 4 Legacy + 3 Rang).
+
+**UI-Auftrag PR #217:** echten Reward mit Emblem, Titel,
+nachgewiesener Voraussetzung, Lobzeile und Fortschrittsbalken
+darstellen; bei keinem Reward ein ehrliches Fortschrittsmotiv.
+Langsam pulsierende, halbtransparente purpur-/myzelgrüne Aura,
+keine schnelle Flackeranimation. Nach mehreren Sekunden
+sanft ausblenden, **Namenseingabe und Hauptmenü-Rückkehr
+auch nach dem Fade erhalten**, kein automatisch übersprungener
+Highscore. Bei wenig Fensterhöhe kompakte Anzeige oberhalb
+statt Überlagerung der Eingabefläche.
+
+**Beleggrenze:** Die personenbezogenen Originaldateien
+(`career_progress.json`, `round_progress.json`,
+`skin_inventory.json`, `settings.json`, `world-library.json`)
+sowie Lock-Dateien bleiben beim Spieler, nicht im öffentlichen Repo.
+Nur anonymisierte Messwerte wurden übernommen. Der hochgeladene
+ältere 30-Läufe-Simulatorbericht bleibt ausdrücklich **historisch**.
+
+---
+
 ## 1 · Manuell bestätigte Spielprobe (Classic, 1P)
 
 **BEOBACHTET durch den Projektinhaber:** Dark-Abyss-Game-Over, Eintrag in die
