@@ -134,3 +134,15 @@ def test_full_new_gallery_clamps_scroll_to_last_head_and_body():
         width = (menu.inventory_grid_rect.width - 5 * 10) // 4
         y = menu.inventory_grid_rect.y + 10 + last_row * (width + 10) + menu.inventory_scroll_offset
         assert menu.inventory_grid_rect.top <= y < menu.inventory_grid_rect.bottom
+
+
+def test_gallery_sprites_are_reused_across_games_without_redecoding():
+    from modules.options_menu import _cached_skin_options
+
+    first = Game(headless=True)
+    previous = _cached_skin_options.cache_info()
+    second = Game(headless=True)
+    current = _cached_skin_options.cache_info()
+    assert current.hits >= previous.hits + 2
+    assert first.options_menu.head_options[0][2] is second.options_menu.head_options[0][2]
+    assert first.options_menu.body_options[0][2] is second.options_menu.body_options[0][2]
