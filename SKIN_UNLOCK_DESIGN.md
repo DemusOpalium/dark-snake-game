@@ -1,6 +1,13 @@
 # DARK SNAKE · Snake Inventory C – Heads & Bodies (Version 1)
 
-**Status:** Entwicklungsstand zur manuellen Windows-Abnahme. Diese Stufe baut auf
+**Status (18.11.2026):** PR #211 ist gemergt. Der Projektinhaber
+hat die gedimmten Skin-Schlösser und die P1/P2-Vorschau unter Windows
+sichtbar geprüft. Drei echte Classic-Runden haben drei eindeutige
+Rang-Skin-Vergaben erzeugt. **Nicht getestet:** vollständiger neuer
+2P-Durchlauf mit freigeschalteten/gesperrten Skins. Auswertung:
+[Spieltest-Baseline](PLAYTEST_BALANCE_2026-11-18.md).
+
+Diese Stufe baut auf
 [ROUND_PROGRESS_DESIGN.md](ROUND_PROGRESS_DESIGN.md) und
 [CAREER_RANKS_DESIGN.md](CAREER_RANKS_DESIGN.md) auf.
 
@@ -85,8 +92,10 @@ und Set-Zuordnungen lassen sich später ausdrücklich im neuen Katalog versionie
   1350×930 und Windows-Bundle-Prüfung.
 - Pflicht: `python -m compileall -q Dark_Snake tests`, `python -m pytest -q`,
   Windows Alpha 2 + CodeQL.
-- **Manueller Windows-UI-Test: NOT RUN**. Die Bildvorschauen, R2/R3-Zustände
-  und das Verhalten der älteren Einstellungen muss Demus noch prüfen.
+- **Manueller Windows-UI-Test: TEILWEISE BESTÄTIGT (18.11.2026).**
+  Gesperrte Heads und P1/P2-Vorschauen sichtbar; 1P-Spielrunde und
+  drei Rang-Rewards mit lokalem JSON-Abgleich geprüft. Ein gezielter
+  2P-Gameplay-/Save-Reload-Test bleibt offen.
 - **Nächstes PR D**: Sichtbare XP/Rang-/Belohnungsübersicht im Dark Abyss.
   Der neue Inventarbestand ist bereits maschinenlesbar, jedoch gibt es in C
   noch keine Belohnungszeremonie im Spielende.
