@@ -59,6 +59,7 @@ from modules.frame_metrics import FrameMetrics
 from modules.respawn import (RespawnCountdown, FrostRespawnVisual, RESPAWN_SECONDS,
                              POST_RESPAWN_PROTECTION, preferred_spawn_cells,
                              safe_spawn_cells, shift_round_timers)
+from modules.dice_visual import FrostDiceResultVisual
 from modules.projectile_config import (
     MAX_BOSS_FLAMES, MAX_BOSS_GRID_PROJECTILES, MAX_ENEMY_PROJECTILES,
     MAX_PLAYER_GRID_PROJECTILES,
@@ -488,6 +489,7 @@ class Game:
         self._respawn_recent = False
         self._respawn_visual = None  # Lazy, only loads FrostAge PNG on the first respawn.
         self._dice_banner = None  # Lazy, one-time scaled D20 art from bundled HUD assets.
+        self._dice_visual = None  # Cached FrostAge result card; old purple box is retired.
         self.effect_manager = EffectManager()
         self.frost = FrostPrototype()
         self._effect_update_time = time.monotonic()
@@ -2418,8 +2420,7 @@ class Game:
             self.draw_dice_result()
     # Zeichnet das Ergebnis des Würfelwurfs in der Mitte des Bildschirms.
     def draw_dice_result(self):
-        # The D20 illustration is a single real asset; numbers remain dynamic (1..20).
-        # Loaded and smoothly resized once, from assets bundled in the Windows EXE.
+        """D20 banner on top; matching FrostAge result panel directly underneath."""
         if self._dice_banner is None:
             artwork = load_image("Random_D20-removebg-preview.png", "hud")
             self._dice_banner = pygame.transform.smoothscale(artwork, (330, 51))
@@ -2427,34 +2428,11 @@ class Game:
             midbottom=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 - 60)
         )
         self.screen.blit(self._dice_banner, banner_rect)
-        dice_rect = pygame.Rect(WINDOW_WIDTH // 2 - 50, WINDOW_HEIGHT // 2 - 50, 100, 100)
-        pygame.draw.rect(self.screen, PURPLE, dice_rect, border_radius=15)
-        pygame.draw.rect(self.screen, WHITE, dice_rect, 2, border_radius=15)
-        res_txt = pygame.font.SysFont('Arial', 50).render(str(self.dice_result), True, WHITE)
-        self.screen.blit(
-            res_txt,
-            (
-                WINDOW_WIDTH // 2 - res_txt.get_width() // 2,
-                WINDOW_HEIGHT // 2 - res_txt.get_height() // 2,
-            ),
+        if self._dice_visual is None:
+            self._dice_visual = FrostDiceResultVisual()
+        self._dice_visual.draw(
+            self.screen, self.dice_result, display_until=self.dice_display_until
         )
-        if self.dice_result == 1:
-            desc = pygame.font.SysFont('Arial', 20).render("Kritischer Fehlschlag!", True, RED)
-        elif self.dice_result == 20:
-            desc = pygame.font.SysFont('Arial', 20).render("Kritischer Erfolg!", True, GOLDEN)
-        elif self.dice_result > 15:
-            desc = pygame.font.SysFont('Arial', 20).render("Großer Erfolg!", True, GREEN)
-        elif self.dice_result > 10:
-            desc = pygame.font.SysFont('Arial', 20).render("Erfolg", True, GREEN)
-        elif self.dice_result > 5:
-            desc = pygame.font.SysFont('Arial', 20).render("Kleiner Erfolg", True, WHITE)
-        else:
-            desc = pygame.font.SysFont('Arial', 20).render("Fehlschlag", True, RED)
-        # Keep the caption below the dice card, not on top of its lower edge.
-        caption = desc.get_rect(midtop=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 + 62))
-        pygame.draw.rect(self.screen, (23, 16, 38), caption.inflate(18, 10), border_radius=6)
-        self.screen.blit(desc, caption)
-
 
 
     # [KS_TAG: SPAWN_BOSS_AOE]
