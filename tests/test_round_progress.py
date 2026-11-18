@@ -5,6 +5,7 @@ No ranks/XP/unlocks exist yet, so these tests check only *measured* gameplay.
 import json
 import os
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
@@ -227,3 +228,30 @@ def test_unsaved_progress_is_reported_and_can_be_retried(tmp_path, monkeypatch):
     monkeypatch.setattr("modules.round_progress.os.replace", original_replace)
     assert game._finalize_round_progress("life_depleted")
     assert RoundJournal().read()["totals"]["rounds_completed"] == 1
+
+
+
+def test_parallel_journals_never_overwrite_another_completed_round(tmp_path):
+    """Independent connections serialize their read-modify-write transaction."""
+    path = tmp_path / "progress.json"
+    entries = [snapshot(score=100 + index) for index in range(10)]
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        results = list(pool.map(lambda item: RoundJournal(path).append(item), entries))
+    assert results == [True] * 10
+    saved = RoundJournal(path).read()
+    assert len(saved["rounds"]) == 10
+    assert {r["round_id"] for r in saved["rounds"]} == {
+        entry["round_id"] for entry in entries
+    }
+    assert saved["totals"]["score"] == sum(entry["score"] for entry in entries)
+
+
+def test_parallel_replay_of_same_id_is_stored_only_once(tmp_path):
+    path = tmp_path / "progress.json"
+    item = snapshot()
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        results = list(pool.map(
+            lambda _index: RoundJournal(path).append(item), range(8)
+        ))
+    assert sorted(results) == [False] * 7 + [True]
+    assert RoundJournal(path).read()["totals"]["rounds_completed"] == 1
