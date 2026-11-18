@@ -28,7 +28,7 @@ Die UTC-Zeitstempel **sind keine pausenkorrigierte Spielzeit**. Spielzeit-Erfolg
 - Abschluss: Einmalige Speicherung **nur bei Game Over**, über temporäre Datei im selben Ordner, `fsync` und `os.replace`. Kein Dateizugriff pro Frame.
 - Replay-Schutz: dieselbe UUID4 mit identischem Abschluss ist ein No-Op. Dieselbe ID mit geänderten Werten wird **abgewiesen**.
 - Ungültige/ältere/neuere unbekannte Versionen und widersprüchliche Summen werden **nicht ungefragt überschrieben**. Fehler im lokalen Ereignislog und `game.round_progress_error` erkennbar.
-- Diese Version ist ein **lokales Single-Process-Journal**. Für mehrere gleichzeitig gestartete EXEs ist vor monetären/kosmetischen Belohnungen zusätzlich eine Datei-/Prozesssperre erforderlich. Lokale JSON-Daten sind **kein manipulationssicherer Online-Nachweis**.
+- Zwei gleichzeitig gestartete EXEs erhalten über eine **Betriebssystem-Dateisperre** auf `.lock` einen exklusiven Abschnitt für Lesen → Prüfen → Schreiben. Die Sperre wird nach einem Prozessabsturz vom Betriebssystem freigegeben; die kleine Sperrdatei bleibt absichtlich bestehen. Gleichzeitige Game-Over-Abschlüsse verlieren so keine Rundeneinträge. **Lokale JSON-Daten sind dennoch kein manipulationssicherer Online-Nachweis**.
 - Der Bestand wird **nicht rückwirkend** aus alten Highscores erraten oder nachträglich vergütet. Ein Absturz vor Game Over ist kein bestätigter Abschluss.
 
 ## Vertrag für die nächsten kleinen PRs
@@ -45,6 +45,6 @@ Die UTC-Zeitstempel **sind keine pausenkorrigierte Spielzeit**. Spielzeit-Erfolg
 
 ## Abnahme
 
-- Unit/Integration: UUID, Zähler aus 1P/2P, normale Tode vs. Game Over, Stillstandstod, Mehrfachabschluss, kaputte/fremde Datei, fehlgeschlagener atomarer Ersatz und Headless-Isolation.
+- Unit/Integration: UUID, Zähler aus 1P/2P, normale Tode vs. Game Over, Stillstandstod, Mehrfachabschluss, gleichzeitige Schreibversuche, kaputte/fremde Datei, fehlgeschlagener atomarer Ersatz und Headless-Isolation.
 - CI: `compileall`, `pytest -q`, Windows Alpha 2 und CodeQL.
 - Manuell Windows: 1P-/2P-Game-Over, anschließend Datei im Benutzerverzeichnis und Top-10-Bestenliste getrennt prüfen. **NOT RUN** bis Demus dies bestätigt.
