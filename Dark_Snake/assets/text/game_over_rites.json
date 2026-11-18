@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "common": [
+    "Kein Licht folgt dem letzten Atem.",
+    "Die Tiefe kennt keine Rückkehr.",
+    "Der Frost bewahrt Spuren. Er bewahrt keine Namen.",
+    "Was im Abgrund versinkt, wird nicht beklagt.",
+    "Der letzte Schritt war nur der Anfang des Falls."
+  ],
+  "boss_victor": [
+    "Du zerbrachst ihre Kronen. Der Abgrund nahm die deine.",
+    "Die Wächter fielen zuerst. Am Ende blieb nur die Tiefe.",
+    "Selbst bezwungene Schreine weisen keinen Weg zurück."
+  ],
+  "high_level": [
+    "Viele Ebenen lagen hinter dir. Keine führte ans Licht.",
+    "Deine Spur wurde länger. Der Schatten wartete geduldig.",
+    "Du hast den Abgrund überlebt. Nicht seinen letzten Ruf."
+  ],
+  "two_player": [
+    "Zwei Schatten stiegen hinab. Keiner trägt den anderen heim.",
+    "Gemeinsam bis an den Rand. Die Tiefe macht keinen Unterschied.",
+    "Zwei Namen. Ein Abgrund. Kein Echo antwortet."
+  ]
+}
