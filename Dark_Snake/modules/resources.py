@@ -99,6 +99,14 @@ def career_file_path() -> Path:
     return path
 
 
+def skin_inventory_file_path() -> Path:
+    """Durable cosmetic Head/Body inventory, independent of game settings."""
+    path = DATA_DIR / "skin_inventory.json"
+    if is_temporary_bundle_path(path):
+        raise OSError("Snake inventory cannot be written inside a temporary bundle.")
+    return path
+
+
 def custom_level_path(*, for_write: bool = False) -> str:
     saved = Path(user_data_path("custom_level.json"))
     if for_write or saved.is_file():

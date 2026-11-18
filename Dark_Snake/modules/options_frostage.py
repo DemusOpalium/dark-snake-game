@@ -59,6 +59,7 @@ class FrostAgeOptionsView:
         self.background = None
         self._sprite_cache = {}
         self._thumb_cache = {}
+        self._lock_shades = {}
         self._music_scroll = 0
         self._preview_epoch = time.monotonic()
         self._source_background = getattr(
@@ -388,6 +389,27 @@ class FrostAgeOptionsView:
             if key not in self._thumb_cache:
                 self._thumb_cache[key] = pygame.transform.smoothscale(original, (cell, cell))
             surface.blit(self._thumb_cache[key], rect)
+            unlocked = m.skin_allowed(m.current_tab, filename)
+            if not unlocked:
+                if cell not in self._lock_shades:
+                    shade = pygame.Surface((cell, cell), pygame.SRCALPHA)
+                    shade.fill((4, 10, 20, 193))
+                    self._lock_shades[cell] = shade
+                surface.blit(self._lock_shades[cell], rect)
+                cx = rect.centerx
+                top = rect.y + max(6, cell // 5)
+                body = pygame.Rect(cx - 9, top + 12, 18, 16)
+                pygame.draw.arc(surface, MUTED,
+                                pygame.Rect(cx - 7, top, 14, 22),
+                                0, math.pi, 3)
+                pygame.draw.rect(surface, MUTED, body, border_radius=3)
+                status_id = m.skin_registry.skin_id(m.current_tab, filename)
+                item = m.skin_registry.by_id.get(status_id) if status_id else None
+                short = (f"R{item['required_rank']}" if item and
+                         item["group"] == "career" else "SPÄTER")
+                tag_font = self._font(11 if cell >= 55 else 10, True)
+                tag = tag_font.render(short, True, MUTED)
+                surface.blit(tag, tag.get_rect(center=(cx, rect.bottom - 12)))
             if m.current_selected_img and m.current_selected_img[0] == filename:
                 pygame.draw.rect(surface, HIGHLIGHT, rect, 3, border_radius=5)
             elif rect.collidepoint(pygame.mouse.get_pos()):
@@ -395,8 +417,13 @@ class FrostAgeOptionsView:
         surface.set_clip(previous_clip)
         pygame.draw.rect(surface, BORDER, grid, 1, border_radius=6)
         hint_font = self._font(12 if self.size[0] < 1100 else 14)
-        _label(surface, hint_font, "Bild wählen · Für P1/P2 übernehmen · Speichern",
-               grid.x, grid.bottom + 8, MUTED, grid.width)
+        if m.current_selected_img:
+            hint = m.skin_status(m.current_tab, m.current_selected_img[0])
+        else:
+            hint = "Bild wählen · Für P1/P2 übernehmen · Speichern"
+        _label(surface, hint_font, hint,
+               grid.x, grid.bottom + 8,
+               FROST if hint == "Freigeschaltet" else MUTED, grid.width)
 
     def _draw_preview(self, surface, rect, player, head, body):
         pygame.draw.rect(surface, PANEL_INNER, rect, border_radius=9)

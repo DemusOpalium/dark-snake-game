@@ -220,6 +220,36 @@ class OptionsMenu:
         self.selected_body_p1 = self.game.settings.get('custom_body_p1', None)
         self.selected_head_p2 = self.game.settings.get('custom_head_p2', None)
         self.selected_body_p2 = self.game.settings.get('custom_body_p2', None)
+        # Enabled only after inventory reconciliation at real game startup.
+        self.skin_registry = None
+        self.skin_inventory_snapshot = None
+        self.inventory_notice = None
+
+    def apply_skin_inventory(self, registry, snapshot):
+        """Install the verified inventory once; never read files from draw()."""
+        self.skin_registry = registry
+        self.skin_inventory_snapshot = snapshot
+        # Saved outfits existing on first upgrade are migrated before this.
+        # Later manually edited settings cannot equip a still-locked image.
+        for player in (1, 2):
+            for tab, attr, prefix in (
+                ("Heads", f"selected_head_p{player}", "head"),
+                ("Bodies", f"selected_body_p{player}", "body"),
+            ):
+                filename = getattr(self, attr)
+                if filename and not self.skin_allowed(tab, filename):
+                    setattr(self, attr, None)
+                    self.game.settings[f"custom_{prefix}_p{player}"] = None
+
+    def skin_allowed(self, tab, filename):
+        if self.skin_registry is None or self.skin_inventory_snapshot is None:
+            return True  # headless/legacy component tests only
+        return self.skin_registry.is_unlocked(self.skin_inventory_snapshot, tab, filename)
+
+    def skin_status(self, tab, filename):
+        if self.skin_registry is None or self.skin_inventory_snapshot is None:
+            return "Freigeschaltet"
+        return self.skin_registry.status(self.skin_inventory_snapshot, tab, filename)
 
     # Lädt Bildoptionen und skaliert Thumbnails auf 60×60.
     def load_options(self, category):
@@ -239,6 +269,16 @@ class OptionsMenu:
             SOUNDS["eat"].play()
 
     def save(self):
+        # Assignment buttons are not the only way a stale value can reach the
+        # UI. Keep the save path protected, too, without changing JSON keys.
+        for player in (1, 2):
+            for tab, attr in (
+                ("Heads", f"selected_head_p{player}"),
+                ("Bodies", f"selected_body_p{player}"),
+            ):
+                name = getattr(self, attr)
+                if name and not self.skin_allowed(tab, name):
+                    setattr(self, attr, None)
         self.game.settings['initial_speed'] = self.speed_slider.current_val
         self.game.settings['difficulty'] = self.difficulty_slider.current_val
         self.game.settings['projectile_speed_factor'] = self.projectile_slider.current_val
@@ -306,6 +346,10 @@ class OptionsMenu:
             print("Kein Bild ausgewählt.")
             return
         fname, _, _ = self.current_selected_img
+        if not self.skin_allowed(self.current_tab, fname):
+            self.inventory_notice = self.skin_status(self.current_tab, fname)
+            return
+        self.inventory_notice = None
         if self.current_tab == "Heads":
             if player == 1:
                 self.selected_head_p1 = fname
