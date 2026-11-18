@@ -65,6 +65,7 @@ from modules.death_fog import AbyssFogVisual, FINAL_DEATH_SECONDS
 from modules.dice_visual import FrostDiceResultVisual
 from modules.round_progress import RoundJournal, begin_round, completed_round
 from modules.career_ranks import CareerLedger, xp_for_round
+from modules.career_ceremony import career_ceremony_for_round
 from modules.skin_inventory import SkinInventory, skin_registry
 from modules.projectile_config import (
     MAX_BOSS_FLAMES, MAX_BOSS_GRID_PROJECTILES, MAX_ENEMY_PROJECTILES,
@@ -897,6 +898,7 @@ class Game:
         self.round_progress_error = None
         # The round's career XP is awarded from committed data, never per frame.
         self.round_career_xp = 0
+        self.round_career_result = None
         self.dice_result = None
         self.dice_display_until = 0
         self.last_boss_effect_time = 0
@@ -2029,7 +2031,17 @@ class Game:
             self.round_progress_error = None
             self.round_career_xp = xp_for_round(snapshot)
             if self._sync_career_progress():
-                self._sync_skin_inventory()
+                inventory_ok = self._sync_skin_inventory()
+                try:
+                    self.round_career_result = career_ceremony_for_round(
+                        snapshot["round_id"], self.career_snapshot,
+                        self.skin_inventory_snapshot if inventory_ok else None,
+                        skin_registry() if inventory_ok else None,
+                    )
+                except (OSError, ValueError, TypeError) as exc:
+                    # Keep committed career and inventory data intact. A
+                    # missing/broken presentation must never block Game Over.
+                    record_event(f"Karriere-Abschluss konnte nicht angezeigt werden: {exc}")
             return True
         except (OSError, ValueError, TypeError) as exc:
             self.round_progress_error = str(exc)
@@ -2644,6 +2656,12 @@ class Game:
             highscore_entry=self.leaderboard_mode,
             name_input=self.name_input,
             buttons=self.game_over_buttons,
+            career=self.round_career_result,
+            career_warning=bool(
+                self._round_token is not None
+                and self._record_completed_rounds
+                and self.round_career_result is None
+            ),
         )
 
 

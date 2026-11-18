@@ -76,6 +76,10 @@ class DarkAbyssGameOver:
         self._font_stat_value = pygame.font.SysFont("Segoe UI", 29, bold=True)
         self._font_button = pygame.font.SysFont("Segoe UI", 21, bold=True)
         self._font_input = pygame.font.SysFont("Segoe UI", 24)
+        self._font_career_small = pygame.font.SysFont("Segoe UI", 13)
+        self._career_card_key = None
+        self._career_card_cache = None
+        self._reward_images = {}
         self._cached_rite_key = None
         self._cached_rite_surface = None
 
@@ -165,8 +169,80 @@ class DarkAbyssGameOver:
             pygame.draw.line(surface, FROST,
                              (cx, rect.y + 9), (cx, rect.bottom - 9), 2)
 
+    @staticmethod
+    def _format_xp(number):
+        return f"{number:,}".replace(",", ".")
+
+    def _reward_image(self, career):
+        """Load the confirmed cosmetic once, never reread the PNG per frame."""
+        if career.reward_state != "granted" or not career.reward_filename:
+            return None
+        key = (career.reward_type, career.reward_filename)
+        if key not in self._reward_images:
+            folder = ("SnakeHeadsbibliothek" if career.reward_type == "head"
+                      else "SnakeBodysBibliothek")
+            try:
+                image = pygame.image.load(
+                    str(find_asset("graphics", folder, career.reward_filename))
+                ).convert_alpha()
+                self._reward_images[key] = pygame.transform.smoothscale(image, (47, 47))
+            except (OSError, pygame.error) as exc:
+                LOGGER.warning("Confirmed Snake reward artwork unavailable: %s", exc)
+                self._reward_images[key] = None
+        return self._reward_images[key]
+
+    def _career_card(self, width, career, warning):
+        """Cache a compact FrostAge career card below metrics, above name input."""
+        key = (width, career, warning)
+        if key == self._career_card_key and self._career_card_cache is not None:
+            return self._career_card_cache
+        card = pygame.Surface((width - 56, 65), pygame.SRCALPHA)
+        pygame.draw.rect(card, (9, 25, 44, 247), card.get_rect(),
+                         border_radius=8)
+        pygame.draw.rect(card, (76, 142, 176, 201), card.get_rect(), 1,
+                         border_radius=8)
+        if career is None:
+            title = ("KARRIERE · SPEICHERUNG NICHT BESTÄTIGT" if warning
+                     else "DIE CHRONIK ENDET HIER")
+            self._blit_center(card, self._fit(
+                self._font_stat_name, title, FROST, card.get_width() - 26
+            ), card.get_width() // 2, 23)
+        else:
+            header = (f"KARRIERE  ·  RANG {career.rank_before} → "
+                      f"{career.rank_after}   ·   +{self._format_xp(career.earned_xp)} XP")
+            if career.reward_state == "granted":
+                kind = "SNAKE HEAD" if career.reward_type == "head" else "SNAKE BODY"
+                reward = f"NEU FREIGESCHALTET: {kind}"
+            elif career.reward_state == "pending":
+                reward = "SKIN-BELOHNUNG WIRD NOCH GEPRÜFT"
+            else:
+                reward = "KEIN NEUER SKIN IN DIESER RUNDE"
+            if career.next_rank_xp is None:
+                progress = f"{self._format_xp(career.total_xp)} XP GESAMT · MAXIMALRANG"
+            else:
+                progress = (f"{self._format_xp(career.total_xp)} / "
+                            f"{self._format_xp(career.next_rank_xp)} XP · "
+                            f"NOCH {self._format_xp(career.xp_to_next_rank)} BIS "
+                            f"RANG {career.rank_after + 1}")
+            image = self._reward_image(career)
+            text_width = card.get_width() - (83 if image is not None else 28)
+            for value, font, color, y in (
+                (header, self._font_stat_name, FROST, 4),
+                (reward, self._font_stat_name, (223, 202, 139)
+                 if image is not None else ASH, 25),
+                (progress, self._font_career_small, (153, 188, 204), 47),
+            ):
+                card.blit(self._fit(font, value, color, text_width),
+                          (13, y))
+            if image is not None:
+                card.blit(image, (card.get_width() - 57, 9))
+        self._career_card_key = key
+        self._career_card_cache = card
+        return card
+
     def draw(self, surface, *, score, level, enemies, items, bosses, players,
-             highscore_entry, name_input, buttons, now=None):
+             highscore_entry, name_input, buttons, now=None,
+             career=None, career_warning=False):
         """Render an epitaph above the abyss without modifying gameplay state."""
         now = time.time() if now is None else now
         width, height = surface.get_size()
@@ -218,10 +294,16 @@ class DarkAbyssGameOver:
             surface.blit(tag, tag.get_rect(center=(rect.centerx, rect.y + 20)))
             surface.blit(value, value.get_rect(center=(rect.centerx, rect.y + 53)))
 
-        last_line = ("ZWEI GEFALLENE · EIN GEMEINSAMES SCHICKSAL" if players == 2 else
-                     "DIE CHRONIK ENDET HIER")
-        line = self._font_kicker.render(last_line, True, (167, 183, 195))
-        self._blit_center(surface, line, center_x, top + 376)
+        if career is not None or career_warning:
+            # The former single-line epitaph becomes a 65px data card. It
+            # stays INSIDE the 418px panel; the name field remains untouched.
+            surface.blit(self._career_card(panel_width, career, career_warning),
+                         (left + 28, top + 350))
+        else:
+            last_line = ("ZWEI GEFALLENE · EIN GEMEINSAMES SCHICKSAL"
+                         if players == 2 else "DIE CHRONIK ENDET HIER")
+            line = self._font_kicker.render(last_line, True, (167, 183, 195))
+            self._blit_center(surface, line, center_x, top + 376)
 
         if highscore_entry:
             self._draw_name_input(surface, name=name_input, width=panel_width,
