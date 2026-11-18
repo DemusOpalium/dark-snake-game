@@ -25,11 +25,37 @@
 #
 
 import os
+from functools import lru_cache
+
 import pygame
 from config import WINDOW_WIDTH, WINDOW_HEIGHT, DARK_GREY, WHITE, PURPLE, ORANGE, FONT_MEDIUM, FONT_SMALL, GRID_SIZE
 
 from modules.audio import SOUNDS, play_background_music, set_music_volume, set_sound_volume
 from modules.resources import find_asset_directory
+
+@lru_cache(maxsize=4)
+def _cached_skin_options(full_folder_path):
+    """Decode each installed Head/Body sprite once per process and source folder.
+
+    Per-menu lists remain independent.  The immutable filename / preview / image
+    tuples are shared so 53 additional PNGs do not penalize every new round.
+    """
+    options = []
+    if os.path.isdir(full_folder_path):
+        for fname in sorted(os.listdir(full_folder_path)):
+            if not fname.lower().endswith((".png", ".jpg", ".jpeg", ".bmp", ".gif")):
+                continue
+            full_path = os.path.join(full_folder_path, fname)
+            try:
+                image = pygame.image.load(full_path).convert_alpha()
+                thumb = pygame.transform.scale(image, (60, 60))
+                options.append((fname, thumb, image))
+            except (OSError, pygame.error) as exc:
+                print(f"Fehler beim Laden von {full_path}: {exc}")
+    else:
+        print(f"Ordner {full_folder_path} existiert nicht.")
+    return tuple(options)
+
 
 # -----------------------------------------------------------------------------
 # Zeichnet einen Container im gewünschten Stil.
@@ -197,21 +223,8 @@ class OptionsMenu:
 
     # Lädt Bildoptionen und skaliert Thumbnails auf 60×60.
     def load_options(self, category):
-        full_folder_path = find_asset_directory("graphics", category)
-        options = []
-        if os.path.exists(full_folder_path):
-            for fname in sorted(os.listdir(full_folder_path)):
-                if fname.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.gif')):
-                    full_path = os.path.join(full_folder_path, fname)
-                    try:
-                        img = pygame.image.load(full_path).convert_alpha()
-                        thumb = pygame.transform.scale(img, (60, 60))
-                        options.append((fname, thumb, img))
-                    except Exception as e:
-                        print(f"Fehler beim Laden von {full_path}: {e}")
-        else:
-            print(f"Ordner {full_folder_path} existiert nicht.")
-        return options
+        folder = find_asset_directory("graphics", category)
+        return list(_cached_skin_options(str(folder)))
 
     def change_music(self, selected_option):
         if pygame.mixer.get_init() and not play_background_music(selected_option, self.music_slider.current_val):
