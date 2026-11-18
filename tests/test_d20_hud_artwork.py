@@ -76,15 +76,26 @@ def test_dice_pickup_shows_banner_in_actual_game_draw(monkeypatch):
     assert game.dice_result == 12
     assert game._dice_banner is None
 
+    # Observe the actual game.draw() path, not an assumed opaque PNG pixel.
+    # Smoothscaled artwork may contain no fully opaque pixels at all.
+    actual_dice_draw = game.draw_dice_result
+    render_calls = []
+
+    def check_real_dice_draw():
+        before = game.screen.copy()
+        actual_dice_draw()
+        assert game._dice_banner is not None
+        banner_rect = game._dice_banner.get_rect(
+            midbottom=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 - 60)
+        )
+        # Reconstruct the expected alpha compositing over the SAME frame.
+        expected = before.subsurface(banner_rect).copy()
+        expected.blit(game._dice_banner, (0, 0))
+        observed = game.screen.subsurface(banner_rect)
+        assert pygame.image.tobytes(observed, "RGB") == pygame.image.tobytes(expected, "RGB")
+        render_calls.append(True)
+
+    monkeypatch.setattr(game, "draw_dice_result", check_real_dice_draw)
     game.draw()
 
-    assert game._dice_banner is not None
-    banner_rect = game._dice_banner.get_rect(midbottom=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 - 60))
-    # A fully opaque artwork pixel must be preserved on the actual game screen.
-    opaque = next(
-        (x, y) for y in range(game._dice_banner.get_height())
-        for x in range(game._dice_banner.get_width())
-        if game._dice_banner.get_at((x, y)).a == 255
-    )
-    sx, sy = banner_rect.left + opaque[0], banner_rect.top + opaque[1]
-    assert game.screen.get_at((sx, sy))[:3] == game._dice_banner.get_at(opaque)[:3]
+    assert render_calls == [True]
