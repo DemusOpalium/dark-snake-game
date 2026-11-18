@@ -124,7 +124,7 @@ def test_final_life_freezes_real_world_then_yields_to_dark_abyss():
     assert game.game_state == GameState.GAME_OVER
     assert not game.respawn.active
     assert event.final
-    assert event.tier == 1  # One direct test death, no fictitious earlier deaths.
+    assert event.tier == 3  # Every final death uses the largest soul.
     game.draw()
     assert game._death_soul_frozen_world is not None
     frozen = game._death_soul_frozen_world
