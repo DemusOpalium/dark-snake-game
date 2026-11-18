@@ -139,6 +139,11 @@ def _inventory_state(registry, legacy, processed, grants):
     }
 
 
+def starter_inventory(registry):
+    """Read-only fallback on unsupported/corrupted inventory: no silent reset."""
+    return _inventory_state(registry, [], [], [])
+
+
 def _validate_inventory(data, registry):
     if (not isinstance(data, dict) or set(data) != {
         "schema_version", "registry_version", "legacy_unlocked",
@@ -228,6 +233,18 @@ class SkinInventory:
                 raise ValueError("Snake inventory history diverged from career.")
             if len(source_ids) < len(recorded):
                 return current
+
+            # Validate that every already granted skin was actually earned at
+            # or before its linked real round; a fake milestone must not enter
+            # the owned list by merely editing a local reward entry.
+            cumulative_xp = 0
+            eligible_at = {}
+            for award in career["awards"][:len(recorded)]:
+                cumulative_xp += award["xp"]
+                eligible_at[award["round_id"]] = career_rank(cumulative_xp)
+            for grant in current["grants"]:
+                if grant["required_rank"] > eligible_at[grant["round_id"]]:
+                    raise ValueError("Snake skin granted before verified career rank.")
 
             legacy = set(current["legacy_unlocked"])
             if first_install:
