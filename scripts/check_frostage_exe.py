@@ -15,6 +15,7 @@ D20_HUD_PATH = "assets/graphics/hud/Random_D20-removebg-preview.png"
 ABYSS_ART_PATH = "assets/graphics/game_over/dark_abyss.png"
 ABYSS_RITES_PATH = "assets/text/game_over_rites.json"
 DEATH_SOUL_PATH = "assets/graphics/death/soul_of_fallen.png"
+DEATH_FOG_PATHS = tuple(f"assets/graphics/death/fog_{index:02}.png" for index in (1, 2, 3))
 EXPECTED_PNG_COUNT = 175
 
 
@@ -78,6 +79,14 @@ def check(executable: Path) -> None:
     if (hashlib.sha256(archive.extract(names[DEATH_SOUL_PATH])).hexdigest()
             != hashlib.sha256(original_soul.read_bytes()).hexdigest()):
         raise ValueError("Packaged Soul of the Fallen PNG does not match runtime asset.")
+    for fog_path in DEATH_FOG_PATHS:
+        if fog_path not in names:
+            raise ValueError(f"Death Transition fog missing from Windows EXE: {fog_path}")
+        original_fog = Path(__file__).resolve().parents[1] / "Dark_Snake" / fog_path
+        actual_hash = hashlib.sha256(archive.extract(names[fog_path])).hexdigest()
+        expected_hash = hashlib.sha256(original_fog.read_bytes()).hexdigest()
+        if actual_hash != expected_hash:
+            raise ValueError(f"Death Transition fog PNG differs in EXE: {fog_path}")
     if ROOF_DEMO_PATH not in names:
         raise ValueError(f"Roof demo missing from {executable.name}.")
     demo = json.loads(archive.extract(names[ROOF_DEMO_PATH]))
