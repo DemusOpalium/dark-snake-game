@@ -126,8 +126,6 @@ def test_unearned_boss_achievement_and_reserve_items_stay_locked(tmp_path):
     real_round(journal, score=300_000, enemies=100, bosses=100, items=200)
     state = inventory.sync(ledger.sync(journal), registry)
     assert len(state["grants"]) == 1
-    assert all(entry["skin_id"] not in state["unlocked"]
-               for entry in [])  # no external, unverified token accepted
     for entry in registry.entries:
         if entry["group"] in {"achievement", "boss", "reserve"}:
             assert entry["id"] not in state["unlocked"]
