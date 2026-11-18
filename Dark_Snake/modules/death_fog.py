@@ -71,7 +71,7 @@ class AbyssFogVisual:
 
     def draw(self, surface, elapsed):
         """Animate entrance and horizontal drift; draw only during the final 3 s."""
-        if not 0 <= elapsed < FINAL_DEATH_SECONDS:
+        if not FOG_STARTS[0] <= elapsed < FINAL_DEATH_SECONDS:
             return
         self._prepare(surface.get_size())
         screen_width, screen_height = surface.get_size()
