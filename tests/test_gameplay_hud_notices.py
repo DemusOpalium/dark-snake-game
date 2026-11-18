@@ -72,13 +72,21 @@ def test_achievement_expiry_is_preserved_without_overlaying_hud():
     assert game.screen.get_at((30, 90))[:3] == (9, 18, 29)
 
 
-def test_dice_caption_begins_after_card_bottom_edge():
+def test_dice_result_card_fits_below_the_existing_d20_banner():
     game = Game(headless=True)
     game.dice_result = 6
     game.screen.fill((9, 18, 29))
     game.draw_dice_result()
 
-    center_x, center_y = WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2
-    # The lower white border remains visible; the text has its own backdrop below.
-    assert game.screen.get_at((center_x, center_y + 49))[:3] == WHITE
-    assert game.screen.get_at((center_x, center_y + 64))[:3] != (9, 18, 29)
+    visual = game._dice_visual
+    assert visual is not None
+    card = visual.card_rect(game.screen)
+    banner = game._dice_banner.get_rect(
+        midbottom=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 - 60)
+    )
+    assert card.top > banner.bottom
+    assert card.left >= 0 and card.right <= WINDOW_WIDTH
+    assert card.bottom <= WINDOW_HEIGHT
+    # Real game pixels are drawn in the new result card, not the old solid box.
+    assert game.screen.get_at((card.left + 22, card.top + 22))[:3] != (9, 18, 29)
+    assert game.screen.get_at((card.left - 2, card.top + 22))[:3] == (9, 18, 29)
