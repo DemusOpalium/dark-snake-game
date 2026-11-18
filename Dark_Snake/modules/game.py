@@ -487,6 +487,7 @@ class Game:
         self.respawn = RespawnCountdown()
         self._respawn_recent = False
         self._respawn_visual = None  # Lazy, only loads FrostAge PNG on the first respawn.
+        self._dice_banner = None  # Lazy, one-time scaled D20 art from bundled HUD assets.
         self.effect_manager = EffectManager()
         self.frost = FrostPrototype()
         self._effect_update_time = time.monotonic()
@@ -2417,6 +2418,15 @@ class Game:
             self.draw_dice_result()
     # Zeichnet das Ergebnis des Würfelwurfs in der Mitte des Bildschirms.
     def draw_dice_result(self):
+        # The D20 illustration is a single real asset; numbers remain dynamic (1..20).
+        # Loaded and smoothly resized once, from assets bundled in the Windows EXE.
+        if self._dice_banner is None:
+            artwork = load_image("Random_D20-removebg-preview.png", "hud")
+            self._dice_banner = pygame.transform.smoothscale(artwork, (330, 51))
+        banner_rect = self._dice_banner.get_rect(
+            midbottom=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 - 60)
+        )
+        self.screen.blit(self._dice_banner, banner_rect)
         dice_rect = pygame.Rect(WINDOW_WIDTH // 2 - 50, WINDOW_HEIGHT // 2 - 50, 100, 100)
         pygame.draw.rect(self.screen, PURPLE, dice_rect, border_radius=15)
         pygame.draw.rect(self.screen, WHITE, dice_rect, 2, border_radius=15)
