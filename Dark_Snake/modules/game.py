@@ -65,6 +65,7 @@ from modules.death_fog import AbyssFogVisual, FINAL_DEATH_SECONDS
 from modules.dice_visual import FrostDiceResultVisual
 from modules.round_progress import RoundJournal, begin_round, completed_round
 from modules.career_ranks import CareerLedger, xp_for_round
+from modules.skin_inventory import SkinInventory, skin_registry
 from modules.projectile_config import (
     MAX_BOSS_FLAMES, MAX_BOSS_GRID_PROJECTILES, MAX_ENEMY_PROJECTILES,
     MAX_PLAYER_GRID_PROJECTILES,
@@ -474,6 +475,7 @@ class Game:
         # Headless development simulations do not affect real player history.
         self._round_journal = RoundJournal()
         self._career_ledger = CareerLedger()
+        self._skin_inventory = SkinInventory()
         self._record_completed_rounds = not headless
         if headless:
             # Gameplay code deliberately continues to execute while simulating and
@@ -620,8 +622,10 @@ class Game:
         self.clear_game_state()
         self.career_snapshot = None
         self.career_progress_error = None
-        if self._record_completed_rounds:
-            self._sync_career_progress()
+        self.skin_inventory_snapshot = None
+        self.skin_inventory_error = None
+        if self._record_completed_rounds and self._sync_career_progress():
+            self._sync_skin_inventory()
 
     def create_ui_elements(self):
         self.main_menu = FrostAgeMenu({
@@ -1975,6 +1979,33 @@ class Game:
             record_event(f"Karriererang-Fortschritt konnte nicht gespeichert werden: {exc}")
             return False
 
+    def _sync_skin_inventory(self):
+        """Reconcile verified cosmetics off the frame loop, then update the UI."""
+        try:
+            registry = skin_registry()
+            if self.career_snapshot is None:
+                raise ValueError("Career data unavailable for cosmetics.")
+            snapshot = self._skin_inventory.sync(
+                self.career_snapshot, registry, existing_settings=self.settings,
+            )
+            self.skin_inventory_snapshot = snapshot
+            self.skin_inventory_error = None
+            self.options_menu.apply_skin_inventory(registry, snapshot)
+            return True
+        except (OSError, ValueError, TypeError) as exc:
+            self.skin_inventory_error = str(exc)
+            record_event(f"Snake-Inventar konnte nicht synchronisiert werden: {exc}")
+            # Fail closed with free starter skins; keep corrupt save file intact.
+            try:
+                registry = skin_registry()
+                from modules.skin_inventory import starter_inventory
+                self.options_menu.apply_skin_inventory(
+                    registry, starter_inventory(registry),
+                )
+            except (OSError, ValueError) as fallback_exc:
+                record_event(f"Snake-Inventar-Katalog nicht nutzbar: {fallback_exc}")
+            return False
+
     def _finalize_round_progress(self, reason):
         """Snapshot only authoritative counters, once, after final Game Over."""
         token = self._round_token
@@ -1995,7 +2026,8 @@ class Game:
             self._round_recorded = True
             self.round_progress_error = None
             self.round_career_xp = xp_for_round(snapshot)
-            self._sync_career_progress()
+            if self._sync_career_progress():
+                self._sync_skin_inventory()
             return True
         except (OSError, ValueError, TypeError) as exc:
             self.round_progress_error = str(exc)
