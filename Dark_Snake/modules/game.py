@@ -2662,6 +2662,9 @@ class Game:
                 and self._record_completed_rounds
                 and self.round_career_result is None
             ),
+            # New round, new ceremony timer; the death fog does not consume
+            # the reward's visible time (starts when Dark Abyss is first drawn).
+            reward_sequence=self.game_over_time,
         )
 
 

@@ -27,6 +27,7 @@ class CareerCeremony:
     reward_id: str | None = None
     reward_type: str | None = None
     reward_filename: str | None = None
+    reward_required_rank: int | None = None
 
     @property
     def xp_to_next_rank(self) -> int | None:
@@ -63,6 +64,7 @@ def career_ceremony_for_round(round_id, career, inventory=None, registry=None):
     reward_state, reward_id, reward_type, reward_filename = (
         "pending", None, None, None
     )
+    reward_required_rank = None
     if inventory is not None and registry is not None:
         validate_skin_inventory(inventory, registry)
         if round_id in inventory["processed_rounds"]:
@@ -76,6 +78,7 @@ def career_ceremony_for_round(round_id, career, inventory=None, registry=None):
                 reward_id = item["id"]
                 reward_type = item["type"]
                 reward_filename = item["filename"]
+                reward_required_rank = matched[0]["required_rank"]
             else:
                 reward_state = "none"
     return CareerCeremony(
@@ -88,4 +91,5 @@ def career_ceremony_for_round(round_id, career, inventory=None, registry=None):
         reward_id=reward_id,
         reward_type=reward_type,
         reward_filename=reward_filename,
+        reward_required_rank=reward_required_rank,
     )

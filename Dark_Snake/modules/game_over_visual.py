@@ -10,6 +10,7 @@ import time
 import pygame
 
 from modules.resources import find_asset
+from modules.career_reward_visual import MysticRewardPanel, PANEL_HEIGHT
 
 LOGGER = logging.getLogger(__name__)
 ABYSS_IMAGE = ("graphics", "game_over", "dark_abyss.png")
@@ -80,6 +81,7 @@ class DarkAbyssGameOver:
         self._career_card_key = None
         self._career_card_cache = None
         self._reward_images = {}
+        self._mystic_reward = MysticRewardPanel()
         self._cached_rite_key = None
         self._cached_rite_surface = None
 
@@ -242,9 +244,9 @@ class DarkAbyssGameOver:
 
     def draw(self, surface, *, score, level, enemies, items, bosses, players,
              highscore_entry, name_input, buttons, now=None,
-             career=None, career_warning=False):
+             career=None, career_warning=False, reward_sequence=None):
         """Render an epitaph above the abyss without modifying gameplay state."""
-        now = time.time() if now is None else now
+        now = time.monotonic() if now is None else now
         width, height = surface.get_size()
         surface.blit(self._image_for((width, height)), (0, 0))
         # The title sits high so the luminous falling abyss remains visible below.
@@ -294,19 +296,36 @@ class DarkAbyssGameOver:
             surface.blit(tag, tag.get_rect(center=(rect.centerx, rect.y + 20)))
             surface.blit(value, value.get_rect(center=(rect.centerx, rect.y + 53)))
 
-        if career is not None or career_warning:
-            # The former single-line epitaph becomes a 65px data card. It
-            # stays INSIDE the 418px panel; the name field remains untouched.
-            surface.blit(self._career_card(panel_width, career, career_warning),
-                         (left + 28, top + 350))
-        else:
-            last_line = ("ZWEI GEFALLENE · EIN GEMEINSAMES SCHICKSAL"
-                         if players == 2 else "DIE CHRONIK ENDET HIER")
-            line = self._font_kicker.render(last_line, True, (167, 183, 195))
-            self._blit_center(surface, line, center_x, top + 376)
+        # Recover the original breathing space below the four stat boxes.
+        # On large screens the separate ceremony appears well BELOW the
+        # leaderboard input/buttons, in the luminous abyss itself.
+        last_line = ("ZWEI GEFALLENE · EIN GEMEINSAMES SCHICKSAL"
+                     if players == 2 else "DIE CHRONIK ENDET HIER")
+        line = self._font_kicker.render(last_line, True, (167, 183, 195))
+        self._blit_center(surface, line, center_x, top + 376)
 
         if highscore_entry:
             self._draw_name_input(surface, name=name_input, width=panel_width,
                                   top=top + 450, clock_time=now)
         else:
             self._draw_buttons(surface, buttons)
+
+        if career is not None or career_warning:
+            reward_width = min(742, width - 52)
+            reward_top = top + 564
+            if reward_top + PANEL_HEIGHT + 17 <= height:
+                reward_rect = pygame.Rect(
+                    (width - reward_width) // 2, reward_top,
+                    reward_width, PANEL_HEIGHT,
+                )
+                self._mystic_reward.draw(
+                    surface, career=career, warning=career_warning,
+                    rect=reward_rect, now=now, sequence=reward_sequence,
+                )
+            else:
+                # At 900×620 there is not enough space below the name box.
+                # Preserve an unobstructed, legible compact XP card instead
+                # of overlaying the entry field or the actual game buttons.
+                surface.blit(self._career_card(
+                    panel_width, career, career_warning
+                ), (left + 28, top + 350))
