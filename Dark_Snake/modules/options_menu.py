@@ -378,12 +378,44 @@ class OptionsMenu:
 # Erweiterte OptionsMenu-Klasse (für eventuelle weitere Anpassungen)
 # -----------------------------------------------------------------------------
 class ExtendedOptionsMenu(OptionsMenu):
+    """FrostAge layout; legacy settings, save formats and callbacks stay intact."""
+
     def __init__(self, game):
         super().__init__(game)
+        from modules.options_frostage import FrostAgeOptionsView
         self.display_panel = self.inventory_panel
+        self._frost_view = FrostAgeOptionsView(self)
+        self._last_click_pos = None
+        # Establish clickable geometry before the first draw/event.  Audio and
+        # input tests (and fast clicks after opening Options) use widget rects.
+        self._frost_view.layout(game.screen.get_size())
 
     def handle_event(self, event):
+        self._frost_view.layout(self.game.screen.get_size())
+        if self._frost_view.handle_music_event(event):
+            return
+        self._last_click_pos = getattr(event, "pos", None)
         OptionsMenu.handle_event(self, event)
+        self._frost_view.clamp_scroll()
+
+    def check_inventory_click(self):
+        """Click only visible thumbnails; the old inventory can overflow the panel."""
+        pos = self._last_click_pos or pygame.mouse.get_pos()
+        if not self.inventory_grid_rect.collidepoint(pos):
+            return
+        spacing, columns = 10, 4
+        width = (self.inventory_grid_rect.width - (columns + 1) * spacing) // columns
+        options = self.head_options if self.current_tab == "Heads" else self.body_options
+        for index, entry in enumerate(options):
+            row, column = divmod(index, columns)
+            rect = pygame.Rect(
+                self.inventory_grid_rect.x + spacing + column * (width + spacing),
+                self.inventory_grid_rect.y + spacing + row * (width + spacing)
+                + self.inventory_scroll_offset, width, width
+            )
+            if rect.collidepoint(pos):
+                self.current_selected_img = entry
+                return
 
     def draw(self, surface):
-        OptionsMenu.draw(self, surface)
+        self._frost_view.draw(surface)

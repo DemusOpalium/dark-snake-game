@@ -71,8 +71,18 @@ def test_selected_track_survives_restart(tmp_path, monkeypatch):
     dropdown = menu.music_dropdown
     track = "FürAndreTeil2.mp3"
     send_mouse(menu, pygame.MOUSEBUTTONDOWN, dropdown.rect.center)
-    x, y = dropdown.rect.center
-    send_mouse(menu, pygame.MOUSEBUTTONDOWN, (x, y + (dropdown.options.index(track) + 1) * dropdown.rect.height))
+    assert dropdown.expanded
+    # The modern popup has a bounded viewport; its rows can open above the
+    # button instead of using the old infinite list below it.
+    index = dropdown.options.index(track)
+    if index >= 5:
+        menu.handle_event(pygame.event.Event(pygame.MOUSEWHEEL, {"y": -index}))
+    popup, row_height = menu._frost_view._music_popup()
+    row = index - menu._frost_view._music_scroll
+    assert 0 <= row < 5
+    send_mouse(menu, pygame.MOUSEBUTTONDOWN,
+               (popup.centerx, popup.top + row * row_height + row_height // 2))
+    assert not dropdown.expanded
     menu.save()
 
     with (tmp_path / "settings.json").open(encoding="utf-8") as file:
