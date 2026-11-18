@@ -624,7 +624,9 @@ class Game:
         self.career_progress_error = None
         self.skin_inventory_snapshot = None
         self.skin_inventory_error = None
-        if self._record_completed_rounds and self._sync_career_progress():
+        if self._record_completed_rounds:
+            self._sync_career_progress()
+            # Even if career data is corrupted, disable locked skins safely.
             self._sync_skin_inventory()
 
     def create_ui_elements(self):
@@ -1999,9 +2001,9 @@ class Game:
             try:
                 registry = skin_registry()
                 from modules.skin_inventory import starter_inventory
-                self.options_menu.apply_skin_inventory(
-                    registry, starter_inventory(registry),
-                )
+                fallback = starter_inventory(registry)
+                self.skin_inventory_snapshot = fallback
+                self.options_menu.apply_skin_inventory(registry, fallback)
             except (OSError, ValueError) as fallback_exc:
                 record_event(f"Snake-Inventar-Katalog nicht nutzbar: {fallback_exc}")
             return False
