@@ -91,6 +91,14 @@ def progress_file_path() -> Path:
     return path
 
 
+def career_file_path() -> Path:
+    """Durable career ranks/XP ledger, separate from the Classic round journal."""
+    path = DATA_DIR / "career_progress.json"
+    if is_temporary_bundle_path(path):
+        raise OSError("Career progress cannot be written into a temporary game bundle.")
+    return path
+
+
 def custom_level_path(*, for_write: bool = False) -> str:
     saved = Path(user_data_path("custom_level.json"))
     if for_write or saved.is_file():
