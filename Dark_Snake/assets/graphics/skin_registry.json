@@ -1,0 +1,651 @@
+{
+  "schema_version": 1,
+  "purpose": "Stable runtime skin IDs and staged unlock groups (never GamePICs runtime paths).",
+  "design": "Starter: 4 heads + 2 bodies. Career: 30 heads + 8 bodies on ranks 2–39. Other groups reserved until real achievements/boss IDs/chests exist.",
+  "skins": [
+    {
+      "id": "head_items1",
+      "type": "head",
+      "filename": "Items1.png",
+      "group": "starter",
+      "required_rank": null
+    },
+    {
+      "id": "head_snakehead1g60",
+      "type": "head",
+      "filename": "SnakeHead1G60.png",
+      "group": "starter",
+      "required_rank": null
+    },
+    {
+      "id": "head_snakehead2blaug60",
+      "type": "head",
+      "filename": "SnakeHead2blauG60.png",
+      "group": "starter",
+      "required_rank": null
+    },
+    {
+      "id": "head_snakehead3grueng60",
+      "type": "head",
+      "filename": "SnakeHead3gruenG60.png",
+      "group": "starter",
+      "required_rank": null
+    },
+    {
+      "id": "head_snakehead4blackg60",
+      "type": "head",
+      "filename": "SnakeHead4BlackG60.png",
+      "group": "reserve",
+      "required_rank": null
+    },
+    {
+      "id": "head_snakehead6blackg60",
+      "type": "head",
+      "filename": "SnakeHead6BlackG60.png",
+      "group": "reserve",
+      "required_rank": null
+    },
+    {
+      "id": "head_items10",
+      "type": "head",
+      "filename": "items10.png",
+      "group": "career",
+      "required_rank": 2
+    },
+    {
+      "id": "head_items11",
+      "type": "head",
+      "filename": "items11.png",
+      "group": "career",
+      "required_rank": 4
+    },
+    {
+      "id": "head_items2",
+      "type": "head",
+      "filename": "items2.png",
+      "group": "career",
+      "required_rank": 5
+    },
+    {
+      "id": "head_items4",
+      "type": "head",
+      "filename": "items4.png",
+      "group": "career",
+      "required_rank": 6
+    },
+    {
+      "id": "head_items5",
+      "type": "head",
+      "filename": "items5.png",
+      "group": "career",
+      "required_rank": 8
+    },
+    {
+      "id": "head_items6",
+      "type": "head",
+      "filename": "items6.png",
+      "group": "career",
+      "required_rank": 9
+    },
+    {
+      "id": "head_items7",
+      "type": "head",
+      "filename": "items7.png",
+      "group": "career",
+      "required_rank": 10
+    },
+    {
+      "id": "head_items9",
+      "type": "head",
+      "filename": "items9.png",
+      "group": "career",
+      "required_rank": 11
+    },
+    {
+      "id": "head_ksnip_20250306_154323",
+      "type": "head",
+      "filename": "ksnip_20250306-154323.png",
+      "group": "career",
+      "required_rank": 13
+    },
+    {
+      "id": "head_ksnip_20250306_155611",
+      "type": "head",
+      "filename": "ksnip_20250306-155611.png",
+      "group": "career",
+      "required_rank": 14
+    },
+    {
+      "id": "head_ksnip_20250306_155629",
+      "type": "head",
+      "filename": "ksnip_20250306-155629.png",
+      "group": "career",
+      "required_rank": 15
+    },
+    {
+      "id": "head_ksnip_20250306_155635",
+      "type": "head",
+      "filename": "ksnip_20250306-155635.png",
+      "group": "career",
+      "required_rank": 16
+    },
+    {
+      "id": "head_ksnip_20250306_155642",
+      "type": "head",
+      "filename": "ksnip_20250306-155642.png",
+      "group": "career",
+      "required_rank": 18
+    },
+    {
+      "id": "head_ksnip_20250306_155649",
+      "type": "head",
+      "filename": "ksnip_20250306-155649.png",
+      "group": "career",
+      "required_rank": 19
+    },
+    {
+      "id": "head_ksnip_20250306_155703",
+      "type": "head",
+      "filename": "ksnip_20250306-155703.png",
+      "group": "career",
+      "required_rank": 20
+    },
+    {
+      "id": "head_ksnip_20250306_155725",
+      "type": "head",
+      "filename": "ksnip_20250306-155725.png",
+      "group": "career",
+      "required_rank": 21
+    },
+    {
+      "id": "head_ksnip_20250306_155741",
+      "type": "head",
+      "filename": "ksnip_20250306-155741.png",
+      "group": "career",
+      "required_rank": 23
+    },
+    {
+      "id": "head_ksnip_20250306_155813",
+      "type": "head",
+      "filename": "ksnip_20250306-155813.png",
+      "group": "career",
+      "required_rank": 24
+    },
+    {
+      "id": "head_ksnip_20250306_155922",
+      "type": "head",
+      "filename": "ksnip_20250306-155922.png",
+      "group": "career",
+      "required_rank": 25
+    },
+    {
+      "id": "head_ksnip_20250306_160130",
+      "type": "head",
+      "filename": "ksnip_20250306-160130.png",
+      "group": "career",
+      "required_rank": 26
+    },
+    {
+      "id": "head_ksnip_20250306_160140",
+      "type": "head",
+      "filename": "ksnip_20250306-160140.png",
+      "group": "career",
+      "required_rank": 28
+    },
+    {
+      "id": "head_ksnip_20250306_160205",
+      "type": "head",
+      "filename": "ksnip_20250306-160205.png",
+      "group": "career",
+      "required_rank": 29
+    },
+    {
+      "id": "head_ksnip_20250412_203554",
+      "type": "head",
+      "filename": "ksnip_20250412-203554.png",
+      "group": "career",
+      "required_rank": 30
+    },
+    {
+      "id": "head_ksnip_20250412_203611",
+      "type": "head",
+      "filename": "ksnip_20250412-203611.png",
+      "group": "career",
+      "required_rank": 31
+    },
+    {
+      "id": "head_ksnip_20250412_203633",
+      "type": "head",
+      "filename": "ksnip_20250412-203633.png",
+      "group": "career",
+      "required_rank": 33
+    },
+    {
+      "id": "head_ksnip_20250412_203648",
+      "type": "head",
+      "filename": "ksnip_20250412-203648.png",
+      "group": "career",
+      "required_rank": 34
+    },
+    {
+      "id": "head_ksnip_20250412_203742",
+      "type": "head",
+      "filename": "ksnip_20250412-203742.png",
+      "group": "career",
+      "required_rank": 35
+    },
+    {
+      "id": "head_ksnip_20250412_203755",
+      "type": "head",
+      "filename": "ksnip_20250412-203755.png",
+      "group": "career",
+      "required_rank": 36
+    },
+    {
+      "id": "head_ksnip_20250412_203820",
+      "type": "head",
+      "filename": "ksnip_20250412-203820.png",
+      "group": "career",
+      "required_rank": 38
+    },
+    {
+      "id": "head_ksnip_20250412_203856",
+      "type": "head",
+      "filename": "ksnip_20250412-203856.png",
+      "group": "career",
+      "required_rank": 39
+    },
+    {
+      "id": "head_ksnip_20250412_203919",
+      "type": "head",
+      "filename": "ksnip_20250412-203919.png",
+      "group": "achievement",
+      "required_rank": null
+    },
+    {
+      "id": "head_ksnip_20250412_203935",
+      "type": "head",
+      "filename": "ksnip_20250412-203935.png",
+      "group": "achievement",
+      "required_rank": null
+    },
+    {
+      "id": "head_ksnip_20250412_203948",
+      "type": "head",
+      "filename": "ksnip_20250412-203948.png",
+      "group": "achievement",
+      "required_rank": null
+    },
+    {
+      "id": "head_ksnip_20250412_204001",
+      "type": "head",
+      "filename": "ksnip_20250412-204001.png",
+      "group": "achievement",
+      "required_rank": null
+    },
+    {
+      "id": "head_ksnip_20250412_204018",
+      "type": "head",
+      "filename": "ksnip_20250412-204018.png",
+      "group": "achievement",
+      "required_rank": null
+    },
+    {
+      "id": "head_ksnip_20250412_204030",
+      "type": "head",
+      "filename": "ksnip_20250412-204030.png",
+      "group": "achievement",
+      "required_rank": null
+    },
+    {
+      "id": "head_ksnip_20250412_204043",
+      "type": "head",
+      "filename": "ksnip_20250412-204043.png",
+      "group": "achievement",
+      "required_rank": null
+    },
+    {
+      "id": "head_ksnip_20250412_204125",
+      "type": "head",
+      "filename": "ksnip_20250412-204125.png",
+      "group": "achievement",
+      "required_rank": null
+    },
+    {
+      "id": "head_ksnip_20250412_204139",
+      "type": "head",
+      "filename": "ksnip_20250412-204139.png",
+      "group": "achievement",
+      "required_rank": null
+    },
+    {
+      "id": "head_ksnip_20250412_204151",
+      "type": "head",
+      "filename": "ksnip_20250412-204151.png",
+      "group": "achievement",
+      "required_rank": null
+    },
+    {
+      "id": "head_ksnip_20250412_204217",
+      "type": "head",
+      "filename": "ksnip_20250412-204217.png",
+      "group": "achievement",
+      "required_rank": null
+    },
+    {
+      "id": "head_ksnip_20250412_204219",
+      "type": "head",
+      "filename": "ksnip_20250412-204219.png",
+      "group": "achievement",
+      "required_rank": null
+    },
+    {
+      "id": "head_ksnip_20250412_204231",
+      "type": "head",
+      "filename": "ksnip_20250412-204231.png",
+      "group": "achievement",
+      "required_rank": null
+    },
+    {
+      "id": "head_ksnip_20250412_204242",
+      "type": "head",
+      "filename": "ksnip_20250412-204242.png",
+      "group": "achievement",
+      "required_rank": null
+    },
+    {
+      "id": "head_ksnip_20250412_204253",
+      "type": "head",
+      "filename": "ksnip_20250412-204253.png",
+      "group": "achievement",
+      "required_rank": null
+    },
+    {
+      "id": "head_ksnip_20250412_204302",
+      "type": "head",
+      "filename": "ksnip_20250412-204302.png",
+      "group": "achievement",
+      "required_rank": null
+    },
+    {
+      "id": "head_ksnip_20250412_204326_1",
+      "type": "head",
+      "filename": "ksnip_20250412-204326(1).png",
+      "group": "achievement",
+      "required_rank": null
+    },
+    {
+      "id": "head_ksnip_20250412_204337",
+      "type": "head",
+      "filename": "ksnip_20250412-204337.png",
+      "group": "achievement",
+      "required_rank": null
+    },
+    {
+      "id": "head_ksnip_20250412_204349",
+      "type": "head",
+      "filename": "ksnip_20250412-204349.png",
+      "group": "boss",
+      "required_rank": null
+    },
+    {
+      "id": "head_ksnip_20250412_204405",
+      "type": "head",
+      "filename": "ksnip_20250412-204405.png",
+      "group": "boss",
+      "required_rank": null
+    },
+    {
+      "id": "head_ksnip_20250412_204418",
+      "type": "head",
+      "filename": "ksnip_20250412-204418.png",
+      "group": "boss",
+      "required_rank": null
+    },
+    {
+      "id": "head_ksnip_20250412_204431_kopie",
+      "type": "head",
+      "filename": "ksnip_20250412-204431 (Kopie).png",
+      "group": "boss",
+      "required_rank": null
+    },
+    {
+      "id": "head_ksnip_20250412_204453",
+      "type": "head",
+      "filename": "ksnip_20250412-204453.png",
+      "group": "boss",
+      "required_rank": null
+    },
+    {
+      "id": "head_ksnip_20250412_204639",
+      "type": "head",
+      "filename": "ksnip_20250412-204639.png",
+      "group": "boss",
+      "required_rank": null
+    },
+    {
+      "id": "head_ksnip_20250412_204651",
+      "type": "head",
+      "filename": "ksnip_20250412-204651.png",
+      "group": "boss",
+      "required_rank": null
+    },
+    {
+      "id": "head_ksnip_20250412_204701",
+      "type": "head",
+      "filename": "ksnip_20250412-204701.png",
+      "group": "boss",
+      "required_rank": null
+    },
+    {
+      "id": "head_ksnip_20250412_204714",
+      "type": "head",
+      "filename": "ksnip_20250412-204714.png",
+      "group": "reserve",
+      "required_rank": null
+    },
+    {
+      "id": "head_ksnip_20250412_204727",
+      "type": "head",
+      "filename": "ksnip_20250412-204727.png",
+      "group": "reserve",
+      "required_rank": null
+    },
+    {
+      "id": "head_ksnip_20250412_204807",
+      "type": "head",
+      "filename": "ksnip_20250412-204807.png",
+      "group": "reserve",
+      "required_rank": null
+    },
+    {
+      "id": "head_ksnip_20250412_204821",
+      "type": "head",
+      "filename": "ksnip_20250412-204821.png",
+      "group": "reserve",
+      "required_rank": null
+    },
+    {
+      "id": "head_ksnip_20250412_204833",
+      "type": "head",
+      "filename": "ksnip_20250412-204833.png",
+      "group": "reserve",
+      "required_rank": null
+    },
+    {
+      "id": "head_ksnip_20250412_204843",
+      "type": "head",
+      "filename": "ksnip_20250412-204843.png",
+      "group": "reserve",
+      "required_rank": null
+    },
+    {
+      "id": "head_ksnip_20250412_204854",
+      "type": "head",
+      "filename": "ksnip_20250412-204854.png",
+      "group": "reserve",
+      "required_rank": null
+    },
+    {
+      "id": "head_ksnip_20250412_204907",
+      "type": "head",
+      "filename": "ksnip_20250412-204907.png",
+      "group": "reserve",
+      "required_rank": null
+    },
+    {
+      "id": "head_ksnip_20250412_204921",
+      "type": "head",
+      "filename": "ksnip_20250412-204921.png",
+      "group": "reserve",
+      "required_rank": null
+    },
+    {
+      "id": "head_ksnip_20250412_204934",
+      "type": "head",
+      "filename": "ksnip_20250412-204934.png",
+      "group": "reserve",
+      "required_rank": null
+    },
+    {
+      "id": "body_items3",
+      "type": "body",
+      "filename": "items3.png",
+      "group": "starter",
+      "required_rank": null
+    },
+    {
+      "id": "body_items8",
+      "type": "body",
+      "filename": "items8.png",
+      "group": "starter",
+      "required_rank": null
+    },
+    {
+      "id": "body_ksnip_20250226_171802",
+      "type": "body",
+      "filename": "ksnip_20250226-171802.png",
+      "group": "career",
+      "required_rank": 3
+    },
+    {
+      "id": "body_ksnip_20250226_185016",
+      "type": "body",
+      "filename": "ksnip_20250226-185016.png",
+      "group": "career",
+      "required_rank": 7
+    },
+    {
+      "id": "body_ksnip_20250306_154046",
+      "type": "body",
+      "filename": "ksnip_20250306-154046.png",
+      "group": "career",
+      "required_rank": 12
+    },
+    {
+      "id": "body_ksnip_20250306_154121",
+      "type": "body",
+      "filename": "ksnip_20250306-154121.png",
+      "group": "career",
+      "required_rank": 17
+    },
+    {
+      "id": "body_ksnip_20250306_154352",
+      "type": "body",
+      "filename": "ksnip_20250306-154352.png",
+      "group": "career",
+      "required_rank": 22
+    },
+    {
+      "id": "body_ksnip_20250306_154402",
+      "type": "body",
+      "filename": "ksnip_20250306-154402.png",
+      "group": "career",
+      "required_rank": 27
+    },
+    {
+      "id": "body_ksnip_20250306_154416",
+      "type": "body",
+      "filename": "ksnip_20250306-154416.png",
+      "group": "career",
+      "required_rank": 32
+    },
+    {
+      "id": "body_ksnip_20250306_154535",
+      "type": "body",
+      "filename": "ksnip_20250306-154535.png",
+      "group": "career",
+      "required_rank": 37
+    },
+    {
+      "id": "body_ksnip_20250306_154551",
+      "type": "body",
+      "filename": "ksnip_20250306-154551.png",
+      "group": "achievement",
+      "required_rank": null
+    },
+    {
+      "id": "body_ksnip_20250306_155115",
+      "type": "body",
+      "filename": "ksnip_20250306-155115.png",
+      "group": "achievement",
+      "required_rank": null
+    },
+    {
+      "id": "body_ksnip_20250306_155147",
+      "type": "body",
+      "filename": "ksnip_20250306-155147.png",
+      "group": "achievement",
+      "required_rank": null
+    },
+    {
+      "id": "body_ksnip_20250306_155225",
+      "type": "body",
+      "filename": "ksnip_20250306-155225.png",
+      "group": "achievement",
+      "required_rank": null
+    },
+    {
+      "id": "body_ksnip_20250306_155231",
+      "type": "body",
+      "filename": "ksnip_20250306-155231.png",
+      "group": "achievement",
+      "required_rank": null
+    },
+    {
+      "id": "body_ksnip_20250306_155539",
+      "type": "body",
+      "filename": "ksnip_20250306-155539.png",
+      "group": "boss",
+      "required_rank": null
+    },
+    {
+      "id": "body_ksnip_20250412_204548",
+      "type": "body",
+      "filename": "ksnip_20250412-204548.png",
+      "group": "boss",
+      "required_rank": null
+    },
+    {
+      "id": "body_ksnip_20250412_204600",
+      "type": "body",
+      "filename": "ksnip_20250412-204600.png",
+      "group": "boss",
+      "required_rank": null
+    },
+    {
+      "id": "body_ksnip_20250412_204614",
+      "type": "body",
+      "filename": "ksnip_20250412-204614.png",
+      "group": "reserve",
+      "required_rank": null
+    },
+    {
+      "id": "body_ksnip_20250412_204627",
+      "type": "body",
+      "filename": "ksnip_20250412-204627.png",
+      "group": "reserve",
+      "required_rank": null
+    }
+  ]
+}
