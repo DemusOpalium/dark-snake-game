@@ -60,6 +60,7 @@ from modules.respawn import (RespawnCountdown, FrostRespawnVisual, RESPAWN_SECON
                              POST_RESPAWN_PROTECTION, preferred_spawn_cells,
                              safe_spawn_cells, shift_round_timers)
 from modules.game_over_visual import DarkAbyssGameOver
+from modules.death_soul import DeathSoulEvent, DeathSoulVisual, SOUL_SECONDS
 from modules.dice_visual import FrostDiceResultVisual
 from modules.projectile_config import (
     MAX_BOSS_FLAMES, MAX_BOSS_GRID_PROJECTILES, MAX_ENEMY_PROJECTILES,
@@ -490,6 +491,9 @@ class Game:
         self._respawn_recent = False
         self._respawn_visual = None  # Lazy, only loads FrostAge PNG on the first respawn.
         self._game_over_visual = None  # Lazy, cached Dark Abyss backdrop + fonts.
+        self._death_soul_event = None
+        self._death_soul_visual = None  # Keep scaled frames cached between lives.
+        self._death_soul_frozen_world = None
         self._dice_banner = None  # Lazy, one-time scaled D20 art from bundled HUD assets.
         self._dice_visual = None  # Cached FrostAge result card; old purple box is retired.
         self.effect_manager = EffectManager()
@@ -858,6 +862,9 @@ class Game:
         self._normal_enemy_contact_ready_at = {}
         self.boss_spawn_timer = time.time() + 60
         self.game_over_time = 0
+        self._death_soul_event = None
+        self._death_soul_frozen_world = None
+        self.round_death_count = 0
         self.pause_time = 0
         self.lives = 3
         # Round statistics are real collected items / confirmed kills, not estimates.
@@ -893,6 +900,8 @@ class Game:
         self._menu_suspended = False
         self.metrics.cancel_pending()
         self._reset_snake_stalls()
+        self._death_soul_event = None
+        self._death_soul_frozen_world = None
         self.snake = []
         self.snake1 = []
         self.snake2 = []
@@ -1909,9 +1918,36 @@ class Game:
         # Even on the GO frame no movement or new projectiles are produced.
         return True
 
+    def _begin_death_soul(self, players, *, final):
+        """Capture the dead head(s) before respawn changes their positions."""
+        snakes = {1: self.snake} if self.player_count == 1 else {
+            1: self.snake1, 2: self.snake2,
+        }
+        centers = tuple(
+            ((snakes[player][0][0] + 0.5) * GRID_SIZE,
+             (snakes[player][0][1] + 0.5) * GRID_SIZE)
+            for player in players if player in snakes and snakes[player]
+        )
+        self.round_death_count += 1
+        self._death_soul_event = DeathSoulEvent(
+            centers=centers,
+            tier=3 if final else min(3, self.round_death_count),
+            began_at=time.time(),
+            final=final,
+        )
+        self._death_soul_frozen_world = None
+
+    def _draw_death_soul(self, elapsed):
+        if self._death_soul_event is None:
+            return
+        if self._death_soul_visual is None:
+            self._death_soul_visual = DeathSoulVisual()
+        self._death_soul_visual.draw(self.screen, self._death_soul_event, elapsed)
+
     def handle_self_collision(self):
         if self.respawn.active:
             return
+        stalled_players = tuple(sorted(self._blocked_since)) or (1,)
         self._blocked_since.clear()
         # Spiele den Schadens-Sound (sofern vorhanden)
         if SOUNDS.get("damage"):
@@ -1919,7 +1955,8 @@ class Game:
         # Ziehe ein Leben ab, aber nur, wenn noch Leben übrig sind
         self.lives -= 1
         print("DEBUG: Stillstand – Leben abgezogen, verbleibende Leben:", self.lives)
-    
+        self._begin_death_soul(stalled_players, final=self.lives <= 0)
+
         if self.lives > 0:
             self._begin_respawn()
         else:
@@ -1948,6 +1985,14 @@ class Game:
                 "death", ((snake[0][0] + 0.5) * GRID_SIZE,
                           (snake[0][1] + 0.5) * GRID_SIZE), {"lifetime": 1.0})
         self.lives -= 1
+        if self.player_count == 1:
+            affected = (1,)
+        else:
+            affected = tuple(
+                player for player, hp in ((1, self.player_health_p1),
+                                          (2, self.player_health_p2)) if hp <= 0
+            ) or (1,)
+        self._begin_death_soul(affected, final=self.lives <= 0)
         if self.lives <= 0:
             self.metrics.cancel_pending()
             self.game_state = GameState.GAME_OVER
@@ -1989,6 +2034,15 @@ class Game:
             if event.type == pygame.QUIT:
                 if not self._handle_level_editor_event(event):
                     sys.exit()
+                continue
+            # Do not accept leaderboard names or menu clicks behind the final
+            # 2.4-second death animation. Window close remains available.
+            if (self.game_state == GameState.GAME_OVER and
+                    self._death_soul_event is not None and
+                    self._death_soul_event.final and
+                    self._death_soul_event.active(
+                        time.time() - self._death_soul_event.began_at
+                    )):
                 continue
             if self.game_state == GameState.CONTROLS:
                 self.controls_menu.handle_event(event)
@@ -2187,8 +2241,16 @@ class Game:
             self.draw_game(include_hud=False)
             self.draw_pause()
         elif self.game_state == GameState.GAME_OVER:
-            # The cinematic backdrop replaces the old world, not merely a shade.
-            self.draw_game_over()
+            death = self._death_soul_event
+            if death is not None and death.final and death.active(
+                    time.time() - death.began_at):
+                # Snapshot the final world only once. Nothing moves behind the soul.
+                if self._death_soul_frozen_world is None:
+                    self.draw_game(include_hud=False)
+                    self._death_soul_frozen_world = self.screen.copy()
+                self.screen.blit(self._death_soul_frozen_world, (0, 0))
+            else:
+                self.draw_game_over()
         elif self.game_state == GameState.SETTINGS:
             self.options_menu.draw(self.screen)
         elif self.game_state == GameState.LEADERBOARD:
@@ -2213,6 +2275,13 @@ class Game:
                              pos[1] * GRID_SIZE + GRID_SIZE // 2)
                             for pos, _ in heads]
             self._respawn_visual.draw(self.screen, self.respawn, head_centers)
+        death = self._death_soul_event
+        if death is not None:
+            if (death.final and self.game_state == GameState.GAME_OVER):
+                self._draw_death_soul(time.time() - death.began_at)
+            elif (not death.final and self.respawn.active and
+                  self.game_state in (GameState.GAME, GameState.BOSS_FIGHT)):
+                self._draw_death_soul(self.respawn.elapsed)
         self.admin_panel.draw(self.screen)
 
     def _draw_head_badge(self, player, x, y):

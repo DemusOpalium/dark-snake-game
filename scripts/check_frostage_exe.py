@@ -14,6 +14,7 @@ EDITOR_UI_DIR = "assets/graphics/editor_ui/"
 D20_HUD_PATH = "assets/graphics/hud/Random_D20-removebg-preview.png"
 ABYSS_ART_PATH = "assets/graphics/game_over/dark_abyss.png"
 ABYSS_RITES_PATH = "assets/text/game_over_rites.json"
+DEATH_SOUL_PATH = "assets/graphics/death/soul_of_fallen.png"
 EXPECTED_PNG_COUNT = 175
 
 
@@ -71,6 +72,12 @@ def check(executable: Path) -> None:
             raise ValueError(f"Dark Abyss asset in EXE differs: {asset}")
     if not json.loads(archive.extract(names[ABYSS_RITES_PATH])).get("common"):
         raise ValueError("Dark Abyss epitaph library must be non-empty.")
+    if DEATH_SOUL_PATH not in names:
+        raise ValueError("Soul of the Fallen missing from bundled Windows EXE.")
+    original_soul = Path(__file__).resolve().parents[1] / "Dark_Snake" / DEATH_SOUL_PATH
+    if (hashlib.sha256(archive.extract(names[DEATH_SOUL_PATH])).hexdigest()
+            != hashlib.sha256(original_soul.read_bytes()).hexdigest()):
+        raise ValueError("Packaged Soul of the Fallen PNG does not match runtime asset.")
     if ROOF_DEMO_PATH not in names:
         raise ValueError(f"Roof demo missing from {executable.name}.")
     demo = json.loads(archive.extract(names[ROOF_DEMO_PATH]))
