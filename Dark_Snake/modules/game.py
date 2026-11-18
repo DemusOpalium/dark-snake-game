@@ -64,6 +64,7 @@ from modules.death_soul import DeathSoulEvent, DeathSoulVisual, SOUL_SECONDS
 from modules.death_fog import AbyssFogVisual, FINAL_DEATH_SECONDS
 from modules.dice_visual import FrostDiceResultVisual
 from modules.round_progress import RoundJournal, begin_round, completed_round
+from modules.career_ranks import CareerLedger, xp_for_round
 from modules.projectile_config import (
     MAX_BOSS_FLAMES, MAX_BOSS_GRID_PROJECTILES, MAX_ENEMY_PROJECTILES,
     MAX_PLAYER_GRID_PROJECTILES,
@@ -472,6 +473,7 @@ class Game:
         # Progress persists at confirmed final Game Over, not during frames.
         # Headless development simulations do not affect real player history.
         self._round_journal = RoundJournal()
+        self._career_ledger = CareerLedger()
         self._record_completed_rounds = not headless
         if headless:
             # Gameplay code deliberately continues to execute while simulating and
@@ -616,6 +618,10 @@ class Game:
         # Construction calls reset_game before all display resources exist.  Ensure
         # the initial menu has no pre-created round after initialization as well.
         self.clear_game_state()
+        self.career_snapshot = None
+        self.career_progress_error = None
+        if self._record_completed_rounds:
+            self._sync_career_progress()
 
     def create_ui_elements(self):
         self.main_menu = FrostAgeMenu({
@@ -883,6 +889,8 @@ class Game:
         self._round_token = None
         self._round_recorded = False
         self.round_progress_error = None
+        # The round's career XP is awarded from committed data, never per frame.
+        self.round_career_xp = 0
         self.dice_result = None
         self.dice_display_until = 0
         self.last_boss_effect_time = 0
@@ -1956,6 +1964,17 @@ class Game:
             self._death_soul_visual = DeathSoulVisual()
         self._death_soul_visual.draw(self.screen, self._death_soul_event, elapsed)
 
+    def _sync_career_progress(self):
+        """Recover saved-but-not-awarded rounds on startup or at Game Over."""
+        try:
+            self.career_snapshot = self._career_ledger.sync(self._round_journal)
+            self.career_progress_error = None
+            return True
+        except (OSError, ValueError, TypeError) as exc:
+            self.career_progress_error = str(exc)
+            record_event(f"Karriererang-Fortschritt konnte nicht gespeichert werden: {exc}")
+            return False
+
     def _finalize_round_progress(self, reason):
         """Snapshot only authoritative counters, once, after final Game Over."""
         token = self._round_token
@@ -1970,10 +1989,13 @@ class Game:
                 items=self.round_items_collected,
                 lives_lost=self.round_death_count,
             )
-            # No rank/XP/achievement rewards yet.  Only record truth.
+            # Saved round history stays authoritative; a failed career save is
+            # reconciled by UUID at the next real startup or Game Over.
             self._round_journal.append(snapshot)
             self._round_recorded = True
             self.round_progress_error = None
+            self.round_career_xp = xp_for_round(snapshot)
+            self._sync_career_progress()
             return True
         except (OSError, ValueError, TypeError) as exc:
             self.round_progress_error = str(exc)
