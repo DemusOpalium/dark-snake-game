@@ -16,6 +16,7 @@ ABYSS_ART_PATH = "assets/graphics/game_over/dark_abyss.png"
 ABYSS_RITES_PATH = "assets/text/game_over_rites.json"
 DEATH_SOUL_PATH = "assets/graphics/death/soul_of_fallen.png"
 SKINS_CATALOG_PATH = "assets/graphics/skins_catalog.json"
+SKIN_REGISTRY_PATH = "assets/graphics/skin_registry.json"
 DEATH_FOG_PATHS = tuple(f"assets/graphics/death/fog_{index:02}.png" for index in (1, 2, 3))
 EXPECTED_PNG_COUNT = 175
 
@@ -109,6 +110,26 @@ def check(executable: Path) -> None:
         if digest != skin["git_blob_sha"]:
             raise ValueError(f"Skin source differs in EXE: {archive_path}")
     print(f"Verified {len(runtime_skins)} staged Head/Body sprites in Windows EXE.")
+    if SKIN_REGISTRY_PATH not in names:
+        raise ValueError("Skin unlock registry missing from Windows EXE.")
+    registry_data = json.loads(archive.extract(names[SKIN_REGISTRY_PATH]))
+    if registry_data.get("schema_version") != 1:
+        raise ValueError("Unexpected unlock registry schema in Windows EXE.")
+    skins = registry_data.get("skins", [])
+    if len(skins) != 92:
+        raise ValueError(f"Expected 92 registered Snake skins, found {len(skins)}.")
+    known = set()
+    for skin in skins:
+        folder = ("SnakeHeadsbibliothek" if skin["type"] == "head"
+                  else "SnakeBodysBibliothek")
+        archive_path = f"assets/graphics/{folder}/{skin['filename']}"
+        if archive_path in known or archive_path not in names:
+            raise ValueError(f"Duplicate/missing unlocked Snake runtime asset: {archive_path}")
+        known.add(archive_path)
+    if sum(s["group"] == "starter" for s in skins) != 6:
+        raise ValueError("Incorrect number of default-free Snake skins.")
+    print("Verified 92 registered runtime Snake Heads/Bodies and unlock metadata.")
+
     if ROOF_DEMO_PATH not in names:
         raise ValueError(f"Roof demo missing from {executable.name}.")
     demo = json.loads(archive.extract(names[ROOF_DEMO_PATH]))
