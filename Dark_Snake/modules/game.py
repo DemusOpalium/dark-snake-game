@@ -482,6 +482,7 @@ class Game:
             except Exception as e:
                 print(f"Fehler beim Laden des Icons: {e}")
         self.clock = pygame.time.Clock()
+        self._hud_badge_font = pygame.font.SysFont("Arial", 15, bold=True)
         self.metrics = FrameMetrics()
         self.respawn = RespawnCountdown()
         self._respawn_recent = False
@@ -2201,17 +2202,47 @@ class Game:
             self._respawn_visual.draw(self.screen, self.respawn, head_centers)
         self.admin_panel.draw(self.screen)
 
+    def _draw_head_badge(self, player, x, y):
+        """Reuse the same chosen head as gameplay; no separate life-skin setting."""
+        chosen = self.options_menu.get_skin_image(
+            "Heads", self.settings.get(f"custom_head_p{player}")
+        )
+        source = chosen if chosen is not None else (
+            SNAKE_HEAD_IMG if player == 1 else SNAKE_HEAD_BETA
+        )
+        # scale_sprite already caches resized read-only surfaces.
+        icon = scale_sprite(source, (26, 26))
+        border = pygame.Rect(x - 2, y - 2, 30, 30)
+        pygame.draw.rect(self.screen, (22, 13, 36), border, border_radius=5)
+        pygame.draw.rect(self.screen, (153, 123, 186), border, 2, border_radius=5)
+        self.screen.blit(icon, (x, y))
+
     def draw_hud(self):
         score_txt = pygame.font.SysFont('Arial', 30).render(f"Score: {self.score}", True, WHITE)
         self.screen.blit(score_txt, (20, 10))
-        for i in range(self.lives):
-            pygame.draw.rect(self.screen, RED, (WINDOW_WIDTH - 35 - i * 30, 15, 20, 20))
         level_txt = pygame.font.SysFont('Arial', 20).render(f"Level: {self.level}", True, WHITE)
         self.screen.blit(level_txt, (20, 45))
         if self.player_count == 1:
+            # Every remaining life shows the head the player actually selected.
+            for i in range(max(0, self.lives)):
+                self._draw_head_badge(1, WINDOW_WIDTH - 39 - 34 * i, 12)
             self.draw_health_bar()
         elif self.player_count == 2:
+            # Classic uses ONE shared life pool, but independent player health.
+            team_label = self._hud_badge_font.render(
+                f"TEAM-LEBEN: {max(0, self.lives)}", True, WHITE
+            )
+            self.screen.blit(
+                team_label, (WINDOW_WIDTH // 2 - team_label.get_width() // 2, 17)
+            )
             draw_health_bar_two(self)
+            self._draw_head_badge(1, 232, 80)
+            self._draw_head_badge(2, WINDOW_WIDTH - 258, 80)
+            self.screen.blit(self._hud_badge_font.render("P1", True, WHITE), (234, 111))
+            self.screen.blit(
+                self._hud_badge_font.render("P2", True, WHITE),
+                (WINDOW_WIDTH - 256, 111),
+            )
 
     def draw_health_bar(self):
         bar_width = 200

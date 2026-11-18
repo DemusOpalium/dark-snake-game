@@ -12,7 +12,7 @@ import pytest
 pygame.init()
 pygame.display.set_mode((1, 1))
 
-from config import DARK_GREY, GREEN, GRID_SIZE, RED, WHITE
+from config import DARK_GREY, GREEN, GRID_SIZE, WHITE
 from modules.aoe_zones import GrowingBossAOEZone
 from modules.enemies import NormalEnemy
 from modules.enums import GameState
@@ -77,8 +77,15 @@ def test_game_draw_composites_world_then_screen_overlay_then_hud(players, state,
     overlay = pygame.Surface((1, 1), pygame.SRCALPHA)
     overlay.fill((0, 0, 0, shade))
     expected.blit(overlay, (0, 0))
-    assert_region(screen, (230, 86, 20, 12), expected.get_at((0, 0)))
-    assert_region(screen, (screen.get_width() - 34, 16, 18, 18), RED)
+    # Pixel outside the health bar and the new P1 portrait remains world-tinted.
+    assert_region(screen, (223, 86, 5, 12), expected.get_at((0, 0)))
+    # Life HUD now uses cached snake-head portraits, framed by a FrostAge border.
+    if players == 1:
+        assert_region(screen, (screen.get_width() - 41, 22, 2, 8), (153, 123, 186))
+    else:
+        assert_region(screen, (230, 90, 2, 8), (153, 123, 186))
+        assert_region(screen, (screen.get_width() - 260, 90, 2, 8),
+                      (153, 123, 186))
     score_area = screen.subsurface((20, 10, 145, 31))
     assert pygame.mask.from_threshold(score_area, WHITE, (1, 1, 1, 255)).count() > 0
 
