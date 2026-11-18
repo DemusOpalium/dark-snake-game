@@ -80,5 +80,11 @@ def test_dice_pickup_shows_banner_in_actual_game_draw(monkeypatch):
 
     assert game._dice_banner is not None
     banner_rect = game._dice_banner.get_rect(midbottom=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 - 60))
-    region = game.screen.subsurface(banner_rect)
-    assert pygame.mask.from_surface(region).count() > 0
+    # A fully opaque artwork pixel must be preserved on the actual game screen.
+    opaque = next(
+        (x, y) for y in range(game._dice_banner.get_height())
+        for x in range(game._dice_banner.get_width())
+        if game._dice_banner.get_at((x, y)).a == 255
+    )
+    sx, sy = banner_rect.left + opaque[0], banner_rect.top + opaque[1]
+    assert game.screen.get_at((sx, sy))[:3] == game._dice_banner.get_at(opaque)[:3]
