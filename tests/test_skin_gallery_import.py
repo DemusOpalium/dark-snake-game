@@ -101,7 +101,9 @@ def test_new_head_and_body_are_selectable_saved_and_render_in_game(players, tmp_
         assert game.settings["custom_head_p2"] == head_filename
         assert game.settings["custom_body_p2"] == body_filename
 
-    restored = Game(headless=True)
+    # A headless Game intentionally bypasses load_settings(); reload with the
+    # real GUI initialization, still using SDL's dummy Windows CI display.
+    restored = Game()
     assert restored.settings["custom_head_p1"] == head_filename
     assert restored.settings["custom_body_p1"] == body_filename
     selected_head = restored.options_menu.get_skin_image("Heads", head_filename)
