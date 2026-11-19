@@ -15,16 +15,19 @@ class NormalEnemy:
     SIGHT_PROFILE = VisionProfile(radius_cells=5, fov_degrees=100,
                                   memory_seconds=1.5, scan_interval=0.15)
     BEHAVIOR_PROFILE = BehaviorProfile(
-        visible_action="CHASE", chase_speed=1.30,
-        search_speed=.78, patrol_speed=1.0,
+        visible_action="CHASE", chase_speed=2.0,
+        search_speed=.9, patrol_speed=1.0,
     )
+    # Fixed speed for this *optional* KI pilot; Classic's existing randomly
+    # rolled self.speed remains intact and is never overwritten.
+    AI_MOVEMENT_SPEED = 1.8
     # This more reactive, longer-distance profile is ONLY active through the
     # existing Admin KI-Test. Classic without KI-Test keeps the old eyes and
     # random sprint behavior verbatim.
     AI_SIGHT_PROFILE = VisionProfile(
-        radius_cells=5, fov_degrees=100,
-        memory_seconds=3.0, scan_interval=.15,
-        alert_radius_cells=11, reaction_seconds=.25,
+        radius_cells=8, fov_degrees=150,
+        memory_seconds=4.0, scan_interval=.05,
+        alert_radius_cells=16, reaction_seconds=.05,
     )
 
     def __init__(self):
@@ -91,7 +94,12 @@ class NormalEnemy:
                 and random.random() < self.sprint_chance):
             self._start_sprint(current_time, self.sprint_duration, player_x, player_y)
 
-        current_speed = self.speed * (self.sprint_speed_multiplier if self.sprint_active else 1)
+        # The old random base-speed range (0.5–1.5) made the new AI appear
+        # inexplicably sluggish. For KI-Test only, every instance of this
+        # enemy type uses a fixed, tunable base speed from its class profile.
+        # Old Classic without KI-Test retains self.speed *all the way through*.
+        base_speed = self.AI_MOVEMENT_SPEED if self.behavior_enabled else self.speed
+        current_speed = base_speed * (self.sprint_speed_multiplier if self.sprint_active else 1)
         if self.behavior_enabled and not self.sprint_active:
             if self.behavior_state in ("CHASE", "RETREAT"):
                 current_speed *= self.behavior_profile.chase_speed
