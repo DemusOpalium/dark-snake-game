@@ -20,7 +20,8 @@ from modules.career_reward_visual import (
 from modules.game_over_visual import DarkAbyssGameOver, tombstone_scene_layout
 from modules.tombstone_reward_visual import (
     ASPECT, EPITAPH_IMAGE, HOLD_SECONDS as TOMB_HOLD,
-    FADE_SECONDS as TOMB_FADE, TombstoneRewardPanel,
+    FADE_SECONDS as TOMB_FADE, TombstoneRewardPanel, INK_THEMES,
+    epitaph_ink,
 )
 from modules.resources import find_asset
 from modules.skin_inventory import skin_registry
@@ -197,7 +198,8 @@ def test_large_responsive_scene_never_stretches_art_or_covers_stats(size):
     assert left >= 0
     assert rect.left >= left + panel_width + 30
     assert rect.right <= size[0] - round(size[0] * .055)
-    assert rect.bottom <= size[1]
+    # The skull pedestal must meet the actual lower framebuffer edge.
+    assert rect.bottom == size[1]
     assert abs(rect.height / rect.width - 1.5) < .004
     # Side-by-side arrangement preserves the original full-width stats panel.
     assert left >= 20
@@ -270,3 +272,81 @@ def test_actual_button_hitboxes_are_left_of_portrait_after_game_render():
     game.round_career_result = None
     game.draw()
     assert game.game_over_buttons[0].rect.x == game.screen.get_width() // 2 - 228
+
+
+
+@pytest.mark.parametrize("width", [350, 420, 508, 545])
+@pytest.mark.parametrize("career", [
+    CareerCeremony(39, 40, 2_345_678, 123_456_789, None, "none"),
+    CareerCeremony(4, 5, 376, 5305, 7500, "none"),
+    CareerCeremony(19, 20, 44_222, 48_123, 52_000, "pending"),
+])
+def test_growing_xp_and_long_german_strings_do_not_leave_carved_text_slots(width, career):
+    panel = TombstoneRewardPanel()
+    height = round(width * 1.5)
+    canvas = pygame.Surface((width, height), pygame.SRCALPHA)
+    panel.draw(canvas, career=career, warning=False,
+               rect=pygame.Rect(0, 0, width, height), now=1, sequence=1)
+    assert panel.last_text_bounds
+    for name, rendered_lines in panel.last_text_bounds.items():
+        slot = panel.last_slots[name]
+        assert len(rendered_lines) >= 1, name
+        for text_rect in rendered_lines:
+            assert slot.contains(text_rect), (width, name, text_rect, slot)
+            assert slot.contains(text_rect.move(1, 1)), (width, name, text_rect, slot)
+        # Keep a distinct safe strip between each block of lettering.
+    keys = ["title", "reason", "praise", "rank", "progress"]
+    assert all(panel.last_slots[a].bottom < panel.last_slots[b].top
+               for a, b in zip(keys, keys[1:]))
+    assert panel.last_slots["progress"].bottom < round(height * .806)
+
+
+def test_dynamic_engraving_shrinks_and_wraps_overlong_text_inside_safe_face(monkeypatch):
+    panel = TombstoneRewardPanel()
+    very_long = ("Schlangenchronik des grenzenlosen Abgrundes und der "
+                 "gefrorenen uralten Welten im Schatten des Universums")
+    monkeypatch.setattr(panel, "_narrative", lambda career, warning:
+                        (very_long, very_long, very_long))
+    width = 390
+    canvas = pygame.Surface((width, 585), pygame.SRCALPHA)
+    panel.draw(canvas, career=realistic_career(True), warning=False,
+               rect=pygame.Rect(0, 0, width, 585), now=1, sequence=1)
+    for name in ("title", "reason", "praise"):
+        rect = panel.last_slots[name]
+        assert panel.last_text_bounds[name]
+        assert all(rect.contains(box) for box in panel.last_text_bounds[name])
+
+
+def test_dark_ink_roll_is_stable_and_unlocks_more_styles_with_career_rank():
+    assert len(INK_THEMES) == 5
+    low = {epitaph_ink(CareerCeremony(1, 1, i, i, 500, "none"))[0]
+           for i in range(50, 100)}
+    high = {epitaph_ink(CareerCeremony(39, 40, i, 1_000_000 + i,
+                                     None, "none"))[0]
+            for i in range(50, 150)}
+    assert len(low) == 2
+    assert len(high) == len(INK_THEMES)
+    assert low.issubset(high)
+    for value in (1, 20, 4000):
+        sample = CareerCeremony(1, 2, value, value, 1500, "none")
+        assert epitaph_ink(sample) == epitaph_ink(sample)
+    assert epitaph_ink(None) == INK_THEMES[0]
+    # These are dark *themes*, not dark-on-dark text: every text color has
+    # at least one high-contrast bright channel.
+    for palette in INK_THEMES:
+        for color in palette[1:]:
+            assert max(color) >= 215
+
+
+def test_engraved_palette_is_not_rerolled_every_frame():
+    panel = TombstoneRewardPanel()
+    career = CareerCeremony(4, 5, 376, 5305, 7500, "none")
+    canvas = pygame.Surface((550, 785), pygame.SRCALPHA)
+    rect = pygame.Rect(10, 10, 490, 735)
+    panel.draw(canvas, career=career, warning=False, rect=rect, now=1, sequence=1)
+    first, ink = panel._base, panel.last_ink_theme
+    for tick in (2, 3, 4, 6, 10):
+        panel.draw(canvas, career=career, warning=False,
+                   rect=rect, now=tick, sequence=1)
+        assert panel._base is first
+        assert panel.last_ink_theme == ink
