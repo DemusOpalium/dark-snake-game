@@ -1,6 +1,25 @@
-# DARK SNAKE · Enemy Vision A/B (19.11.2026)
+# DARK SNAKE · Enemy Vision A/B/C (19.11.2026)
 
-**Ist-Stand:** **Phase A / PR #225 ist auf `main` gemergt und vom Spieler mit dem Hitbox-Debugger unter Windows angesehen.** Die Gegner haben sichtbare Sichtkreise und Erkennungslogik. Phase B kommt separat über Draft-PR: reaktionsfähige, jederzeit abschaltbare KI-Testbewegung. **Noch keine neuen FrostAge-Gegner im Gameplay, keine Änderungen an Angriffsschaden oder Bosslogik.**
+**Bestätigt unter Windows:** Phase A (#225) und Phase B (#226) sind gemergt und vom Projektinhaber mit mehreren Gegnern und `KI-Test an/aus` positiv geprüft. Phase C wird in einem **separaten Draft-PR** erprobt. **Keine neuen FrostAge-Gegner gespawnt; Boss-/Angriffsregeln unverändert.**
+
+## Phase C · Feste Stellschrauben für die existierenden Gegner
+
+**Kein zusätzlicher Enemy Creator, kein Gegner-Zufallsgenerator.** Hier wird der bereits verwendete `VisionProfile` erweitert:
+- `radius_cells` = kleiner **Entdeckungsradius**;
+- `alert_radius_cells` = größerer **Sicht-/Verfolgungsradius erst NACH bestätigter Entdeckung**, wahlweise `None` für bisheriges Classic-Verhalten;
+- `reaction_seconds` = wie lange der Kopf innerhalb eines echten Sichtkegels vor dem ersten Erkennen sichtbar bleiben muss (kontinuierlich über mehrere Sensor-Ticks);
+- `memory_seconds` = wie lange die **letzte bestätigte** Position nach Sichtverlust gesucht werden darf, danach Reset zum kleinen Entdeckungsradius;
+- `scan_interval` = gedrosselter, fest einstellbarer Sensor-Takt (kein Frame-Zähler);
+- `BehaviorProfile` erhält getrennte feste `patrol_speed`-, `chase_speed`- und `search_speed`-Faktoren. Einheit: Faktor zum jeweiligen existierenden Gegnertempo, kein neues Bewegungssystem.
+
+Bei aktivem `KI-Test` bekommen **bereits vorhandene** Gegner zwei unterschiedliche **feste** Beispiele: `NormalEnemy` (100°, 5→11 Felder, 0,25 s Entdeckung, 3 s Gedächtnis, CHASE 1,30× / SEARCH 0,78×) und `BolbuEnemy` (360°, 6→12 Felder, 0,55 s Entdeckung, 5 s Gedächtnis, GUARD, ruhiger PATROL). Alle Werte sind **Prototyp-Balancing**, nicht endgültige Spielregeln.
+
+**Keine magische Ortung:** Sowohl innerer als auch äußerer Kreis prüfen Blickwinkel und Supercover-Wände; während des Suchens steht nur die zuletzt **wirklich beobachtete** Position zur Verfügung. Nach Ablauf der Gedächtniszeit muss der Gegner den Spieler im kleinen Radius erneut entdecken. Auch im Zweispielermodus bleiben die Zielwahl und die Kontinuität der Entdeckung definiert.
+
+**KI-Test aus** stellt sofort das alte `SIGHT_PROFILE` und ursprüngliche Classic-Bewegungs-/Sprintverhalten wieder her; der neue Alarmzustand wird beim Wechsel zurückgesetzt. Das übrige Spiel, HP, Bossphasen, Schadens-, Projektil- und Speicherregeln bleiben unangetastet.
+
+**Windows-Probe:** Tab → `KI-Test` + `Hitboxen`. Im Grundzustand kleinerer Ring; nach echter Entdeckung zeichnen wir einen dezenten größeren violetten Ring. Sichtverlust an einer Wand → Suche nach letzter Stelle → nach wenigen Sekunden wieder kleiner Ring. `KI-Test` abschalten → alte Classic-Bewegung. Erst nach manuellem Windows-Test Folgeschritt "weitere Classic-Gegnerprofile / Boss-System-Adapter" und später FrostAge (#216).
+
 
 ## Phase B · Wahrnehmung wird zu Bewegung (Opt-in)
 

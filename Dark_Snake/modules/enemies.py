@@ -14,7 +14,18 @@ class NormalEnemy:
     # unchanged until a separately reviewed behaviour PR connects signals.
     SIGHT_PROFILE = VisionProfile(radius_cells=5, fov_degrees=100,
                                   memory_seconds=1.5, scan_interval=0.15)
-    BEHAVIOR_PROFILE = BehaviorProfile(visible_action="CHASE")
+    BEHAVIOR_PROFILE = BehaviorProfile(
+        visible_action="CHASE", chase_speed=1.30,
+        search_speed=.78, patrol_speed=1.0,
+    )
+    # This more reactive, longer-distance profile is ONLY active through the
+    # existing Admin KI-Test. Classic without KI-Test keeps the old eyes and
+    # random sprint behavior verbatim.
+    AI_SIGHT_PROFILE = VisionProfile(
+        radius_cells=5, fov_degrees=100,
+        memory_seconds=3.0, scan_interval=.15,
+        alert_radius_cells=11, reaction_seconds=.25,
+    )
 
     def __init__(self):
         self.x = random.randint(0, GRID_WIDTH - 1)
@@ -47,6 +58,17 @@ class NormalEnemy:
         else:
             self.width = self.height = GRID_SIZE
 
+    def set_ai_preview(self, enabled: bool):
+        """Swap sight profile once per Admin toggle, never once per frame."""
+        enabled = bool(enabled)
+        if enabled != self.behavior_enabled:
+            self.behavior_enabled = enabled
+            self.behavior_state = "PATROL"
+            self.eyes.profile = (
+                self.AI_SIGHT_PROFILE if enabled else self.SIGHT_PROFILE
+            )
+            self.eyes.reset()
+
     def _start_sprint(self, now, duration, player_x, player_y):
         self.sprint_active = True
         self.sprint_end_time = now + duration
@@ -70,9 +92,13 @@ class NormalEnemy:
             self._start_sprint(current_time, self.sprint_duration, player_x, player_y)
 
         current_speed = self.speed * (self.sprint_speed_multiplier if self.sprint_active else 1)
-        if self.behavior_enabled and not self.sprint_active and self.behavior_state in (
-                "CHASE", "RETREAT", "SEARCH"):
-            current_speed *= self.behavior_profile.chase_speed
+        if self.behavior_enabled and not self.sprint_active:
+            if self.behavior_state in ("CHASE", "RETREAT"):
+                current_speed *= self.behavior_profile.chase_speed
+            elif self.behavior_state == "SEARCH":
+                current_speed *= self.behavior_profile.search_speed
+            elif self.behavior_state == "PATROL":
+                current_speed *= self.behavior_profile.patrol_speed
         current_speed *= movement_factor
         interval = 1.0 / current_speed
         if current_time - self.last_move >= interval:

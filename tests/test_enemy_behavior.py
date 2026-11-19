@@ -110,8 +110,13 @@ def _ready_game(players=1):
     return game
 
 
-def _fresh_enemy():
+def _fresh_enemy(*, instant=True):
     enemy = NormalEnemy()
+    if instant:
+        # Isolate the movement tests from the new reaction-delay tests.
+        enemy.AI_SIGHT_PROFILE = VisionProfile(
+            radius_cells=5, fov_degrees=100, reaction_seconds=0,
+        )
     enemy.x, enemy.y, enemy.facing = 5, 5, (1, 0)
     enemy.speed = 2
     enemy.last_move = time.time() - 3
@@ -139,7 +144,7 @@ def test_two_player_reaction_chases_selected_nearest_head_not_always_player_one(
     game = _ready_game(2)
     game.snake1, game.snake2 = [(9, 5)], [(5, 7)]
     enemy = _fresh_enemy()
-    enemy.eyes.profile = VisionProfile(fov_degrees=360)
+    enemy.AI_SIGHT_PROFILE = VisionProfile(fov_degrees=360)
     game.enemies = [enemy]
     game.enemy_ai_preview = True
     game.update()
@@ -156,6 +161,7 @@ def test_bolbu_preview_guards_while_visible_and_legacy_shot_logic_remains():
     enemy.last_move = time.time() - 2
     enemy.sprint_chance = 0
     enemy.last_shot = enemy.last_dice = time.time()
+    enemy.AI_SIGHT_PROFILE = VisionProfile(fov_degrees=360)
     game.enemies = [enemy]
     game.enemy_ai_preview = True
     game.update()
@@ -221,3 +227,73 @@ def test_developer_overlay_labels_behavior_without_changing_player_hud():
     game.screen.fill((0, 0, 0))
     game._draw_enemy_sight_debug(enemy)
     assert game.screen.get_at((enemy.x * 30 + 15, enemy.y * 30 + 15))[:3] != (0, 0, 0)
+
+
+
+def test_ai_preview_reaction_delay_and_alert_radius_work_in_real_game():
+    game = _ready_game()
+    game.snake = [(9, 5)]
+    enemy = _fresh_enemy(instant=False)
+    # During the initial reaction window the first scan must not be spoiled
+    # by an unrelated random patrol step changing the enemy's facing.
+    enemy.last_move = time.time()
+    game.enemies = [enemy]
+    game.enemy_ai_preview = True
+
+    game.update()
+    assert enemy.eyes.profile == NormalEnemy.AI_SIGHT_PROFILE
+    assert enemy.eyes.result.kind == "UNAWARE"
+    assert enemy.eyes.candidate_player == 1
+    assert enemy.behavior_state == "PATROL"
+
+    # Simulate real elapsed time without sleeping in a CI or moving frames.
+    enemy.eyes.candidate_since -= .35
+    enemy.eyes.next_scan_at -= 1
+    enemy.last_move = time.time() - 2
+    game.update()
+    assert enemy.eyes.result.visible
+    assert enemy.behavior_state == "CHASE"
+    assert (enemy.x, enemy.y) == (6, 5)
+
+    # The target escaped the initial five-cell radius but remains visible
+    # inside the eleven-cell alert radius, with an unobstructed ray.
+    game.snake = [(15, 5)]
+    enemy.eyes.next_scan_at = float("-inf")
+    game.update()
+    assert enemy.eyes.result.visible
+    assert enemy.eyes.result.last_known_cell == (15, 5)
+
+    # Walls block detection even when the AI is already alerted.
+    game._vision_blockers = frozenset({(8, 5)})
+    enemy.eyes.next_scan_at = float("-inf")
+    game.update()
+    assert enemy.eyes.result.kind == "SEARCHING"
+    assert enemy.eyes.result.last_known_cell == (15, 5)
+
+
+def test_disabling_ai_restores_original_sight_profile_and_clears_alert():
+    game = _ready_game()
+    game.snake = [(9, 5)]
+    enemy = _fresh_enemy(instant=False)
+    game.enemies = [enemy]
+    game.enemy_ai_preview = True
+    game.update()
+    assert enemy.eyes.profile.alert_radius_cells == 11
+    assert enemy.eyes.candidate_player == 1
+
+    game.enemy_ai_preview = False
+    game.update()
+    assert not enemy.behavior_enabled
+    assert enemy.behavior_state == "PATROL"
+    assert enemy.eyes.profile == NormalEnemy.SIGHT_PROFILE
+    assert enemy.eyes.profile.alert_radius_cells is None
+    assert enemy.eyes.candidate_player is None
+
+
+def test_ki_preview_separates_patrol_search_and_chase_movement_factors():
+    p = NormalEnemy.BEHAVIOR_PROFILE
+    assert p.chase_speed > p.patrol_speed > p.search_speed
+    assert BolbuEnemy.BEHAVIOR_PROFILE.patrol_speed < 1
+    assert NormalEnemy.AI_SIGHT_PROFILE.reaction_seconds > 0
+    assert BolbuEnemy.AI_SIGHT_PROFILE.reaction_seconds > p.patrol_speed / 2
+    assert BolbuEnemy.AI_SIGHT_PROFILE.alert_radius_cells > 6
