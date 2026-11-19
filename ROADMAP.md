@@ -16,17 +16,21 @@
   opt-in Sicht auf heranfliegende Projektile und kurzer Schutzschild
   (maximal ein abgewehrter Projektiltreffer, 0,8 s, 7 s Cooldown).
   Nur bestätigte Beobachtung; keine Wandsicht.
-- 🔧 **Boss Defense D – Swipe Movement (eigener PR, Windows-Test offen)** –
-  zwei getrennt aufladbare Seitwärts-Swipes mit 12 s Ladezeit pro
-  Ladung, ca. 0,18 s Dauer und 2 Zellen Ausweichdistanz. Erst bei
-  0,06 s bestätigter Projektilwahrnehmung, senkrecht zur Flugbahn,
-  nie durch WALL/BARRIER oder über einen Spieler-Kopf. Projektil-
-  Vorhersage für sicheren Endpunkt, andernfalls bestehender Schild.
-  Während des Swipes folgt die echte Boss-Hitbox derselben sichtbaren
-  Interpolation, statt sofort an das Ziel zu springen.
-  Bossangriffe und normale Bewegung sind während des Swipes pausiert,
-  Classic ohne KI-Test unverändert. Auto-Tests + Demus-Windows-Test
-  bleiben verbindliche Merge-Gates.
+- ✅ **Boss Defense D (#234, main)** – zwei begrenzt aufladbare
+  Seitwärts-Swipes, 0,18 s Animation und mitbewegte Boss-Hitbox;
+  erfolgreicher Windows-Spieltest bei Demus, Ausweichen selbst
+  dabei noch nicht sicher beobachtet.
+- 🔧 **Swipe D.1 / Player Projectile Cadence (Draft-PR)** – Spieler-
+  Feuerball 6 → 4,5 Pixel/Frame (25 % weniger nominelle Geschwindigkeit),
+  präzise Subpixel-Bewegung. Pickup-Geschosse halbierte Grundgeschwindigkeit,
+  danach auf maximal 4,5 Pixel/Frame begrenzt, auch alle Multishots.
+  Beseitigung doppelter/dreifacher Updates: JEDES Projektil wird pro
+  Spiel-Frame genau einmal fortbewegt. Der Boss scannt Geschosse vor
+  dem Move; 30 statt 10 Frames Vorhersage für echte Reaktionszeit;
+  Diagnose `PROJ a/b SWIPE n/2 STATUS` im KI-Test + Hitboxen.
+  Zusätzliche Integrationstests mit fliegenden realen Spielerprojektilen.
+  Boss-Angriffswerte und World Studio nicht umgestellt.
+  GitHub CI + Windows-Prüfung und Demus-Spieltest vor Merge.
 - ⬜ **Boss Personality / FrostAge Vertical Slice** – individuelle
   Kampfprofile und kontrollierte Attacken-Kombination nach Swipe-Test.
 - ⬜ **FrostAge Vertical Slice** – Welt-/Spawn-Gate und drei individuelle
