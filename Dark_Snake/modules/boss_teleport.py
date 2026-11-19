@@ -1,8 +1,11 @@
 """Boss Teleport A: deterministic safe relocation and reusable transition states.
 
-All calculations are in grid cells. This module never moves a snake, changes
-damage, reads unobserved player locations as tactical targets, or creates
-projectiles. The game's AI-Test gate is the only way to enable it.
+All calculations are in grid cells. This module never moves a snake,
+changes damage or creates projectiles. Normal tactical targeting remains bound
+to Medusa Eyes. The explicit Guardian Phase III world scan is the *only*
+exception: it can acquire a live head anywhere after a visible 1.45 s pulse,
+and only for a separately telegraphed, collision-safe tunnel relocation.
+The game's AI-Test gate is the only way to enable it.
 """
 from __future__ import annotations
 
@@ -16,6 +19,10 @@ EMERGE_SECONDS = .35
 RECOVERY_SECONDS = .65
 REUSE_COOLDOWN_SECONDS = 10.0
 ABORT_RETRY_SECONDS = 3.0
+# Guardian's Phase III *magical* map scan is a deliberately special
+# mechanic. It does not alter the normal boss/Medusa Eyes visibility.
+WORLD_SCAN_SECONDS = 1.45
+ABORT_VISUAL_SECONDS = .55
 MIN_JUMP_CELLS = 5.0
 MIN_PLAYER_CLEARANCE_CELLS = 3.0
 
@@ -85,13 +92,28 @@ def destination_is_safe(cell, size, grid_size, blocked_cells, player_heads):
     return True
 
 
+def world_scan_target(origin, size, player_heads):
+    """Choose one currently living head anywhere on the board (1P/2P).
+
+    Only a visible Phase III guardian scan may call this. A late snapshot,
+    rather than tracking through every obstacle on every frame, avoids
+    global omniscient targeting for the other bosses or attacks.
+    """
+    if not player_heads:
+        return None
+    cx, cy = origin[0] + size / 2, origin[1] + size / 2
+    return min(tuple(player_heads), key=lambda h: (
+        hypot(h[0] - cx, h[1] - cy), h[1], h[0],
+    ))
+
+
 def choose_destination(origin, size, grid_size, blocked_cells, player_heads,
                        observed_target, profile_key):
     """Find a deterministic *free* landing cell near the observed target.
 
-    The target must come from the boss sensor (VISIBLE/RELAY/SEARCHING),
-    never from real unobserved player coordinates. Real bodies/heads may be
-    consulted only as a collision *safety* mask.
+    The target normally comes from boss sensors (VISIBLE/RELAY/SEARCHING).
+    Only a finished guardian Phase III world scan can supply a globally
+    detected player head. Bodies/heads also act as a collision *safety* mask.
     """
     if observed_target is None:
         return None
@@ -124,13 +146,34 @@ class BossTeleport:
 
     def reset(self):
         self.action: TeleportAction | None = None
+        self.search_started_at: float | None = None
+        self.abort_visual: tuple[TeleportAction, float] | None = None
         self.landed = False
         self.used_stages: set[int] = set()
         self.next_ready_at = float("-inf")
 
     def ready(self, stage: int, now: float) -> bool:
         return (stage in (2, 3) and stage not in self.used_stages
-                and self.action is None and now >= self.next_ready_at)
+                and self.action is None and self.search_started_at is None
+                and now >= self.next_ready_at)
+
+    def begin_search(self, stage: int, now: float) -> bool:
+        """A single full-board pulse exclusive to guardian, HP Phase III."""
+        if self.style != "tunnel" or stage != 3 or not self.ready(stage, now):
+            return False
+        self.search_started_at = now
+        self.abort_visual = None
+        return True
+
+    def scanning(self) -> bool:
+        return self.search_started_at is not None
+
+    def scan_complete(self, now: float) -> bool:
+        return (self.scanning()
+                and now + 1e-9 >= self.search_started_at + WORLD_SCAN_SECONDS)
+
+    def end_search(self) -> None:
+        self.search_started_at = None
 
     def begin(self, origin, destination, stage: int, now: float):
         if not self.ready(stage, now):
@@ -138,6 +181,7 @@ class BossTeleport:
         self.action = TeleportAction(
             tuple(origin), tuple(destination), now, stage, self.style,
         )
+        self.abort_visual = None
         self.landed = False
         return True
 
@@ -157,10 +201,19 @@ class BossTeleport:
         self.used_stages.add(self.action.stage)
         self.next_ready_at = now + REUSE_COOLDOWN_SECONDS
 
-    def cancel(self, now: float) -> None:
+    def cancel(self, now: float, *, show_abort=False) -> None:
+        if show_abort and self.action is not None and not self.landed:
+            # The collapsing rift remains visible for a few frames instead
+            # of snapping away. It is purely decorative, with no hitbox.
+            self.abort_visual = (self.action, now)
+        else:
+            self.abort_visual = None
         if self.action is not None and not self.landed:
             self.next_ready_at = max(self.next_ready_at, now + ABORT_RETRY_SECONDS)
+        if self.search_started_at is not None:
+            self.next_ready_at = max(self.next_ready_at, now + ABORT_RETRY_SECONDS)
         self.action = None
+        self.search_started_at = None
         self.landed = False
 
     def finish(self, now: float) -> bool:

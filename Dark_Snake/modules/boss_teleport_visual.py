@@ -78,6 +78,69 @@ def draw_teleport_markers(screen, action, now, tile_size, boss_size):
             )
 
 
+def draw_world_scan(screen, boss_cell, boss_size, started_at, now,
+                    tile_size, grid_width, grid_height, font=None):
+    """Guardian Phase III: underfoot black hole scans the ENTIRE board.
+
+    Pure Pygame drawing. No AI visibility, enemy health, projectiles,
+    collision rectangles or snake state are changed by these rings.
+    """
+    from modules.boss_teleport import WORLD_SCAN_SECONDS
+    cx = round((boss_cell[0] + boss_size / 2) * tile_size)
+    cy = round((boss_cell[1] + boss_size * .82) * tile_size)
+    board_width, board_height = grid_width * tile_size, grid_height * tile_size
+    progress = max(0.0, min(1.0, (now - started_at) / WORLD_SCAN_SECONDS))
+    # Use the full diagonal; a ring actually reaches both distant corners.
+    max_radius = int((board_width**2 + board_height**2)**.5)
+    radius = max(1, round(max_radius * progress))
+    prior_clip = screen.get_clip()
+    screen.set_clip(pygame.Rect(0, 0, board_width, board_height))
+    try:
+        shadow = pygame.Rect(cx - boss_size * tile_size // 2,
+                             cy - boss_size * tile_size // 5,
+                             boss_size * tile_size, boss_size * tile_size * 2 // 5)
+        pygame.draw.ellipse(screen, (9, 8, 16), shadow)
+        pygame.draw.ellipse(screen, (191, 155, 112), shadow, 2)
+        pygame.draw.circle(screen, (122, 98, 151), (cx, cy), radius, 2)
+        if radius > 45:
+            pygame.draw.circle(screen, (61, 55, 87), (cx, cy),
+                               max(1, radius - 42), 1)
+        for offset in (0, 2):
+            x = cx + int((progress - offset * .08) * 28)
+            y = cy - boss_size * tile_size // 3
+            pygame.draw.circle(
+                screen, (214, 164, 109), (x, y), 3,
+            )
+        if font is not None:
+            banner = font.render("WAECHTER: RISS-SUCHE", True,
+                                 (237, 194, 137))
+            x = max(2, min(board_width - banner.get_width() - 2,
+                           cx - banner.get_width() // 2))
+            y = max(2, cy - boss_size * tile_size - 30)
+            background = pygame.Rect(
+                x - 3, y - 2, banner.get_width() + 6, banner.get_height() + 4,
+            )
+            pygame.draw.rect(screen, (16, 15, 24), background, border_radius=3)
+            screen.blit(banner, (x, y))
+    finally:
+        screen.set_clip(prior_clip)
+
+
+def draw_aborted_teleport(screen, action, began_abort, now, tile_size,
+                          boss_size):
+    """Brief closing ring explains a canceled arrival, without a hitbox."""
+    from modules.boss_teleport import ABORT_VISUAL_SECONDS
+    fraction = max(0.0, min(1.0, (now - began_abort)
+                                 / ABORT_VISUAL_SECONDS))
+    cx = round((action.destination[0] + boss_size / 2) * tile_size)
+    cy = round((action.destination[1] + boss_size * .85) * tile_size)
+    rx = max(2, round((1 - fraction) * boss_size * tile_size * .5))
+    ry = max(2, round(rx * .35))
+    pygame.draw.ellipse(
+        screen, (143, 90, 95), (cx - rx, cy - ry, rx * 2, ry * 2), 2,
+    )
+
+
 def draw_teleport_sprite(screen, image, pos, size_px, action, now):
     """Scale/alpha only the rendering; NEVER change the boss's hitbox."""
     phase = action.phase(now)

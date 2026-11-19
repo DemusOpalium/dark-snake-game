@@ -1,5 +1,39 @@
 # 🛣️ ROADMAP.md – Entwicklungsfahrplan
 
+## 🌀 Boss Rift Search B · Wächter Phase III (Windows-Spieltest offen)
+
+- ✅ **Demus-Spieltest:** Vorhandenes Portal-/Tunnel-/Sprungsystem aus
+  PR #242 läuft visuell und spielmechanisch gut; in einem Versuch
+  unterbrochener Ortswechsel gemeldet. Dies kann ein absichtlich
+  abgebrochener Sicherheitscheck sein; die JSON-Rundendaten enthalten
+  keine Einzelteleport-Logs. Die bestehende 1P-/2P-Landeprüfung bleibt.
+- 🔧 **Wächter/Ritter-Spezialfähigkeit:** Ab **Phase III (<35 % HP)**,
+  ausschließlich mit Admin-KI-Test, beginnt der Wächter bei seinem
+  nächsten freien Teleportslot eine **1,45-Sekunden-Suche über das
+  komplette Spielfeld**. Ein schwarzes Bodenloch und ein bis zu den
+  Spielfeldgrenzen wachsender Suchring kündigen die magische
+  Fernortung sichtbar an.
+- 🔧 **Erst am Ende des Suchrings** wird der dann vorhandene
+  Spielerkopf ausgewählt (in 2P eine klar determinierte Auswahl).
+  Andere Bosse erhalten *keine* globale Sicht; in Phase II bleiben
+  Wächter und alle übrigen Bosse auf echte Sensor-/Gedächtnisdaten
+  beschränkt. Keine allgemeine Änderung an Medusa Eyes.
+- 🔧 **Faire Annäherung:** Auch bei einem weltweit georteten Kopf
+  gelten weiterhin die 1,1 s **zusätzliche Ankunftswarnung**,
+  kompletter Boss-Footprint, verbotene Felder, mindestens 3
+  Rasterzellen zu allen Spielern, Überprüfung unmittelbar vor der
+  Landung und 0,65 s Erholung. Kein Angriff während der Suche.
+- 🔧 **Abbruch-Effekt:** Wird das Ziel in der Zwischenzeit durch die
+  Schlange/Gegner/Projektile belegt, bleibt der Boss am Ausgangspunkt
+  und das Ausgangsportal schließt mit sichtbarem Abklingen (0,55 s).
+  Das ist ein gewollter Sicherheitsabbruch, kein neues Teleport-Target.
+- 🧪 **Regressions-Gate:** 1P/2P, außerhalb Sichtweite, Pause,
+  Respawn, Classic aus, andere Bosstypen, harte Landehindernisse
+  und Rendering. **Nur Draft**, erst nach grünem Windows Alpha 2 /
+  CodeQL und Demus-Spieltest zur Freigabe.
+
+---
+
 ## 🌀 Boss Teleport A · Portal / Tunnel / Sprung · 19.11.2026 (PR, Windows-Test offen)
 
 - ✅ **Vorbedingungen:** Boss Personality A mit festen Grafiken; Boss
