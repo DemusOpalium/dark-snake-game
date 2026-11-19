@@ -133,6 +133,10 @@ def test_boss_attack_warning_is_visible_behind_boss_snake_and_health_bar(monkeyp
 
     boss = game.boss = Boss(level=1)
     boss.x, boss.y = 8, 6
+    # This rendering test teleports the boss into a fixed fixture position.
+    # Reset the visual tween as well: no movement step occurred here.
+    boss._visual_from = boss._visual_to = (boss.x, boss.y)
+    boss._visual_step_start = boss.last_move
     rect = boss.get_render_rect()
     now = boss.spawn_time + 10
     boss.last_move = now

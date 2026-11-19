@@ -157,6 +157,9 @@ class Boss:
         self.health = int(base_health * health_multiplier)
         self.speed = 1 + level * 0.2 + random.uniform(0, 0.5)
         self.last_move = time.time()
+        self._visual_from = (self.x, self.y)
+        self._visual_to = (self.x, self.y)
+        self._visual_step_start = self.last_move
         self.chase_speed = 0.5
         self.attack_mode = "normal"
         self.spawn_time = time.time()  # Zeitpunkt des Spawns
@@ -227,11 +230,15 @@ class Boss:
 
     def update(self, current_time):
         if current_time - self.last_move >= self.chase_speed:
+            previous_visual = self._visual_position(current_time)
             self.last_move = current_time
             self.x += random.choice([-1, 0, 1])
             self.y += random.choice([-1, 0, 1])
             self.x = max(0, min(self.x, GRID_WIDTH - self.size))
             self.y = max(0, min(self.y, GRID_HEIGHT - self.size))
+            self._visual_from = previous_visual
+            self._visual_to = (self.x, self.y)
+            self._visual_step_start = current_time
         if hasattr(self, 'frames') and self.frames:
             self.update_animation(current_time)
         if current_time >= self.next_aoe:
@@ -257,19 +264,30 @@ class Boss:
             self.image = self.frames[self.current_frame]
             self.last_frame_time = current_time
 
+    def _visual_position(self, current_time):
+        """Smooth drawing only; the gameplay hitbox remains on the logical grid."""
+        start = self._visual_from
+        end = self._visual_to
+        duration = max(0.001, self.chase_speed * 0.9)
+        alpha = max(0.0, min(1.0, (current_time - self._visual_step_start) / duration))
+        return (start[0] + (end[0] - start[0]) * alpha,
+                start[1] + (end[1] - start[1]) * alpha)
+
     def draw(self, screen):
+        visual_x, visual_y = self._visual_position(time.time())
+        pixel_x, pixel_y = round(visual_x * GRID_SIZE), round(visual_y * GRID_SIZE)
         if self.image:
-            screen.blit(self.image, (self.x * GRID_SIZE, self.y * GRID_SIZE))
+            screen.blit(self.image, (pixel_x, pixel_y))
         else:
-            pygame.draw.rect(screen, RED, (self.x * GRID_SIZE, self.y * GRID_SIZE,
+            pygame.draw.rect(screen, RED, (pixel_x, pixel_y,
                                            self.size * GRID_SIZE, self.size * GRID_SIZE))
         bar_width = self.size * GRID_SIZE
         bar_height = 5
         life_ratio = self.health / max(30, 3 + self.health)
-        life_bar = pygame.Rect(self.x * GRID_SIZE, self.y * GRID_SIZE - 10,
+        life_bar = pygame.Rect(pixel_x, pixel_y - 10,
                                int(bar_width * life_ratio), bar_height)
         pygame.draw.rect(screen, GREEN, life_bar)
-        pygame.draw.rect(screen, WHITE, (self.x * GRID_SIZE, self.y * GRID_SIZE - 10,
+        pygame.draw.rect(screen, WHITE, (pixel_x, pixel_y - 10,
                                          bar_width, bar_height), 1)
 
     def draw_aoe(self, screen):
