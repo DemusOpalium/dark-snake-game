@@ -49,6 +49,7 @@ from modules.customization import CustomizationMenu
 from modules.enemies import NormalEnemy
 from modules.boss_medusa import MedusaEyes, medusa_step
 from modules.boss_tactics import MedusaTactics
+from modules.boss_defense import IncomingShot, MedusaDefense
 from modules.boss_tactics_visual import draw_medusa_volley
 from modules.bolbu_enemy import BolbuEnemy
 from modules.options_menu import OptionsMenu, ExtendedOptionsMenu
@@ -166,6 +167,7 @@ class Boss:
         self.chase_speed = 0.5
         self.eyes = MedusaEyes()
         self.tactics = MedusaTactics()
+        self.defense = MedusaDefense()
         self.ai_preview = False
         self.facing = (1, 0)
         self.navigation_blockers = frozenset()
@@ -243,6 +245,7 @@ class Boss:
             self.ai_preview = enabled
             self.eyes.reset()
             self.tactics.reset()
+            self.defense.reset()
 
     def update(self, current_time):
         if current_time - self.last_move >= self.chase_speed:
@@ -311,6 +314,14 @@ class Boss:
         else:
             pygame.draw.rect(screen, RED, (pixel_x, pixel_y,
                                            self.size * GRID_SIZE, self.size * GRID_SIZE))
+        # Short-lived, one-use shield is visible even without Hitbox Debug.
+        # Never modify the boss's authoritative rectangle or gameplay timing.
+        if self.ai_preview and self.defense.active(time.time()):
+            shield_rect = pygame.Rect(
+                pixel_x - 6, pixel_y - 6,
+                self.size * GRID_SIZE + 12, self.size * GRID_SIZE + 12,
+            )
+            pygame.draw.ellipse(screen, (124, 219, 255), shield_rect, 3)
         bar_width = self.size * GRID_SIZE
         bar_height = 5
         life_ratio = self.health / max(30, 3 + self.health)
@@ -703,6 +714,7 @@ class Game:
         self.admin_panel.close()
         if isinstance(self.boss, Boss):
             self.boss.tactics.cancel(time.time())
+            self.boss.defense.cancel()
         self.level_editor.toggle()
 
     def _set_editor_window(self, entering):
@@ -863,6 +875,7 @@ class Game:
         if state == GameState.PAUSE and previous in (GameState.GAME, GameState.BOSS_FIGHT):
             if isinstance(self.boss, Boss):
                 self.boss.tactics.cancel(time.time())
+                self.boss.defense.cancel()
             self._paused_state = previous
             self.metrics.cancel_pending()
         self.game_state = state
@@ -900,6 +913,7 @@ class Game:
         if not self._menu_suspended:
             if isinstance(self.boss, Boss):
                 self.boss.tactics.cancel(time.time())
+                self.boss.defense.cancel()
             self.admin_panel.toggle()
 
     def reset_game(self):
@@ -1232,6 +1246,12 @@ class Game:
         boss = self.boss
         if boss is None:
             return False
+        # A shield can only be raised by an observed incoming player shot.
+        # The existing projectile-consumption path still removes that hit.
+        if (is_projectile and isinstance(boss, Boss) and boss.ai_preview
+                and boss.defense.consume(time.time())):
+            self.log_combat_event("boss_shield_blocked", source=source)
+            return False
         old_health = boss.health
         boss.health = max(0, boss.health - damage)
         self.log_combat_event("boss_damage", source=source, damage=old_health - boss.health,
@@ -1460,6 +1480,34 @@ class Game:
             self.handle_death()
         return bool(targets)
 
+    def _scan_boss_defense(self, now):
+        """Sense *player-owned* incoming shots only, never hidden attack data."""
+        boss = self.boss
+        if (not isinstance(boss, Boss) or not boss.ai_preview
+                or now - boss.spawn_time < BOSS_SPAWN_PROTECTION):
+            return
+        shots = [
+            IncomingShot(id(shot), tuple(shot["pos"]), tuple(shot["dir"]))
+            for shot in self.projectiles
+            if (not shot.get("from_boss") and "pos" in shot
+                and "dir" in shot)
+        ]
+        for flame in self.flame_projectiles:
+            if not hasattr(flame, "rect") or not hasattr(flame, "direction"):
+                continue
+            velocity = getattr(flame, "speed", 0) / GRID_SIZE
+            shots.append(IncomingShot(
+                id(flame),
+                (flame.rect.centerx / GRID_SIZE, flame.rect.centery / GRID_SIZE),
+                (flame.direction[0] * velocity,
+                 flame.direction[1] * velocity),
+            ))
+        center = (boss.x + boss.size / 2, boss.y + boss.size / 2)
+        if boss.defense.observe(
+                center, boss.facing, boss.size, shots,
+                self._vision_blockers, now):
+            self.log_combat_event("boss_shield_raised")
+
     def _tick_medusa_volley(self, now):
         """Opt-in boss attack: locked telegraph -> one impact per player.
 
@@ -1579,10 +1627,12 @@ class Game:
         if self._tick_respawn():
             if isinstance(self.boss, Boss):
                 self.boss.tactics.cancel(time.time())
+                self.boss.defense.cancel()
             return
         if not self._gameplay_active():
             if isinstance(self.boss, Boss):
                 self.boss.tactics.cancel(time.time())
+                self.boss.defense.cancel()
             self._stall_clock_sample = None
             return
         current_time = time.time()
@@ -1646,6 +1696,7 @@ class Game:
                     self._vision_blockers, current_time,
                     (GRID_WIDTH, GRID_HEIGHT),
                 )
+        self._scan_boss_defense(current_time)
         if self._tick_medusa_volley(current_time):
             return
         for enemy in self.enemies:
@@ -2063,6 +2114,7 @@ class Game:
         self.respawn.begin(now)
         if isinstance(self.boss, Boss):
             self.boss.tactics.cancel(now)
+            self.boss.defense.cancel()
         self._respawn_recent = True
         self.respawn_invincible_until = now + RESPAWN_SECONDS + POST_RESPAWN_PROTECTION
         self._effect_update_time = time.monotonic()
