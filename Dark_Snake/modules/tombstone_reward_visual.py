@@ -10,11 +10,7 @@ import math
 
 import pygame
 
-from modules.career_reward_visual import (
-    FADE_SECONDS as LEGACY_FADE_SECONDS,
-    HOLD_SECONDS as LEGACY_HOLD_SECONDS,
-    MysticRewardPanel,
-)
+from modules.career_reward_visual import MysticRewardPanel
 from modules.career_ranks import RANK_MIN_XP
 from modules.resources import find_asset
 
@@ -29,7 +25,7 @@ FADE_SECONDS = 3.0
 def portrait_size(max_width: int, max_height: int) -> tuple[int, int]:
     """Fit the entire portrait (including the three skulls) into available space."""
     width = max(1, min(max_width, int(max_height / ASPECT)))
-    return width, max(1, int(width * ASPECT))
+    return width, max(1, round(width * ASPECT))
 
 
 class TombstoneRewardPanel(MysticRewardPanel):
