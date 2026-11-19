@@ -278,7 +278,7 @@ def test_disabling_ai_restores_original_sight_profile_and_clears_alert():
     game.enemies = [enemy]
     game.enemy_ai_preview = True
     game.update()
-    assert enemy.eyes.profile.alert_radius_cells == 11
+    assert enemy.eyes.profile.alert_radius_cells == 16
     assert enemy.eyes.candidate_player == 1
 
     game.enemy_ai_preview = False

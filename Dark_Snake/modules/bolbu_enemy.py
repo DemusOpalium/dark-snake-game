@@ -84,6 +84,9 @@ class BolbuEnemy(NormalEnemy):
     BEHAVIOR_PROFILE = BehaviorProfile(
         visible_action="GUARD", patrol_speed=.75, search_speed=.90,
     )
+    # Keep Bolbu a different class of opponent: a slower, ranged guardian.
+    # The new 3.6-cells/s KI-Test hunter speed is NORMAL enemies only.
+    AI_MOVEMENT_SPEED = 1.1
     # Bolbu has slow 360° recognition but retains attention for longer.
     # Its projectile/dice timers remain the existing Classic mechanisms.
     AI_SIGHT_PROFILE = VisionProfile(

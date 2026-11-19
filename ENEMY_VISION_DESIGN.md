@@ -1,6 +1,32 @@
-# DARK SNAKE · Enemy Vision A/B/C (19.11.2026)
+# DARK SNAKE · Enemy Vision A/B/C/D (19.11.2026)
 
-**Bestätigt unter Windows:** Phase A (#225) und Phase B (#226) sind gemergt und vom Projektinhaber mit mehreren Gegnern und `KI-Test an/aus` positiv geprüft. Phase C wird in einem **separaten Draft-PR** erprobt. **Keine neuen FrostAge-Gegner gespawnt; Boss-/Angriffsregeln unverändert.**
+**Windows-Spielproben:** Phase A (#225), B (#226) und C (#227) sind auf `main`. Die Spielerbeobachtung zu C: die Registierung und Jagd der normalen Gegner ist trotz größerem Alarmradius zu langsam; ihr kurzer Bildlauf wirkt teils ruckelig. **Phase D ist ein separater Reaktions-/Balancing-Draft.** **Smooth Movement folgt separat**, weil Interpolation und Hitboxen eigenständige Risiken besitzen. Keine neuen FrostAge-Gegner im Gameplay, Boss-/Angriffsregeln weiterhin unverändert.
+
+## Phase D · Schneller erkennen und spürbar jagen (nur bei KI-Test)
+
+| Fest eingestellte Classic-Normalgegner-Werte | Phase C | Phase D |
+| --- | ---: | ---: |
+| Entdeckungsradius | 5 Felder | **8 Felder** |
+| Alarmradius nach Sichtkontakt | 11 Felder | **16 Felder** |
+| Sichtkegel | 100° | **150°** |
+| Reaktionsverzögerung | 0,25 s | **0,05 s** |
+| Sensorintervall | 0,15 s | **0,05 s** |
+| Letzte bestätigte Sichtung merken | 3 s | **4 s** |
+| KI-Test-Grundtempo | vorher pro Spawn 0,5–1,5 | **fest 1,8 Felder/s** |
+| KI-Test-CHASE-Tempo | 1,3 × gewürfeltes Grundtempo | **1,8 × 2,0 = 3,6 Felder/s** |
+| KI-Test-SEARCH/PATROL | 0,78× / 1× gewürfeltes Tempo | **0,9× / 1× von 1,8** |
+
+Der normale Gegner besitzt damit einen verlässlichen, bereits beim Gegnerprofil festgelegten KI-Test-Wert. **Kein Neuauswürfeln pro Spawn** für diese KI-Test-Geschwindigkeit. Die bereits existierende `enemy.speed` aus Classic wird **nicht überschrieben** und ist bei `KI-Test aus` vollständig maßgeblich, einschließlich bisherigem Zufallssprint.
+
+Bolbu bleibt zur Unterscheidung als **langsam reagierender Fernkampf-Wächter** erhalten (seine Sicht und Angriffs-/Würfelzeitsteuerung unverändert, KI-Test-Grundtempo separat auf 1,1 Felder/s festgelegt). Wände blockieren weiterhin den Sichtstrahl beider Radien. Der große Alarmradius erfordert eine zuvor **bestätigte** Entdeckung. `KI-Test` ist weiter **aus** nach jedem Rundenreset.
+
+**Hauptgrund für das Verhalten:** 0,25s Verzögerung + 0,15s Sensor-Intervalle verpassten sehr kurze Kontakte, und die bisherige zufällige Grundgeschwindigkeit konnte im KI-Test 0,5 Felder/s betragen. Mit 0,05s + 0,05s und festem KI-Jagdtempo sollten schnelle Snake-Passagen deutlich zuverlässiger registriert werden. **Das Windows-Gefühl ist noch nicht bestätigt; nur automatisierte Tests sichern die Parameter und Wechselwirkung.**
+
+**Windows-Prüfung:** KI-Test + Hitboxen anschalten, als Schlange zügig durch den sichtbaren 8-Felder-Kegel laufen. Grüner Erkennungskontakt und violetter äußerer 16-Felder-Alarmring sollten häufiger/spürbar früher erscheinen. KI-Test ausschalten und das alte Classic-Verhalten vergleichen. Besonders 1P/2P, Wände, Pausen und Bolbu prüfen.
+
+**Eigenständiger nächster PR:** `Enemy Movement 2.0` – ruckelige Spriteinterpolation analysieren und unter strikter Beachtung der bestehenden `get_render_rect()/get_hitbox()`-Gleichheit korrigieren; Bewegungsfrequenz und Kollisionsposition nicht stillschweigend verändern.
+
+
 
 ## Phase C · Feste Stellschrauben für die existierenden Gegner
 
