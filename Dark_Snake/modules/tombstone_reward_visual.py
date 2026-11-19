@@ -64,6 +64,15 @@ def epitaph_ink(career):
     return INK_THEMES[roll % available]
 
 
+def career_rank_inscription(career) -> str:
+    """Avoid missing U+2192 arrow glyph in the installed Gothic serif face."""
+    earned = f"{career.earned_xp:,}".replace(",", ".")
+    if career.rank_after > career.rank_before:
+        return (f"RANG {career.rank_before} AUF {career.rank_after}"
+                f"  ·  +{earned} XP")
+    return f"RANG {career.rank_after}  ·  +{earned} XP"
+
+
 def portrait_size(max_width: int, max_height: int) -> tuple[int, int]:
     """Fit the entire portrait (including the three skulls) into available space."""
     width = max(1, min(max_width, int(max_height / ASPECT)))
@@ -243,10 +252,8 @@ class TombstoneRewardPanel(MysticRewardPanel):
                       color=palette[3], font_size=max(16, int(width * .035)),
                       min_size=13, max_lines=3, italic=True)
         if career is not None:
-            earned = f"{career.earned_xp:,}".replace(",", ".")
             total = f"{career.total_xp:,}".replace(",", ".")
-            rank = (f"RANG {career.rank_before} → {career.rank_after}  ·  "
-                    f"+{earned} XP")
+            rank = career_rank_inscription(career)
             self._engrave(surface, rank, name="rank", slot=self.last_slots["rank"],
                           color=palette[4], font_size=max(15, int(width * .033)),
                           min_size=12, max_lines=2)
@@ -264,14 +271,25 @@ class TombstoneRewardPanel(MysticRewardPanel):
                           slot=self.last_slots["progress"], color=palette[5],
                           font_size=max(15, int(width * .033)),
                           min_size=12, max_lines=2)
-            bar = pygame.Rect(cx - int(width * .30), round(height * .806),
-                              int(width * .60), max(3, round(width * .008)))
-            pygame.draw.rect(surface, (34, 48, 66, 200), bar, border_radius=3)
+            # Compact engraved XP gauge, centred above the skull pedestal.
+            # An inset border makes it a distinct small stone field. The gauge
+            # occupies 44% instead of 60% of the original width and is twice
+            # as thick for visual weight without touching the side carvings.
+            bar = pygame.Rect(cx - round(width * .22), round(height * .812),
+                              round(width * .44), max(7, round(width * .016)))
+            border = bar.inflate(10, 8)
+            pygame.draw.rect(surface, (10, 15, 30, 218), border,
+                             border_radius=6)
+            pygame.draw.rect(surface, (133, 102, 168, 180), border, 1,
+                             border_radius=6)
+            pygame.draw.rect(surface, (44, 59, 73, 232), bar,
+                             border_radius=4)
             fill_width = round(bar.width * ratio)
             if fill_width:
-                pygame.draw.rect(surface, (125, 226, 173, 224),
+                pygame.draw.rect(surface, (125, 226, 173, 230),
                                  (bar.x, bar.y, fill_width, bar.height),
-                                 border_radius=3)
+                                 border_radius=4)
+            self.last_slots["xp_bar"] = border.copy()
 
         self._base = surface
         self._aura = []
