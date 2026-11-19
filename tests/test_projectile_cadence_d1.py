@@ -43,9 +43,9 @@ def test_auto_pickup_halved_but_never_faster_than_player_fireball():
     game.extra_auto_shots = 5
     game.settings["projectile_speed_factor"] = .5
     game.auto_shoot_for_head(game.snake[0], game.snake_direction)
-    assert len(game.projectiles) == 6
+    assert len(game.projectiles) == 1
     assert game.projectiles[0]["projectile_type"] == "player_projectile"
-    assert all(s["projectile_type"] == "multishot" for s in game.projectiles[1:])
+    # Old stacked spread is deliberately disabled by combat balance.
     cap = PLAYER_FIREBALL_SPEED_PX_PER_TICK / GRID_SIZE
     for shot in game.projectiles:
         vx, vy = shot["dir"]

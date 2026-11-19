@@ -43,15 +43,15 @@ def test_boss_spawn_pickup_autofires_and_shots_survive_owner_head(players):
     game.items.append(pickup)
     assert game._move_snake(1, target_snake, Direction.RIGHT, False)
     assert pickup not in game.items
-    assert game.extra_auto_shots == 1
+    assert game.extra_auto_shots == 0
     assert game.effects["projectile_shoot"] > time.time()
     assert not game.projectiles
 
     # Next update can fire immediately, no two-second apparent dead zone.
     game.auto_shoot()
-    assert len(game.projectiles) == 2 * players
+    assert len(game.projectiles) == players
     assert all(not p.get("from_boss", False) for p in game.projectiles)
-    assert any(p["projectile_type"] == "multishot" for p in game.projectiles)
+    assert all(p["projectile_type"] == "player_projectile" for p in game.projectiles)
     assert all(p["dir"][0] > 0 for p in game.projectiles)
 
     # The shot is slow and remains inside the head's tile for several frames.
@@ -61,7 +61,7 @@ def test_boss_spawn_pickup_autofires_and_shots_survive_owner_head(players):
         game.update_projectiles()
     assert first in game.projectiles
     assert first["pos"][0] > 5
-    assert len(game.projectiles) == 2 * players
+    assert len(game.projectiles) == players
 
 
 def game_module_item(kind, cell):
@@ -89,7 +89,7 @@ def test_pickup_shots_target_boss_and_keep_player_damage_outside_owner(players):
         head = game.snake1[0]
     game.handle_item_pickup(game_module_item(ItemType.PROJECTILE_SHOOT, head))
     game.auto_shoot()
-    expected = 2 * players
+    expected = players
     assert len(game.projectiles) == expected
     start_health = game.player_health if players == 1 else game.player_health_p1
     for _ in range(6):
@@ -139,13 +139,13 @@ def test_boss_bullets_cannot_kill_other_enemies(monkeypatch):
     assert enemy.health == 3
 
 
-def test_repeated_pickups_preserve_existing_stacking_and_shot_cap():
+def test_repeated_pickups_extend_duration_without_stacking_bullets():
     game = Game(headless=True)
     game.start_game(1)
     for _ in range(12):
         game.handle_item_pickup(game_module_item(ItemType.PROJECTILE_SHOOT, (0, 0)))
-    assert game.extra_auto_shots == 6
+    assert game.extra_auto_shots == 0
     assert game.effects["projectile_shoot"] > time.time() + 900
     game.auto_shoot()
-    assert len(game.projectiles) == 7
+    assert len(game.projectiles) == 1
     assert len(game.projectiles) < MAX_PLAYER_GRID_PROJECTILES

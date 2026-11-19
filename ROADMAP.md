@@ -1,5 +1,30 @@
 # 🛣️ ROADMAP.md – Entwicklungsfahrplan
 
+## 🔧 Boss-/Auto-Shoot-Spielbalance · 19.11.2026 (Windows-Test offen)
+
+- ✅ **Ursache von 1–2-Sekunden-Bosskämpfen im Code bestätigt:**
+  erste Bossstufen nur 30 HP, Auto-Shot bisher 10 Boss-HP pro Kugel
+  und bis zu sechs zusätzliche Projektile bei aufgesammelten Pickups.
+- 🔧 **Auto-Shoot bewusst nur 1 Schuss pro Spieler/Kadenz** –
+  wiederholte Pickup-Items verlängern die Wirkzeit statt Multishots
+  zu stapeln. Boss-Schaden 10 → **2 HP pro Treffer**. Normale Gegner
+  erhalten weiterhin 1 HP pro Treffer bei 1–3 max. HP.
+- 🔧 **Boss-HP fürs Spielgefühl:** Medusa Level 1 = 64,
+  Jäger Level 2 = 70, Wächter Level 3 = 84 HP, dann +6 pro Level;
+  bestehender HP-Multiplikator aktiv. Idealer 1P-Auto-Shot-Referenzwert
+  mit 2-Sekunden-Intervall: 64 / 70 / 84 s. Feuer-/Spezialtreffer,
+  Ausweichen, Schild, Trefferquote und 2P beeinflussen reale Zeit.
+- 🔧 **Diagnose statt Gefühl:** `boss_defeated`-Kampflog enthält
+  Boss-Profil, Max-HP und Kampfzeit in Sekunden. Spätere Testläufe
+  damit reproduzierbar vergleichen, Rundenstatistik allein liefert
+  keine echten Bosskampfzeiten.
+- 🧪 **Freigabe:** Regression für Auto-Shot 1P/2P und 70/35%-Phasen;
+  Windows Alpha 2 / CodeQL grün + Demus-Windows-Spieltest.
+  Dann nächstes Boss-Teleport-System, nicht vorher.
+- 📄 Details: `BOSS_COMBAT_BALANCE_2026-11-19.md`.
+
+
+
 ## ✅ Boss-Projektile (#237) – Windows-Spieltest 19.11. erfolgreich
 
 - **Orbs werden nicht mehr mit Null-Flugrichtung erzeugt**: Bossmitte
