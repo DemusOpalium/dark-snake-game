@@ -49,6 +49,7 @@ from modules.customization import CustomizationMenu
 from modules.enemies import NormalEnemy
 from modules.boss_medusa import MedusaEyes, medusa_step
 from modules.boss_personality import profile_by_key, profile_for_level, guardian_step
+from modules.boss_phases import BossPhases, PHASE_COLORS, RECOVERY_SECONDS
 from modules.boss_tactics import MedusaTactics
 from modules.boss_defense import IncomingShot, MedusaDefense
 from modules.boss_swipe import MedusaSwipe
@@ -165,6 +166,9 @@ class Boss:
         self.size = boss_size if boss_size is not None else 3 + level // 2
         base_health = max(30, 3 + level * 5)
         self.health = int(base_health * health_multiplier)
+        self.max_health = self.health
+        self.phases = BossPhases(self.profile_key, self.max_health)
+        self._phase_font = pygame.font.SysFont("Arial", 16, bold=True)
         self.speed = 1 + level * 0.2 + random.uniform(0, 0.5)
         self.last_move = time.time()
         self._visual_from = (self.x, self.y)
@@ -244,6 +248,38 @@ class Boss:
             self.cancel_swipe(time.time())
             self.swipe.reset()
             self._boss_shot_debug = (0, 0)
+            self.phases.reset()
+            if enabled:
+                self.apply_phase_tuning()
+            else:
+                # Legacy Classic behavior and cooldowns remain unchanged.
+                self.tactics.COOLDOWN_SECONDS = MedusaTactics.COOLDOWN_SECONDS
+                self.defense.COOLDOWN_SECONDS = MedusaDefense.COOLDOWN_SECONDS
+                self.swipe.RECHARGE_SECONDS = MedusaSwipe.RECHARGE_SECONDS
+                self.eyes.EYE_COOLDOWN = MedusaEyes.EYE_COOLDOWN
+
+    def apply_phase_tuning(self):
+        """Opt-in role-specific intervals; never changes attack damage/size."""
+        if not self.ai_preview:
+            return
+        tune = self.phases.tuning()
+        self.chase_speed = max(0.24, self.profile.movement_interval * tune.move)
+        self._projectile_interval = max(
+            1.6, self.profile.projectile_interval * tune.projectile,
+        )
+        self._aoe_interval = max(2.8, self.profile.aoe_interval * tune.aoe)
+        self.tactics.COOLDOWN_SECONDS = max(
+            4.5, MedusaTactics.COOLDOWN_SECONDS * tune.frost,
+        )
+        self.defense.COOLDOWN_SECONDS = max(
+            5.5, MedusaDefense.COOLDOWN_SECONDS * tune.shield,
+        )
+        self.swipe.RECHARGE_SECONDS = max(
+            9.5, MedusaSwipe.RECHARGE_SECONDS * tune.swipe,
+        )
+        self.eyes.EYE_COOLDOWN = max(
+            2.8, MedusaEyes.EYE_COOLDOWN * tune.eye,
+        )
 
     def begin_swipe(self, action):
         """Commit target cell, while collision and sprite follow the same swipe."""
@@ -264,6 +300,13 @@ class Boss:
             # Never chain a normal grid step or fire a new boss attack mid-dodge.
             self.last_move = current_time
             if hasattr(self, 'frames') and self.frames:
+                self.update_animation(current_time)
+            return None
+        if self.ai_preview and self.phases.warning_active(current_time):
+            # Distinct, fair phase announcement: no movement, new AoE or
+            # projectiles while the next strategy is being telegraphed.
+            self.last_move = current_time
+            if self.frames:
                 self.update_animation(current_time)
             return None
         if current_time - self.last_move >= self.chase_speed:
@@ -343,6 +386,34 @@ class Boss:
         else:
             pygame.draw.rect(screen, RED, (pixel_x, pixel_y,
                                            self.size * GRID_SIZE, self.size * GRID_SIZE))
+        # Visible in normal play, not only in Hitbox debug: a clear, quiet
+        # telegraph of the upcoming phase without swapping the fixed sprite.
+        phase_now = time.time()
+        if self.ai_preview and self.phases.warning_active(phase_now):
+            tint = PHASE_COLORS[self.profile_key]
+            outline = pygame.Rect(
+                pixel_x - 8, pixel_y - 8,
+                self.size * GRID_SIZE + 16, self.size * GRID_SIZE + 16,
+            )
+            pygame.draw.ellipse(screen, tint, outline, 3)
+            next_stage = self.phases.pending_stage
+            label = self._phase_font.render(
+                f"{self.profile.name}: Phase {next_stage} - "
+                f"{self.phases.stage_name(next_stage)}",
+                True, tint,
+            )
+            label_x = max(0, min(
+                screen.get_width() - label.get_width(),
+                pixel_x + (self.size * GRID_SIZE - label.get_width()) // 2,
+            ))
+            label_y = max(0, pixel_y - 34)
+            pygame.draw.rect(
+                screen, (14, 17, 27),
+                (label_x - 3, label_y - 1,
+                 label.get_width() + 6, label.get_height() + 2),
+                border_radius=3,
+            )
+            screen.blit(label, (label_x, label_y))
         # Swipe has a compact violet trail frame, distinct from the shield.
         # Two pips above the health bar show the independent charged dodges.
         if self.ai_preview:
@@ -370,7 +441,9 @@ class Boss:
             pygame.draw.ellipse(screen, (124, 219, 255), shield_rect, 3)
         bar_width = self.size * GRID_SIZE
         bar_height = 5
-        life_ratio = self.health / max(30, 3 + self.health)
+        # Full bar is the boss's actual max HP, not a changing divisor.
+        # This also makes 70% / 35% phase limits visually interpretable.
+        life_ratio = max(0, min(1, self.health / max(1, self.max_health)))
         life_bar = pygame.Rect(pixel_x, pixel_y - 10,
                                int(bar_width * life_ratio), bar_height)
         pygame.draw.rect(screen, GREEN, life_bar)
@@ -429,6 +502,8 @@ class Boss2(Boss):
         )
         base_health = max(30, 5 + level * 5)
         self.health = int(base_health * health_multiplier)
+        self.max_health = self.health
+        self.phases.max_health = self.max_health
         self.speed = 1 + level * .25 + random.uniform(0, .5)
         self.chase_speed = 0.4
         self._classic_chase_speed = self.chase_speed
@@ -1293,6 +1368,41 @@ class Game:
         self.combat_events.append(event)
         record_event(event_type + (f": {details}" if details else ""))
 
+    def _announce_boss_phase(self, boss, stage, now):
+        """Tell the player before an altered boss can start a new attack."""
+        boss.tactics.cancel(now)
+        boss.defense.cancel()
+        # Existing projectiles/areas finish normally; no instant attack
+        # after the 1.2-second warning and the 0.65-second recovery.
+        recovery_at = boss.phases.warning_ends_at + RECOVERY_SECONDS
+        boss.next_proj = max(boss.next_proj, recovery_at)
+        boss.next_aoe = max(boss.next_aoe, recovery_at)
+        boss.tactics.next_cast_at = max(
+            boss.tactics.next_cast_at, recovery_at,
+        )
+        self.log_combat_event(
+            "boss_phase_warning", boss=boss.profile_key,
+            phase=stage, title=boss.phases.stage_name(stage),
+        )
+
+    def _tick_boss_phases(self, now):
+        """One progression per threshold; no repeated HP/score rewards."""
+        boss = self.boss
+        if not isinstance(boss, Boss) or not boss.ai_preview:
+            return
+        activated = boss.phases.advance(now)
+        if activated is not None:
+            boss.apply_phase_tuning()
+            self.log_combat_event(
+                "boss_phase_active", boss=boss.profile_key, phase=activated,
+            )
+        # If one large hit crosses two HP thresholds, both transitions get
+        # a separate, visible warning instead of skipping the middle stage.
+        elif boss.phases.pending_stage is None:
+            pending = boss.phases.observe_health(boss.health, now)
+            if pending is not None:
+                self._announce_boss_phase(boss, pending, now)
+
     def damage_boss(self, damage, source, *, is_projectile=True):
         """Apply boss damage and process the reward/transition exactly once."""
         boss = self.boss
@@ -1311,6 +1421,10 @@ class Game:
         if is_projectile:
             self.log_combat_event("projectile_hit", projectile=source, target="boss")
         if boss.health > 0:
+            if boss.ai_preview:
+                stage = boss.phases.observe_health(boss.health, time.time())
+                if stage is not None:
+                    self._announce_boss_phase(boss, stage, time.time())
             return False
         center = boss.get_hitbox().center
         self.boss = None
@@ -1562,6 +1676,7 @@ class Game:
         """Sense *player-owned* incoming shots only, never hidden attack data."""
         boss = self.boss
         if (not isinstance(boss, Boss) or not boss.ai_preview
+                or boss.phases.warning_active(now)
                 or now - boss.spawn_time < BOSS_SPAWN_PROTECTION):
             return
         shots = [
@@ -1626,6 +1741,7 @@ class Game:
         """
         boss = self.boss
         if (not isinstance(boss, Boss) or not boss.ai_preview
+                or boss.phases.warning_active(now)
                 or not boss.profile.frost_throw
                 or self.game_state != GameState.BOSS_FIGHT):
             return False
@@ -1807,6 +1923,7 @@ class Game:
         # Neither attacks nor boss step cadence change outside this pilot.
         if isinstance(self.boss, Boss):
             self.boss.set_ai_preview(self.enemy_ai_preview)
+            self._tick_boss_phases(current_time)
             self.boss.navigation_blockers = self._vision_blockers
             if self.enemy_ai_preview:
                 eye_origin = (self.boss.x + self.boss.size // 2,
@@ -2824,7 +2941,9 @@ class Game:
         reason = boss.swipe.last_reason
         if boss.defense.active(time.time()):
             reason = "SHIELD"
-        label = (f"{boss.profile.name}  PROJ {shots}/{threats}  SWIPE "
+        label = (f"{boss.profile.name} P{boss.phases.stage}"
+                 f"{'→' + str(boss.phases.pending_stage) if boss.phases.pending_stage else ''}"
+                 f"  PROJ {shots}/{threats}  SWIPE "
                  f"{boss.swipe.charges(time.time())}/2  {reason}")
         image = self._enemy_ai_debug_font.render(
             label, True, (217, 226, 254),
