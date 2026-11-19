@@ -56,6 +56,22 @@ def test_four_cell_boss_can_clear_a_centered_projectile_with_three_cells():
     assert abs(dst[1] - 5) == 3
 
 
+
+def test_large_slow_fireball_needs_4_cell_swipe_to_clear_future_hitbox():
+    # 96px fireball artwork is 3.2 GRID cells wide; predicting only the
+    # first 10 frames incorrectly treated a 2-cell dodge as a safe escape.
+    flame = shot(position=(13, 6.5), velocity=(-.15, 0),
+                 radius_cells=1.6)
+    destination = choose_swipe(
+        (5, 5), 3, flame, (flame,), (), (45, 35),
+        rng=lambda candidates: candidates[0],
+    )
+    assert destination is not None
+    assert destination[0] == 5
+    assert abs(destination[1] - 5) >= 4
+
+
+
 def test_swipe_respects_full_footprint_and_intermediate_walls():
     incoming = shot()
     assert choose_swipe((5, 5), 3, incoming, (incoming,),
