@@ -1424,7 +1424,9 @@ class Game:
         if is_projectile:
             self.log_combat_event("projectile_hit", projectile=source, target="boss")
         if boss.health > 0:
-            if boss.ai_preview:
+            # Historic standalone boss combat tests also use light-weight
+            # mock objects. Only real Boss instances own phase controllers.
+            if isinstance(boss, Boss) and boss.ai_preview:
                 stage = boss.phases.observe_health(boss.health, time.time())
                 if stage is not None:
                     self._announce_boss_phase(boss, stage, time.time())
