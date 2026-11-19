@@ -134,4 +134,4 @@ def test_shield_drawing_is_separate_from_logical_boss_hitbox(monkeypatch):
     boss.draw(surface)
     assert boss.get_hitbox() == old_rect
     assert surface.get_bounding_rect().width > 0
-    assert surface.get_at((old_rect.x - 6, old_rect.y + 10)).a > 0
+    assert surface.get_at((old_rect.x - 6, old_rect.centery)).a > 0
