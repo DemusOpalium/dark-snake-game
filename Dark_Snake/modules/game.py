@@ -1998,7 +1998,10 @@ class Game:
             enemy_rect = enemy.get_hitbox()
             if current_time - getattr(enemy, 'spawn_time', 0) < 3:
                 continue
-            for proj in self.projectiles:
+            for proj in self.projectiles[:]:
+                if proj.get("from_boss", False):
+                    # Hostile boss bullets never damage the boss's allies.
+                    continue
                 proj_rect = pygame.Rect(
                     proj['pos'][0] * GRID_SIZE,
                     proj['pos'][1] * GRID_SIZE,
@@ -2006,6 +2009,10 @@ class Game:
                     GRID_SIZE
                 )
                 if enemy_rect.colliderect(proj_rect):
+                    # A player pickup shot can hit only one enemy once.
+                    # Otherwise the slower bullet can deal damage on every
+                    # consecutive frame while overlapping the same hitbox.
+                    self.projectiles.remove(proj)
                     enemy.health -= 1
                     if enemy.health <= 0 and enemy in self.enemies:
                         self.enemies.remove(enemy)
