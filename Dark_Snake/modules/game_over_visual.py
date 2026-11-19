@@ -402,7 +402,13 @@ class DarkAbyssGameOver:
         self._blit_center(surface, self._cached_rite_surface,
                           center_x, top + 156)
 
-        chronicle = f"Bis Ebene {level}. {enemies} Feinde gefallen. {items} Relikte geborgen."
+        # Do not spoil the numerical reveal by showing the FINAL enemy/level
+        # totals in this sentence before the counters have completed.
+        if elapsed < COUNTER_START_SECONDS + COUNTER_DURATION_SECONDS:
+            chronicle = "Die Tiefe zählt deine Taten …"
+        else:
+            chronicle = (f"Bis Ebene {level}. {enemies} Feinde gefallen. "
+                         f"{items} Relikte geborgen.")
         self._blit_center(surface,
                           self._fit(self._font_subtitle, chronicle, FROST,
                                     panel_width - 72),
