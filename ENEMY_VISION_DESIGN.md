@@ -1,6 +1,30 @@
-# DARK SNAKE · Enemy Vision A (19.11.2026)
+# DARK SNAKE · Enemy Vision A/B (19.11.2026)
 
-**Status:** erster testbarer Wahrnehmungskern in Draft-PR. **Keine neuen FrostAge-Gegner gespawnt, keine neue Kampf-/Boss-KI aktiviert.** Der Hauptbranch `main` bleibt bis zum manuellen Review unverändert.
+**Ist-Stand:** **Phase A / PR #225 ist auf `main` gemergt und vom Spieler mit dem Hitbox-Debugger unter Windows angesehen.** Die Gegner haben sichtbare Sichtkreise und Erkennungslogik. Phase B kommt separat über Draft-PR: reaktionsfähige, jederzeit abschaltbare KI-Testbewegung. **Noch keine neuen FrostAge-Gegner im Gameplay, keine Änderungen an Angriffsschaden oder Bosslogik.**
+
+## Phase B · Wahrnehmung wird zu Bewegung (Opt-in)
+
+- `modules/enemy_behavior.py`: minimale, isolierte Reaktionsplanung ohne Pygame. `PATROL` bei fehlendem Kontakt, `CHASE` bei Sichtkontakt, `SEARCH` zur letzten tatsächlich gesehenen Position; zusätzlich `GUARD` und `RETREAT` als kompatible Profile für spätere Feinde.
+- Classic-Normalgegner folgen der Schlange nur, wenn **Admin-Menü → KI-Test** ausdrücklich aktiviert wurde. Bolbu bleibt bei Sichtkontakt stationär (`GUARD`), feuert und würfelt aber weiterhin nach bestehenden Regeln.
+- Die Bewegungsentscheidung verwendet die bereits vorhandene `VisionSensor`-Messung, vermeidet WALL/BARRIER-Zellen sowie diagonales Abkürzen durch Wandecken und verwendet das **bestehende** Rasterbewegungs-/Animationssystem. Lokaler nächster Schritt, **noch kein A*-Pathfinding** und keine feste Flanken-/Boss-KI.
+- Debugmodus **Hitboxen** zeigt zusätzlich einen kleinen Buchstaben (`P/C/S/G/R`) für den aktuellen Zustand. Das ist ein Entwicklertest, keine neue Spieler-HUD-Fläche.
+- Drei **inaktive künftige** FrostAge-Verhaltensprofile sind vorbereitet:
+  - `frostage_eisskelett` = CHASE / Verfolgung,
+  - `frostage_frostwisp` = RETREAT bei Nähe / Distanzverteidigung,
+  - `frostage_frosttitan` = GUARD / schwerer Wächter.
+  **Wichtig:** Profile alleine sind keine FrostAge-Runtime-Assets, kein Spawn-System und keine spielbaren Gegner. Die grafische Einbindung folgt getrennt unter Issue #216.
+- Standard Classic bleibt **exakt beim bisherigen Zufallsverhalten**. Der Schalter ist nicht dauerhaft gespeichert und wird bei jeder neuen Runde auf `aus` gesetzt.
+- Nur Wahrnehmungs- und Bewegungsabsichten geändert, **keine** neue Auslösung von Schaden, Projektilen, Belohnungen, Teleport oder Spawn. Der bestehende Bolbu-Dice-Sprint bleibt bei Aktivierung weiterhin möglich.
+
+### Windows-Spielprobe für Demus
+
+1. Neuen Windows-Build starten, Classic **1P** wählen und mit `Tab` das Admin-Menü öffnen.
+2. **KI-Test** aktivieren, danach das Menü schließen. Optional die bereits vorhandenen **Hitboxen** einschalten.
+3. Bei einem normalen Gegner vor dessen Blickrichtung laufen: der Buchstabe `C` steht für `CHASE`; hinter ihm bleibt er auf `P` (PATROL), bis er sich zu dir dreht.
+4. Hinter Sichtblockern wird der Sichtkontakt unterbrochen: `S` für kurzes SEARCHING, dann `P`. Bolbu zeigt bei Rundumsicht `G` und bleibt bei Sichtkontakt als Schütze stehen (Würfel-/Schussaktionen bleiben erhalten).
+5. **KI-Test** ausschalten: sofort wieder altes Classic-Verhalten. Mit neuem Run ist der KI-Test automatisch aus. Danach gern 2P-Spielprobe mit beiden Köpfen.
+
+Die Bewegung wird nur dann clever, wenn der Entwickler den Test einschaltet. Alle Werte sind **Prototyp-Balancing**, kein geplanter automatischer Classic-Release.
 
 ## Geprüfter Ausgangspunkt
 

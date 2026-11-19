@@ -497,6 +497,7 @@ class Game:
                 print(f"Fehler beim Laden des Icons: {e}")
         self.clock = pygame.time.Clock()
         self._hud_badge_font = pygame.font.SysFont("Arial", 15, bold=True)
+        self._enemy_ai_debug_font = pygame.font.SysFont("Arial", 12, bold=True)
         self.metrics = FrameMetrics()
         self.respawn = RespawnCountdown()
         self._respawn_recent = False
@@ -930,6 +931,8 @@ class Game:
         self.fireball_cooldown_p2 = 0
         self.achievement_messages = []
         self.enemies = []
+        # Developer-only opt-in: Classic AI remains original on every reset.
+        self.enemy_ai_preview = False
         self.last_auto_shoot = time.time()
         self.extra_auto_shots = 0
         self.aoe_zones = []
@@ -1524,9 +1527,9 @@ class Game:
             enemy.spawn_time = current_time
             self.enemies.append(enemy)
 
-        # Head cells are current player positions only; 2P is assessed as
-        # two distinct targets, not just the first snake. No damage is dealt
-        # by sight and no behaviour or boss AI changes in this phase.
+        # Head cells are current player positions only, including both
+        # players in 2P. An opt-in admin switch can now feed these real
+        # observations into a minimal movement-only behaviour pilot.
         sight_targets = (
             [(1, self.snake[0])] if self.player_count == 1 and self.snake
             else ([(1, self.snake1[0])] if self.snake1 else [])
@@ -1534,6 +1537,15 @@ class Game:
             if self.player_count == 2 else []
         )
         for enemy in self.enemies:
+            if isinstance(enemy, NormalEnemy) and hasattr(enemy, "eyes"):
+                # Sample first so pursuit reacts on this movement tick.
+                # Only this opt-in preview changes existing enemy movement.
+                enemy.behavior_enabled = self.enemy_ai_preview
+                enemy.navigation_blockers = self._vision_blockers
+                enemy.eyes.observe(
+                    (enemy.x, enemy.y), enemy.facing,
+                    sight_targets, self._vision_blockers, current_time,
+                )
             # Pass Spielerposition für bisheriges Classic-/Bolbu-Verhalten
             if self.player_count == 1 and self.snake:
                 px, py = self.snake[0]
@@ -1546,11 +1558,6 @@ class Game:
                 enemy.update(px, py, movement_factor=factor)
             else:
                 enemy.update(px, py)
-            if isinstance(enemy, NormalEnemy) and hasattr(enemy, "eyes"):
-                enemy.eyes.observe(
-                    (enemy.x, enemy.y), enemy.facing,
-                    sight_targets, self._vision_blockers, current_time,
-                )
             if hasattr(enemy, 'projectiles'):
                 slots = max(0, MAX_ENEMY_PROJECTILES - len(self.enemy_projectiles))
                 admitted = enemy.projectiles[:slots]
@@ -2506,6 +2513,13 @@ class Game:
                           else (218, 186, 103))
             pygame.draw.line(self.screen, line_color, (x, y), target, 2)
             pygame.draw.circle(self.screen, line_color, target, 5, 1)
+        if self.enemy_ai_preview:
+            # Developer-only, small state marker: P patrol, C chase,
+            # S search, G guard, R retreat. No HUD in normal play.
+            state = getattr(enemy, "behavior_state", "PATROL")
+            letter = state[:1]
+            label = self._enemy_ai_debug_font.render(letter, True, tint)
+            self.screen.blit(label, (x + 9, y - 20))
 
     def draw_game(self, *, include_hud=True):
         # 1. Raster (Hintergrund) zeichnen – unterste Ebene

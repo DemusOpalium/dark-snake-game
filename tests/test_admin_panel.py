@@ -105,7 +105,22 @@ def test_admin_menu_draws_title_labels_and_tooltip():
     panel.active = True
     panel.buttons[5].is_hovered = True
     panel.draw(game.screen)
-    assert len(panel.buttons) == 11
+    assert len(panel.buttons) == 12
     assert all(panel.panel_rect.contains(button.rect) for button in panel.buttons)
     assert panel.ACTIONS[5][1] == "Bolbu-Item"
     assert "Einsammeln" in panel.ACTIONS[5][2]
+
+
+
+def test_vision_behavior_pilot_is_off_by_default_toggles_and_resets():
+    game = game_with_players()
+    panel = game.admin_panel
+    assert not game.enemy_ai_preview
+    assert panel.ACTIONS[11][3] == "toggle_enemy_ai"
+    assert "aktiviert" in panel.toggle_enemy_ai()
+    assert game.enemy_ai_preview
+    assert "deaktiviert" in panel.toggle_enemy_ai()
+    assert not game.enemy_ai_preview
+    panel.toggle_enemy_ai()
+    game.reset_game()
+    assert not game.enemy_ai_preview
