@@ -37,7 +37,10 @@ class MedusaDefense:
     REACTION_SECONDS = 0.06
     SHIELD_SECONDS = 0.8
     COOLDOWN_SECONDS = 7.0
-    MAX_FRAMES_AHEAD = 10
+    # A 0.18 s swipe + 0.06 s recognition needs >14 frames of lead.
+    # 30 projected ticks (~0.5 s at 60 FPS) gives the *slower* player
+    # projectiles a viable window without granting beyond-LOS awareness.
+    MAX_FRAMES_AHEAD = 30
 
     def __init__(self):
         self.candidate_id: int | None = None
@@ -78,7 +81,7 @@ class MedusaDefense:
         closest_x = px + ahead * vx
         closest_y = py + ahead * vy
         # The boss occupies a full footprint, not merely its center tile.
-        half = boss_size / 2 + 0.6
+        half = boss_size / 2 + shot.radius_cells
         return (abs(closest_x - boss_center[0]) <= half
                 and abs(closest_y - boss_center[1]) <= half)
 
