@@ -232,7 +232,8 @@ def test_other_player_and_world_keep_moving_while_one_head_is_blocked(monkeypatc
 
     assert getattr(game, f"snake{blocked}") == BODY_CONTACT
     assert getattr(game, f"snake{free}") == [(22, 10)]
-    assert shot["pos"] == (12, 20)
+    # Two real updates => exactly two projectile steps, not four.
+    assert shot["pos"] == (11.0, 20)
     assert (enemy.x, enemy.y) == (26, 22)
     assert (game.boss.x, game.boss.y) == (34, 25)
     assert game.lives == 3

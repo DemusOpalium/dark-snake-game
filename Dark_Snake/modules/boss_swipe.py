@@ -7,10 +7,11 @@ when the boss rectangle follows its visual interpolation frame-for-frame.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from math import hypot
+from math import ceil, hypot
 import random
 
 from modules.boss_medusa import legal_boss_step
+from modules.boss_defense import MedusaDefense
 
 
 @dataclass(frozen=True)
@@ -51,8 +52,9 @@ def choose_swipe(position, size, threat, shots, blockers, grid_size,
                  player_heads=(), *, rng=None):
     """Dodge *perpendicular* to the observed ray; never through solid cells.
 
-    Two tiles for normal bosses. A four-tile-wide boss may require a third
-    tile to clear the projectile's full width; use it only if two are unsafe.
+    Two tiles for standard projectiles, up to three for a wide boss.
+    Large physical fireball sprites may require up to five tiles to clear
+    their hitbox; only permit this when intermediate positions are safe.
     Predict the whole move and end lane, or fall back to the existing shield.
     """
     vx, vy = threat.velocity
@@ -62,7 +64,16 @@ def choose_swipe(position, size, threat, shots, blockers, grid_size,
     directions = (((0, 1), (0, -1)) if abs(vx) >= abs(vy)
                   else ((1, 0), (-1, 0)))
 
-    for stride in ((2, 3) if size >= 4 else (2,)):
+    # Standard rounds still use the original 2-cell swipe (3 for a wide
+    # boss). A real 96px fireball spans >3 grid cells: a two-cell dodge
+    # cannot leave its swept hitbox. Permit an exceptional longer dash
+    # only for genuinely large, visible player projectiles and only when
+    # EVERY intermediate footprint and the full swept path are clear.
+    largest_radius = max(shot.radius_cells for shot in shots)
+    limit = (3 if size >= 4 else 2)
+    if largest_radius > .75:
+        limit = min(5, size + ceil(largest_radius))
+    for stride in range(2, limit + 1):
         eligible = []
         for dx, dy in directions:
             path = [(position[0] + i * dx, position[1] + i * dy)
@@ -77,8 +88,12 @@ def choose_swipe(position, size, threat, shots, blockers, grid_size,
                    for x, y in path for head in player_heads):
                 continue
             dst = path[-1]
+            # Slow player shots can take 20+ ticks to reach the boss.
+            # Checking only 10 ticks made a visually successful swipe
+            # collide with the same fireball a moment later.
             if any(_shot_hits_footprint(shot, dst, size, t=t)
-                   for shot in shots for t in range(0, 11)):
+                   for shot in shots
+                   for t in range(MedusaDefense.MAX_FRAMES_AHEAD + 1)):
                 continue
             # During the 0.18 s swipe, projectiles travel ~2 grid ticks.
             # Sample intermediate boss rectangles; no invulnerable teleport.
@@ -114,6 +129,8 @@ class MedusaSwipe:
         self.action: SwipeAction | None = None
         self.candidate_id: int | None = None
         self.first_seen_at: float | None = None
+        # Diagnostic only: never changes AI decisions.
+        self.last_reason = "IDLE"
 
     def reset(self):
         self.__init__()
@@ -122,6 +139,7 @@ class MedusaSwipe:
         self.action = None
         self.candidate_id = None
         self.first_seen_at = None
+        self.last_reason = "CANCELLED"
 
     def active(self, now):
         return self.action is not None and self.action.active(now)
@@ -133,8 +151,10 @@ class MedusaSwipe:
                 blockers, grid_size, player_heads, now):
         """Start a swipe only after two continuously-visible observations."""
         if self.active(now):
+            self.last_reason = "SWIPING"
             return None
         if not threats or self.charges(now) == 0:
+            self.last_reason = "NO_THREAT" if not threats else "NO_CHARGE"
             self.candidate_id = None
             self.first_seen_at = None
             return None
@@ -146,14 +166,17 @@ class MedusaSwipe:
         if threat.identity != self.candidate_id:
             self.candidate_id = threat.identity
             self.first_seen_at = now
+            self.last_reason = "ACQUIRING"
             return None
         if self.first_seen_at is None or now - self.first_seen_at < self.REACTION_SECONDS:
+            self.last_reason = "REACTION"
             return None
         target = choose_swipe(
             position, size, threat, shots, blockers, grid_size, player_heads,
         )
         if target is None:
             # Blocked or dangerous => let the existing shield handle the shot.
+            self.last_reason = "NO_SAFE_LANE"
             return None
         slot = next(i for i, ready in enumerate(self.ready_at) if now >= ready)
         self.ready_at[slot] = now + self.RECHARGE_SECONDS
@@ -161,4 +184,5 @@ class MedusaSwipe:
         self.first_seen_at = None
         self.action = SwipeAction(tuple(start_visual), target, now,
                                   self.SWIPE_SECONDS)
+        self.last_reason = "SWIPE"
         return self.action

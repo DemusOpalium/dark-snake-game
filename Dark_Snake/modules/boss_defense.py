@@ -37,7 +37,10 @@ class MedusaDefense:
     REACTION_SECONDS = 0.06
     SHIELD_SECONDS = 0.8
     COOLDOWN_SECONDS = 7.0
-    MAX_FRAMES_AHEAD = 10
+    # A 0.18 s swipe + 0.06 s recognition needs >14 frames of lead.
+    # 30 projected ticks (~0.5 s at 60 FPS) gives the *slower* player
+    # projectiles a viable window without granting beyond-LOS awareness.
+    MAX_FRAMES_AHEAD = 30
 
     def __init__(self):
         self.candidate_id: int | None = None
@@ -65,22 +68,36 @@ class MedusaDefense:
 
     @staticmethod
     def _is_approaching(shot: IncomingShot, boss_center, boss_size):
+        """Visible shot must intersect the boss's FULL collision footprint soon.
+
+        Time-to-center previously rejected large/slow fireballs until they
+        were already too close to dodge. Use continuous ray versus the
+        footprint expanded by the projectile's physical half-extent instead.
+        This is only a bounded prediction, never a change to hitboxes.
+        """
         px, py = shot.position
         vx, vy = shot.velocity
-        speed_sq = vx * vx + vy * vy
-        if speed_sq <= 1e-10:
+        if vx * vx + vy * vy <= 1e-10:
             return False
-        off_x = boss_center[0] - px
-        off_y = boss_center[1] - py
-        ahead = (off_x * vx + off_y * vy) / speed_sq
-        if not 0 <= ahead <= MedusaDefense.MAX_FRAMES_AHEAD:
-            return False
-        closest_x = px + ahead * vx
-        closest_y = py + ahead * vy
-        # The boss occupies a full footprint, not merely its center tile.
-        half = boss_size / 2 + 0.6
-        return (abs(closest_x - boss_center[0]) <= half
-                and abs(closest_y - boss_center[1]) <= half)
+        half = boss_size / 2 + shot.radius_cells
+        t_in = 0.0
+        t_out = MedusaDefense.MAX_FRAMES_AHEAD
+        for position, velocity, center in (
+            (px, vx, boss_center[0]), (py, vy, boss_center[1]),
+        ):
+            low, high = center - half, center + half
+            if abs(velocity) <= 1e-10:
+                if not low <= position <= high:
+                    return False
+                continue
+            start, stop = ((low - position) / velocity,
+                           (high - position) / velocity)
+            if start > stop:
+                start, stop = stop, start
+            t_in, t_out = max(t_in, start), min(t_out, stop)
+            if t_in > t_out:
+                return False
+        return t_out >= 0
 
     def visible_threats(self, boss_center, facing, boss_size, shots, blockers):
         """Real, unoccluded threats shared by the shield and lateral swipe."""

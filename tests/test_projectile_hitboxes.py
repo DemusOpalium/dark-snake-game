@@ -224,14 +224,16 @@ def test_classic_boss_shot_hits_once_in_its_flight_and_keeps_moving(monkeypatch)
     assert projectile["pos"] == (5.0, 4)
 
 
-def test_classic_boss_shot_keeps_grid_move_cadence(monkeypatch):
+def test_classic_boss_shot_moved_once_when_snake_also_moves(monkeypatch):
     game, projectile = setup_classic_boss_shot(monkeypatch)
     game.last_update_time -= 1
 
     game.update()
     assert game.player_health == 90
     assert game.snake[0] == (5, 4)
-    assert projectile["pos"] == (5.0, 4)
+    # Both snake tick and frame update happened, but the boss shot must NOT
+    # move twice during this one gameplay frame.
+    assert projectile["pos"] == (4.5, 4)
 
 
 @pytest.mark.parametrize("second_head, expected_p2", [((4, 4), 90), ((4, 5), 100)])

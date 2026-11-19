@@ -77,7 +77,7 @@ from modules.projectile_config import (
     MAX_PLAYER_GRID_PROJECTILES,
     PLAYER_FIREBALL_COOLDOWN_SECONDS, PLAYER_FIREBALL_DAMAGE,
     PLAYER_FIREBALL_LIFETIME_TICKS, PLAYER_FIREBALL_SPEED_PX_PER_TICK,
-    PLAYER_PROJECTILE_DAMAGE,
+    PLAYER_PROJECTILE_DAMAGE, player_grid_speed_cells_per_tick,
 )
 
 ENEMY_LIMIT = {1: 12, 2: 16}
@@ -170,6 +170,7 @@ class Boss:
         self.tactics = MedusaTactics()
         self.defense = MedusaDefense()
         self.swipe = MedusaSwipe()
+        self._boss_shot_debug = (0, 0)  # shots, genuinely threatening shots
         self.ai_preview = False
         self.facing = (1, 0)
         self.navigation_blockers = frozenset()
@@ -250,6 +251,7 @@ class Boss:
             self.defense.reset()
             self.cancel_swipe(time.time())
             self.swipe.reset()
+            self._boss_shot_debug = (0, 0)
 
     def begin_swipe(self, action):
         """Commit target cell, while collision and sprite follow the same swipe."""
@@ -1558,13 +1560,15 @@ class Game:
                 max(flame.rect.width, flame.rect.height) / (2 * GRID_SIZE),
             ))
         center = (boss.x + boss.size / 2, boss.y + boss.size / 2)
+        # Keep observation counts only for the opt-in developer hitbox view.
+        visible = boss.defense.visible_threats(
+            center, boss.facing, boss.size, shots, self._vision_blockers,
+        )
+        boss._boss_shot_debug = (len(shots), len(visible))
         if boss.swipe.active(now):
+            boss.swipe.last_reason = "SWIPING"
             return
         if not boss.defense.active(now):
-            visible = boss.defense.visible_threats(
-                center, boss.facing, boss.size, shots,
-                self._vision_blockers,
-            )
             action = boss.swipe.observe(
                 (boss.x, boss.y), boss._visual_position(now), boss.size,
                 visible, shots, self._vision_blockers,
@@ -1647,38 +1651,47 @@ class Game:
         return True
 
     def auto_shoot_for_head(self, head, current_direction):
-        slots = MAX_PLAYER_GRID_PROJECTILES - sum(not shot.get("from_boss", False)
-                                                  for shot in self.projectiles)
+        slots = MAX_PLAYER_GRID_PROJECTILES - sum(
+            not shot.get("from_boss", False) for shot in self.projectiles
+        )
         if slots <= 0:
             return
         target = None
         min_dist = float("inf")
         for enemy in self.enemies:
-            if time.time() - getattr(enemy, 'spawn_time', 0) < 3:
+            if time.time() - getattr(enemy, "spawn_time", 0) < 3:
                 continue
             dist = sqrt((head[0] - enemy.x) ** 2 + (head[1] - enemy.y) ** 2)
             if dist < min_dist:
                 min_dist = dist
                 target = enemy
+
+        # Half the former pickup-shot speed, then cap its actual *vector*
+        # magnitude to the player fireball's per-frame distance.
+        shot_speed = player_grid_speed_cells_per_tick(
+            self.settings["projectile_speed_factor"], GRID_SIZE,
+        )
         if target:
-            dx = target.x - head[0]
-            dy = target.y - head[1]
-            angle = atan2(dy, dx)
-            dir_x = cos(angle) * self.settings['projectile_speed_factor']
-            dir_y = sin(angle) * self.settings['projectile_speed_factor']
+            angle = atan2(target.y - head[1], target.x - head[0])
         else:
-            dir_x = current_direction.value[0] * self.settings['projectile_speed_factor']
-            dir_y = current_direction.value[1] * self.settings['projectile_speed_factor']
-        proj = {'pos': (head[0], head[1]), 'dir': (dir_x, dir_y), "effect": "damage",
-                "projectile_type": "player_projectile"}
-        self.projectiles.append(proj)
+            dx, dy = current_direction.value
+            angle = atan2(dy, dx)
+        dir_x, dir_y = cos(angle) * shot_speed, sin(angle) * shot_speed
+        self.projectiles.append({
+            "pos": (head[0], head[1]), "dir": (dir_x, dir_y),
+            "effect": "damage", "projectile_type": "player_projectile",
+        })
         self.log_combat_event("projectile_fired", projectile="player_projectile")
         for _ in range(min(self.extra_auto_shots, slots - 1)):
-            deviation = random.uniform(-0.3, 0.3)
-            proj_extra = {'pos': (head[0], head[1]),
-                          'dir': (dir_x + deviation, dir_y + deviation),
-                          "effect": "damage", "projectile_type": "multishot"}
-            self.projectiles.append(proj_extra)
+            # Rotate the heading instead of adding to both components:
+            # random spread MUST NOT speed up the stacked multishots.
+            heading = angle + random.uniform(-0.3, 0.3)
+            self.projectiles.append({
+                "pos": (head[0], head[1]),
+                "dir": (cos(heading) * shot_speed,
+                        sin(heading) * shot_speed),
+                "effect": "damage", "projectile_type": "multishot",
+            })
             self.log_combat_event("projectile_fired", projectile="multishot")
 
     def auto_shoot(self):
@@ -1737,10 +1750,9 @@ class Game:
             self.fireball_cooldown_p2 -= 1
         if self.fireball_cooldown > 0:
             self.fireball_cooldown -= 1
-        # Flammen­geschosse leben lassen / entfernen
-        self.flame_projectiles = [p for p in self.flame_projectiles if p.update()]
-        self.boss_flame_projectiles = [p for p in self.boss_flame_projectiles if p.update()]
-
+        # Projectile positions move exactly ONCE per gameplay update below.
+        # In particular, do not advance fireballs here *and* in
+        # update_projectiles() (which used to cause 2–3 steps per frame).
         invincible = current_time < self.respawn_invincible_until
         if self.effects['projectile_shoot'] > current_time:
             self.auto_shoot()
@@ -1778,6 +1790,10 @@ class Game:
         self._scan_boss_defense(current_time)
         if self._tick_medusa_volley(current_time):
             return
+
+        # Perception uses the current projectile position before its sole
+        # frame move. Keep Classic hit checks *before* projectile advancement
+        # to preserve the original 1P/2P once-per-flight hit order.
         for enemy in self.enemies:
             if isinstance(enemy, NormalEnemy) and hasattr(enemy, "eyes"):
                 # Sample first so pursuit reacts on this movement tick.
@@ -1906,6 +1922,8 @@ class Game:
         if self.projectiles and current_time >= self.respawn_invincible_until and self.game_state != GameState.GAME_OVER:
             self._resolve_classic_boss_projectile_hits()
             invincible = current_time < self.respawn_invincible_until
+        # Exactly one world-projectile advancement per gameplay update;
+        # never repeat it inside the snake movement tick.
         self.update_projectiles()
         if self.game_state == GameState.GAME_OVER:
             return
@@ -2023,7 +2041,6 @@ class Game:
                                 self.log_combat_event("projectile_fired", projectile="boss_projectile")
             if random.random() < 0.005 * self.settings['difficulty'] and len(self.items) < 5:
                 self.spawn_new_item()
-            self.update_projectiles()
 
              #  Admin-Shortcut: Item exakt an Koordinate spawnen
     def spawn_item_at(self, item_type, grid_x, grid_y):
@@ -2766,6 +2783,28 @@ class Game:
             pygame.draw.circle(self.screen, (115, 206, 255), eye_pos,
                                round(4 * GRID_SIZE), 1)
             pygame.draw.circle(self.screen, (215, 225, 255), eye_pos, 5, 2)
+        # Small, explicit diagnosis: shots present vs. actually visible and
+        # approaching. No extra permanent HUD, only KI-Test + Hitbox debug.
+        shots, threats = boss._boss_shot_debug
+        reason = boss.swipe.last_reason
+        if boss.defense.active(time.time()):
+            reason = "SHIELD"
+        label = (f"PROJ {shots}/{threats}  SWIPE "
+                 f"{boss.swipe.charges(time.time())}/2  {reason}")
+        image = self._enemy_ai_debug_font.render(
+            label, True, (217, 226, 254),
+        )
+        text_x = max(0, min(
+            WINDOW_WIDTH - image.get_width() - 6,
+            boss.x * GRID_SIZE,
+        ))
+        text_y = max(36, boss.y * GRID_SIZE - 34)
+        backing = pygame.Rect(
+            text_x - 3, text_y - 2,
+            image.get_width() + 6, image.get_height() + 4,
+        )
+        pygame.draw.rect(self.screen, (16, 22, 31), backing, border_radius=3)
+        self.screen.blit(image, (text_x, text_y))
 
     def _draw_enemy_sight_debug(self, enemy):
         """Visualise sensed targets without affecting runtime AI or hitboxes."""
@@ -3190,11 +3229,22 @@ class FlameProjectile:
         self.image = pygame.transform.rotate(self.image_orig, angle)
         self.rect = self.image.get_rect(center=(x, y))
         self.previous_rect = self.rect.copy()
+        # Rect stores integer pixels: retain fractional speed in float state,
+        # otherwise 4.5 px/tick would silently become 4 px/tick.
+        self._precise_x = float(self.rect.x)
+        self._precise_y = float(self.rect.y)
 
     def update(self):
         self.previous_rect = self.rect.copy()
-        self.rect.x += self.speed * self.direction[0]
-        self.rect.y += self.speed * self.direction[1]
+        # Preserve direct rect repositioning by effects/tests.
+        if (self.rect.x != round(self._precise_x)
+                or self.rect.y != round(self._precise_y)):
+            self._precise_x = float(self.rect.x)
+            self._precise_y = float(self.rect.y)
+        self._precise_x += self.speed * self.direction[0]
+        self._precise_y += self.speed * self.direction[1]
+        self.rect.x = round(self._precise_x)
+        self.rect.y = round(self._precise_y)
         self.lifetime -= 1
         return self.lifetime > 0
 
