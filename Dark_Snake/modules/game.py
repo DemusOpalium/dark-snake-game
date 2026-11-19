@@ -1540,7 +1540,7 @@ class Game:
             if isinstance(enemy, NormalEnemy) and hasattr(enemy, "eyes"):
                 # Sample first so pursuit reacts on this movement tick.
                 # Only this opt-in preview changes existing enemy movement.
-                enemy.behavior_enabled = self.enemy_ai_preview
+                enemy.set_ai_preview(self.enemy_ai_preview)
                 enemy.navigation_blockers = self._vision_blockers
                 enemy.eyes.observe(
                     (enemy.x, enemy.y), enemy.facing,
@@ -2498,6 +2498,15 @@ class Game:
         reach = round(sensor.profile.radius_cells * GRID_SIZE)
         tint = (115, 239, 178) if sensor.result.visible else (115, 160, 202)
         pygame.draw.circle(self.screen, tint, (x, y), reach, 1)
+        if (self.enemy_ai_preview
+                and sensor.profile.alert_radius_cells is not None
+                and sensor.result.kind in ("VISIBLE", "SEARCHING")):
+            # Faint outer halo = extended range *after* detection.
+            # Only the developer Hitbox view draws this extra geometry.
+            pygame.draw.circle(
+                self.screen, (125, 94, 183), (x, y),
+                round(sensor.profile.alert_radius_cells * GRID_SIZE), 1,
+            )
         if sensor.profile.fov_degrees < 360:
             angle = atan2(enemy.facing[1], enemy.facing[0])
             half = sensor.profile.fov_degrees * pi / 360
