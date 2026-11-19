@@ -71,7 +71,7 @@ def test_swipe_requires_continuous_reaction_and_spends_two_charges():
     assert first.destination == (5, 3)
     assert swipe.charges(10.07) == 1
     assert first.position(first.began_at) == (5, 5)
-    assert first.position(first.began_at + first.duration / 2) == (5, 4)
+    assert first.position(first.began_at + first.duration / 2) == pytest.approx((5, 4))
     assert first.position(first.began_at + first.duration) == (5, 3)
     incoming = shot(2, position=(13, 7))
     assert observe(swipe, 10.30, incoming=incoming) is None
