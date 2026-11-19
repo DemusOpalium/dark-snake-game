@@ -190,6 +190,7 @@ class Boss:
         self.current_frame = 0
         self.last_frame_time = time.time()
         profile = self.profile
+        self.art_asset = profile.sprite  # inspectable fixed identity for tests/debug
         footprint_px = self.size * GRID_SIZE
         if profile.frame_folder:
             folder = asset_path("graphics", profile.frame_folder)
