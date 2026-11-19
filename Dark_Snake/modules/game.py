@@ -1816,9 +1816,11 @@ class Game:
         return True
 
     def auto_shoot_for_head(self, head, current_direction):
-        slots = MAX_PLAYER_GRID_PROJECTILES - sum(
-            not shot.get("from_boss", False) for shot in self.projectiles
-        )
+        slots = min(MAX_AUTO_SHOTS_PER_HEAD,
+                    MAX_PLAYER_GRID_PROJECTILES - sum(
+                        not shot.get("from_boss", False)
+                        for shot in self.projectiles
+                    ))
         if slots <= 0:
             return
         # The pickup targets the nearest real opponent, including the boss
@@ -1862,7 +1864,6 @@ class Game:
         # Only ONE shot per head per interval, even after repeated pickups.
         # The former stacked spread could erase a 30-HP boss in one volley.
         # A future weapon type can restore multishot with separate balancing.
-        assert MAX_AUTO_SHOTS_PER_HEAD == 1
 
 
     def auto_shoot(self):
