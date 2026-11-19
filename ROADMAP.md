@@ -8,15 +8,20 @@
   bestehende Raster-/Kampf-Hitbox separat; Windows-Spielprobe positiv.
 - ✅ **Medusa Eyes A (#231)** – Boss-Sicht, Memory, zwei Fernsensoren,
   ermittelte Zielzellen und begrenzte Kurzzeitvorhersage; im Admin-KI-Test.
-- 🔧 **Medusa Tactics B (#232, Draft)** – erster echter Frostwurf aus
-  bestätigtem Sichtkontakt oder Fernsensor-Relay, feste Vorwarnzone
-  (1,35 s), kurzer Frost-Einschlag (0,65 s), 10 HP einmalig pro Spieler,
-  sechs Sekunden Cooldown. Erst Tests/Windows-Sichtprobe, dann Merge.
-  Neue Trefferlogik hat eigene Begrenzung; bestehende Classic-AoE-Regeln
-  bleiben unverändert.
-- ⬜ **Boss Defense C** – auf erkannte Projektile reagieren und optional
-  kurz ausweichen/schützen; zuerst eigene Beobachtungsdaten statt
-  allwissendem Tracking, sichere Grenzen und deutliches Feedback.
+- ✅ **Medusa Tactics B (#232, main, Windows-Sichttest 19.11.)** –
+  Frostwurf aus bestätigtem Sichtkontakt oder Fernsensor-Relay, feste
+  Vorwarnzone (1,35 s), kurzer Einschlag (0,65 s), 10 HP einmalig
+  pro Spieler, sechs Sekunden Cooldown; Classic-AoE bleibt erhalten.
+- 🔧 **Boss Defense C (separater PR, Windows-Test offen)** – opt-in
+  Abwehrschild gegen ein eintreffendes Spielerprojektil. Der Boss
+  benötigt einen **sichtbaren, heranfliegenden** Schuss über einen
+  kurzen Reaktionszeitraum (0,06 s), danach schützt eine sichtbare
+  0,8-s-Schildphase maximal *einen* Projektiltreffer. Sieben Sekunden
+  Cooldown. Kein Blick durch Wände, keine unendliche Immunität,
+  Spezial-Items und Classic ohne KI-Test bleiben unverändert.
+- ⬜ **Boss Defense D / Movement** – späteres seitliches Ausweichen mit
+  mehrzelligen Hitboxen und Hindernissen gesondert testen, damit
+  Boss-Timing und Rasterkollisionen nicht durch den Schild-PR kippen.
 - ⬜ **FrostAge Vertical Slice** – Welt-/Spawn-Gate und drei individuelle
   Gegnerprofile einschließlich eigener Boss-Persönlichkeit, später
   eigene Frost-/Mycelium-Varianten.
