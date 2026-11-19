@@ -50,6 +50,7 @@ from modules.enemies import NormalEnemy
 from modules.boss_medusa import MedusaEyes, medusa_step
 from modules.boss_personality import profile_by_key, profile_for_level, guardian_step
 from modules.boss_phases import BossPhases, PHASE_COLORS, RECOVERY_SECONDS
+from modules.boss_balance import boss_max_health
 from modules.boss_tactics import MedusaTactics
 from modules.boss_defense import IncomingShot, MedusaDefense
 from modules.boss_swipe import MedusaSwipe
@@ -77,10 +78,11 @@ from modules.skin_inventory import SkinInventory, skin_registry
 from modules.projectile_config import (
     BOSS_PROJECTILE_LIFETIME_TICKS,
     MAX_BOSS_FLAMES, MAX_BOSS_GRID_PROJECTILES, MAX_ENEMY_PROJECTILES,
-    MAX_PLAYER_GRID_PROJECTILES,
+    MAX_PLAYER_GRID_PROJECTILES, MAX_AUTO_SHOTS_PER_HEAD,
     PLAYER_FIREBALL_COOLDOWN_SECONDS, PLAYER_FIREBALL_DAMAGE,
     PLAYER_FIREBALL_LIFETIME_TICKS, PLAYER_FIREBALL_SPEED_PX_PER_TICK,
-    PLAYER_PROJECTILE_DAMAGE, player_grid_speed_cells_per_tick,
+    PLAYER_PROJECTILE_DAMAGE, PLAYER_PROJECTILE_ENEMY_DAMAGE,
+    player_grid_speed_cells_per_tick,
 )
 
 ENEMY_LIMIT = {1: 12, 2: 16}
@@ -164,8 +166,8 @@ class Boss:
         self.x = random.randint(5, GRID_WIDTH - 5)
         self.y = random.randint(5, GRID_HEIGHT - 5)
         self.size = boss_size if boss_size is not None else 3 + level // 2
-        base_health = max(30, 3 + level * 5)
-        self.health = int(base_health * health_multiplier)
+        # Balanced for one pickup shot every ~2 s; phases have time to play.
+        self.health = boss_max_health(level, health_multiplier)
         self.max_health = self.health
         self.phases = BossPhases(self.profile_key, self.max_health)
         self._phase_font = pygame.font.SysFont("Arial", 16, bold=True)
@@ -500,8 +502,9 @@ class Boss2(Boss):
             level, health_multiplier,
             profile_key=profile_key, boss_size=4 + level // 2,
         )
-        base_health = max(30, 5 + level * 5)
-        self.health = int(base_health * health_multiplier)
+        self.health = boss_max_health(
+            level, health_multiplier, guardian=True,
+        )
         self.max_health = self.health
         self.phases.max_health = self.max_health
         self.speed = 1 + level * .25 + random.uniform(0, .5)
@@ -1354,6 +1357,7 @@ class Game:
             health_multiplier=self.settings["boss_health_multiplier"],
             profile_key=profile.key,
         )
+        self.boss_fight_started_at = time.time()
         self._boss_contact_ready_at.clear()
         self._spawn_item_in_free_cell(ItemType.PROJECTILE_SHOOT)
         self.add_achievement(self.boss.announcement)
@@ -1453,7 +1457,15 @@ class Game:
         self.add_achievement("Boss besiegt! Boss Down Easy Going !!")
         self.effects['boss_loot'] = time.time() + 10
         self.effect_manager.spawn("explosion", center)
-        self.log_combat_event("boss_defeated", source=source, score=100 * self.level)
+        self.log_combat_event(
+            "boss_defeated", source=source, score=100 * self.level,
+            boss=getattr(boss, "profile_key", "classic"),
+            max_health=getattr(boss, "max_health", old_health),
+            duration_seconds=round(max(
+                0.0, time.time() -
+                getattr(self, "boss_fight_started_at", time.time()),
+            ), 2),
+        )
         self.round_bosses_defeated += 1
         return True
 
@@ -1847,17 +1859,11 @@ class Game:
             "effect": "damage", "projectile_type": "player_projectile",
         })
         self.log_combat_event("projectile_fired", projectile="player_projectile")
-        for _ in range(min(self.extra_auto_shots, slots - 1)):
-            # Rotate the heading instead of adding to both components:
-            # random spread MUST NOT speed up the stacked multishots.
-            heading = angle + random.uniform(-0.3, 0.3)
-            self.projectiles.append({
-                "pos": (head[0], head[1]),
-                "dir": (cos(heading) * shot_speed,
-                        sin(heading) * shot_speed),
-                "effect": "damage", "projectile_type": "multishot",
-            })
-            self.log_combat_event("projectile_fired", projectile="multishot")
+        # Only ONE shot per head per interval, even after repeated pickups.
+        # The former stacked spread could erase a 30-HP boss in one volley.
+        # A future weapon type can restore multishot with separate balancing.
+        assert MAX_AUTO_SHOTS_PER_HEAD == 1
+
 
     def auto_shoot(self):
         current_time = time.time()
@@ -2013,7 +2019,7 @@ class Game:
                     # Otherwise the slower bullet can deal damage on every
                     # consecutive frame while overlapping the same hitbox.
                     self.projectiles.remove(proj)
-                    enemy.health -= 1
+                    enemy.health -= PLAYER_PROJECTILE_ENEMY_DAMAGE
                     if enemy.health <= 0 and enemy in self.enemies:
                         self.enemies.remove(enemy)
                         self.round_enemies_defeated += 1
@@ -2339,7 +2345,9 @@ class Game:
 
         elif item.type == ItemType.PROJECTILE_SHOOT:
             self.effects['projectile_shoot'] = max(self.effects['projectile_shoot'], current_time) + 900
-            self.extra_auto_shots = min(6, self.extra_auto_shots + 1)
+            # Repeated pickups extend the existing effect, not the damage
+            # output or number of projectiles fired per salvo.
+            self.extra_auto_shots = 0
             # Make the newly collected pickup fire on the next playable
             # update instead of looking inert for up to two seconds.
             interval = max(0, self.settings.get('auto_shoot_interval', 0.5))
@@ -2348,7 +2356,7 @@ class Game:
             self.last_auto_shoot2 = current_time - interval
             self.score += 40
             self.experience += 20
-            self.add_achievement("Multi-Shoot aktiviert!")
+            self.add_achievement("Auto-Shoot aktiviert!")
         if self.experience >= self.exp_to_next_level:
             self.level_up()
 
