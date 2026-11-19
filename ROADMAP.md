@@ -1,5 +1,35 @@
 # 🛣️ ROADMAP.md – Entwicklungsfahrplan
 
+## 🐍 Boss Intelligence 2.0 · Arbeitsstand 19.11.2026
+
+- ✅ **Enemy Vision D (#228)** und **Smooth Movement A (#229)** – schnellere,
+  ruhigere Gegnerbewegung im KI-Test; Demus-Windows-Sichttest positiv.
+- ✅ **Boss Smooth Movement B (#230)** – Boss-/Boss2-Sprite-Glättung,
+  bestehende Raster-/Kampf-Hitbox separat; Windows-Spielprobe positiv.
+- ✅ **Medusa Eyes A (#231)** – Boss-Sicht, Memory, zwei Fernsensoren,
+  ermittelte Zielzellen und begrenzte Kurzzeitvorhersage; im Admin-KI-Test.
+- 🔧 **Medusa Tactics B (#232, Draft)** – erster echter Frostwurf aus
+  bestätigtem Sichtkontakt oder Fernsensor-Relay, feste Vorwarnzone
+  (1,35 s), kurzer Frost-Einschlag (0,65 s), 10 HP einmalig pro Spieler,
+  sechs Sekunden Cooldown. Erst Tests/Windows-Sichtprobe, dann Merge.
+  Neue Trefferlogik hat eigene Begrenzung; bestehende Classic-AoE-Regeln
+  bleiben unverändert.
+- ⬜ **Boss Defense C** – auf erkannte Projektile reagieren und optional
+  kurz ausweichen/schützen; zuerst eigene Beobachtungsdaten statt
+  allwissendem Tracking, sichere Grenzen und deutliches Feedback.
+- ⬜ **FrostAge Vertical Slice** – Welt-/Spawn-Gate und drei individuelle
+  Gegnerprofile einschließlich eigener Boss-Persönlichkeit, später
+  eigene Frost-/Mycelium-Varianten.
+- ⬜ **Boss Sensor-/Teleport-Komposition** – explizite Trigger, sichere
+  freie Zielfelder, Teleport-Telegraph, keine Doppelkontakte, 1P/2P.
+- ⏳ **World Studio** – Bossparameter und Event-Platzierung erst später;
+  aktuell ausschließlich Code- und Windows-Spieletests.
+- 📌 **Design-Referenz:** Bullet-Hell-/Bosskampf-Vielfalt (u. a.
+  *The Binding of Isaac*) als allgemeine Mechanikstudie; keine fremden
+  Figuren, Assets, Texte oder Bossmuster 1:1 kopieren.
+
+---
+
 ## 📌 Aktueller Projektabgleich · 18.11.2026
 
 > **Dieser aktuelle Abgleich ergänzt die historischen Abschnitte weiter unten.**
