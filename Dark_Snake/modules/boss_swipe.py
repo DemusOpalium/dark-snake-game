@@ -7,7 +7,7 @@ when the boss rectangle follows its visual interpolation frame-for-frame.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from math import hypot
+from math import ceil, hypot
 import random
 
 from modules.boss_medusa import legal_boss_step
@@ -51,8 +51,9 @@ def choose_swipe(position, size, threat, shots, blockers, grid_size,
                  player_heads=(), *, rng=None):
     """Dodge *perpendicular* to the observed ray; never through solid cells.
 
-    Two tiles for normal bosses. A four-tile-wide boss may require a third
-    tile to clear the projectile's full width; use it only if two are unsafe.
+    Two tiles for standard projectiles, up to three for a wide boss.
+    Large physical fireball sprites may require up to five tiles to clear
+    their hitbox; only permit this when intermediate positions are safe.
     Predict the whole move and end lane, or fall back to the existing shield.
     """
     vx, vy = threat.velocity
@@ -62,7 +63,16 @@ def choose_swipe(position, size, threat, shots, blockers, grid_size,
     directions = (((0, 1), (0, -1)) if abs(vx) >= abs(vy)
                   else ((1, 0), (-1, 0)))
 
-    for stride in ((2, 3) if size >= 4 else (2,)):
+    # Standard rounds still use the original 2-cell swipe (3 for a wide
+    # boss). A real 96px fireball spans >3 grid cells: a two-cell dodge
+    # cannot leave its swept hitbox. Permit an exceptional longer dash
+    # only for genuinely large, visible player projectiles and only when
+    # EVERY intermediate footprint and the full swept path are clear.
+    largest_radius = max(shot.radius_cells for shot in shots)
+    limit = (3 if size >= 4 else 2)
+    if largest_radius > .75:
+        limit = min(5, size + ceil(largest_radius))
+    for stride in range(2, limit + 1):
         eligible = []
         for dx, dy in directions:
             path = [(position[0] + i * dx, position[1] + i * dy)
