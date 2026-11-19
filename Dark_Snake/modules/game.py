@@ -1398,6 +1398,7 @@ class Game:
 
     def update_projectiles(self):
         current_time = time.time()
+        boss_at_start = self.boss
 
         # ---- Portal Effect Timeout ----
         if self.portal_effect_active and current_time >= self.portal_effect_end:
@@ -1434,6 +1435,12 @@ class Game:
             if not proj.get("from_boss", False) and self._resolve_player_grid_projectile_hit(proj):
                 continue
             new_proj.append(proj)
+        # A player projectile can defeat the boss while iterating here.
+        # Never reintroduce the defeated boss's bullets from the local list.
+        if boss_at_start is not None and self.boss is None:
+            new_proj = [
+                shot for shot in new_proj if not shot.get("from_boss", False)
+            ]
         self.projectiles = new_proj
 
     def _resolve_player_grid_projectile_hit(self, projectile):
