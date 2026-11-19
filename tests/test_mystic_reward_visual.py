@@ -17,7 +17,12 @@ from modules.career_ceremony import CareerCeremony
 from modules.career_reward_visual import (
     HOLD_SECONDS, FADE_SECONDS, MysticRewardPanel, PANEL_HEIGHT,
 )
-from modules.game_over_visual import DarkAbyssGameOver
+from modules.game_over_visual import DarkAbyssGameOver, tombstone_scene_layout
+from modules.tombstone_reward_visual import (
+    ASPECT, EPITAPH_IMAGE, HOLD_SECONDS as TOMB_HOLD,
+    FADE_SECONDS as TOMB_FADE, TombstoneRewardPanel,
+)
+from modules.resources import find_asset
 from modules.skin_inventory import skin_registry
 
 
@@ -50,26 +55,34 @@ def draw(visual, size, career, *, highscore=True, now=100, sequence="run-1"):
 
 @pytest.mark.parametrize("highscore", [True, False])
 @pytest.mark.parametrize("reward", [False, True])
-def test_award_is_separate_below_name_and_main_panel(highscore, reward):
+def test_full_size_tombstone_is_beside_stats_not_over_name_or_buttons(highscore, reward):
     visual = DarkAbyssGameOver()
     size = (1333, 941)
     target = draw(visual, size, realistic_career(reward), highscore=highscore)
-    panel = visual._mystic_reward
-    assert panel._base is not None
-    rect = panel.last_rect
-    assert rect is not None
-    assert 650 < rect.width < size[0]
-    assert rect.height == PANEL_HEIGHT
-    assert rect.centerx == size[0] // 2
-    top = max(20, int(size[1] * .057))
-    main_panel_bottom = top + 418
-    input_bottom = top + 450 + 30 + 51
-    assert rect.top > main_panel_bottom
-    assert rect.top > input_bottom + 15
-    assert rect.bottom <= size[1] - 17
-    assert panel._base.get_at((30, 30)).a > 0
+    stone = visual._tombstone_reward
+    scene = tombstone_scene_layout(size)
+    assert scene is not None
+    left, panel_width, expected_rect = scene
+    assert stone._base is not None
+    assert stone.last_rect == expected_rect
+    assert stone.last_rect.left >= left + panel_width + 30
+    assert stone.last_rect.right <= size[0]
+    assert stone.last_rect.bottom < size[1]
+    assert abs(stone.last_rect.height / stone.last_rect.width - ASPECT) <= .004
+    assert stone.last_slots["icon"].centery < stone.last_slots["title"].top
+    assert stone.last_slots["title"].bottom < stone.last_slots["reason"].top
+    assert stone.last_slots["praise"].bottom < stone.last_slots["rank"].top
+    assert visual._mystic_reward._base is None
     assert visual._career_card_cache is None
-    assert target.get_at(rect.center) != visual._image_for(size).get_at(rect.center)
+    # PNG alpha exposes the original untouched abyss outside its stone edges.
+    assert stone._base.get_at((0, 0)).a == 0
+    assert target.get_at(stone.last_rect.center) != visual._image_for(size).get_at(
+        stone.last_rect.center)
+    if highscore:
+        summary_top = max(20, int(size[1] * .057))
+        input_rect = pygame.Rect(left + 90, summary_top + 480, panel_width - 180, 51)
+        assert not input_rect.colliderect(stone.last_rect)
+        assert target.get_at((input_rect.right - 25, input_rect.top + 9))[:3] == (6, 14, 29)
 
 
 @pytest.mark.parametrize("size", [(900, 620), (900, 730), (1100, 790)])
@@ -98,7 +111,7 @@ def test_earned_picture_is_loaded_and_ceremonial_copy_cached():
     visual = DarkAbyssGameOver()
     game_result = realistic_career(reward=True)
     draw(visual, (1333, 941), game_result, now=11)
-    panel = visual._mystic_reward
+    panel = visual._tombstone_reward
     assert panel._narrative(game_result, False)[0] == "SCHLANGENKRONE ERRUNGEN"
     assert "Karriererang 2" in panel._narrative(game_result, False)[1]
     assert panel._picture(game_result) is not None
@@ -113,7 +126,7 @@ def test_no_unearned_achievement_claim_for_fourth_real_round_values():
     visual = DarkAbyssGameOver()
     current = realistic_career()
     draw(visual, (1333, 941), current, now=99)
-    panel = visual._mystic_reward
+    panel = visual._tombstone_reward
     title, explanation, praise = panel._narrative(current, False)
     assert title == "CHRONIK DER TIEFE"
     assert "130 XP" in explanation
@@ -165,3 +178,86 @@ def test_glow_read_only_does_not_modify_economy():
     for time in (1., 1.2, 2., 3., 7., 9., 10.):
         draw(visual, (1333, 941), result, now=time)
     assert result.__dict__ == snapshot
+
+
+
+def test_vetted_staged_gravestone_is_bundled_with_alpha_and_copied_exactly():
+    image = pygame.image.load(str(find_asset(*EPITAPH_IMAGE)))
+    assert image.get_size() == (1024, 1536)
+    assert image.get_at((0, 0)).a == 0
+    assert image.get_at((512, 880)).a > 0
+    assert TombstoneRewardPanel()._art is not None
+
+
+@pytest.mark.parametrize("size", [(1350, 930), (1333, 941), (1180, 820)])
+def test_large_responsive_scene_never_stretches_art_or_covers_stats(size):
+    layout = tombstone_scene_layout(size)
+    assert layout is not None
+    left, panel_width, rect = layout
+    assert left >= 0
+    assert rect.left >= left + panel_width + 30
+    assert rect.right <= size[0]
+    assert rect.bottom <= size[1]
+    assert abs(rect.height / rect.width - 1.5) < .004
+
+
+def test_tombstone_fades_at_15_plus_3_seconds_and_resets_for_new_run():
+    panel = TombstoneRewardPanel()
+    result = realistic_career(True)
+    rect = pygame.Rect(12, 12, 460, 690)
+    canvas = pygame.Surface((600, 730), pygame.SRCALPHA)
+    assert panel.draw(canvas, career=result, warning=False,
+                      rect=rect, now=20, sequence="A") == 255
+    first = panel._base
+    assert panel.draw(canvas, career=result, warning=False,
+                      rect=rect, now=20+TOMB_HOLD-0.1, sequence="A") == 255
+    faded = panel.draw(canvas, career=result, warning=False,
+                       rect=rect, now=20+TOMB_HOLD+TOMB_FADE/2, sequence="A")
+    assert 110 <= faded <= 145
+    assert panel.draw(canvas, career=result, warning=False,
+                      rect=rect, now=20+TOMB_HOLD+TOMB_FADE+1, sequence="A") == 0
+    assert panel.draw(canvas, career=result, warning=False,
+                      rect=rect, now=90, sequence="B") == 255
+    assert panel._base is first
+    assert len(panel._aura) == 12
+
+
+@pytest.mark.parametrize("reward", [False, True])
+def test_tombstone_renders_real_reward_only_and_all_text_centred(reward):
+    panel = TombstoneRewardPanel()
+    result = realistic_career(reward)
+    rect = pygame.Rect(20, 20, 490, 735)
+    screen = pygame.Surface((550, 785), pygame.SRCALPHA)
+    panel.draw(screen, career=result, warning=False,
+               rect=rect, now=1, sequence="x")
+    assert panel._base.get_size() == rect.size
+    assert panel.last_slots["icon"].centerx == rect.width // 2
+    for name in ("title", "reason", "praise", "rank", "progress"):
+        assert panel.last_slots[name].centerx == rect.width // 2
+        assert panel.last_slots[name].right < rect.width
+    if reward:
+        assert panel._picture(result) is not None
+        assert len(panel._images) == 1
+    else:
+        assert panel._images == {}
+
+
+def test_actual_button_hitboxes_are_left_of_portrait_after_game_render():
+    from modules.game import Game
+    from modules.enums import GameState
+    from modules.career_ceremony import CareerCeremony
+    game = Game(headless=True)
+    game.start_game(1)
+    game.game_state = GameState.GAME_OVER
+    game.leaderboard_mode = False
+    game.round_career_result = realistic_career()
+    game._death_soul_event = None
+    game.draw()
+    stone = game._game_over_visual._tombstone_reward.last_rect
+    assert stone is not None
+    for btn in game.game_over_buttons:
+        assert not btn.rect.colliderect(stone)
+        assert btn.rect.x >= 0
+    game.round_career_result = None
+    game.draw()
+    assert game.game_over_buttons[0].rect.x == game.screen.get_width() // 2 - 228
