@@ -21,6 +21,8 @@ class BehaviorProfile:
     visible_action: str = "CHASE"
     chase_speed: float = 1.0
     retreat_distance: float = 2.0
+    search_speed: float = 1.0
+    patrol_speed: float = 1.0
 
     def __post_init__(self):
         if self.visible_action not in MOVE_ACTIONS:
@@ -29,14 +31,19 @@ class BehaviorProfile:
             raise ValueError("Ungültiger Bewegungsfaktor.")
         if self.retreat_distance < 0:
             raise ValueError("Fluchtabstand muss positiv sein.")
+        if not 0.25 <= self.search_speed <= 2:
+            raise ValueError("Ungültiger Suchtempo-Faktor.")
+        if not 0.25 <= self.patrol_speed <= 2:
+            raise ValueError("Ungültiger Patrouillentempo-Faktor.")
 
 
 # Future FrostAge candidates only. These do not register or spawn opponents.
 FROST_PROTOTYPE_BEHAVIORS = {
-    "frostage_eisskelett": BehaviorProfile("CHASE", chase_speed=1.10),
-    "frostage_frostwisp": BehaviorProfile("RETREAT", chase_speed=1.15,
-                                        retreat_distance=2.5),
-    "frostage_frosttitan": BehaviorProfile("GUARD"),
+    "frostage_eisskelett": BehaviorProfile(
+        "CHASE", chase_speed=1.35, search_speed=.75),
+    "frostage_frostwisp": BehaviorProfile(
+        "RETREAT", chase_speed=1.15, retreat_distance=2.5, patrol_speed=1.1),
+    "frostage_frosttitan": BehaviorProfile("GUARD", patrol_speed=.6),
 }
 
 
