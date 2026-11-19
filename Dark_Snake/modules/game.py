@@ -1740,6 +1740,132 @@ class Game:
             self.handle_death()
         return bool(targets)
 
+    def _boss_teleport_safety(self):
+        """Authoritative landing mask: world walls, full 1P/2P bodies, items,
+        enemies, active AoE and active projectiles. Tactical *aim* still uses
+        only the boss's observed/remembered target, not this safety mask.
+        """
+        blocked = set(self._vision_blockers)
+        snakes = ((self.snake,) if self.player_count == 1
+                  else (self.snake1, self.snake2))
+        for snake in snakes:
+            blocked.update(snake)
+
+        def mark_rect(rect):
+            if rect is None or rect.width <= 0 or rect.height <= 0:
+                return
+            min_x = max(0, rect.left // GRID_SIZE)
+            min_y = max(0, rect.top // GRID_SIZE)
+            max_x = min(GRID_WIDTH, (rect.right - 1) // GRID_SIZE + 1)
+            max_y = min(GRID_HEIGHT, (rect.bottom - 1) // GRID_SIZE + 1)
+            blocked.update((x, y) for x in range(min_x, max_x)
+                           for y in range(min_y, max_y))
+
+        for item in self.items:
+            blocked.add((item.x, item.y))
+        for enemy in self.enemies:
+            if hasattr(enemy, "get_hitbox"):
+                mark_rect(enemy.get_hitbox())
+        if self.portal is not None:
+            mark_rect(self.portal.get_rect())
+        for shot in self.projectiles:
+            if "pos" in shot:
+                x, y = shot["pos"]
+                # The classic grid-shot hitbox covers an entire cell.
+                blocked.add((int(x), int(y)))
+        for shot in (self.flame_projectiles + self.enemy_projectiles
+                     + self.boss_flame_projectiles):
+            rect = (shot.get_hitbox() if hasattr(shot, "get_hitbox")
+                    else getattr(shot, "rect", None))
+            mark_rect(rect)
+
+        live_zones = [
+            zone for zone in self.aoe_zones if getattr(zone, "alive", False)
+        ]
+        if live_zones:
+            for y in range(GRID_HEIGHT):
+                for x in range(GRID_WIDTH):
+                    center = pygame.Vector2(
+                        (x + .5) * GRID_SIZE, (y + .5) * GRID_SIZE,
+                    )
+                    if any(zone.is_inside(center) for zone in live_zones):
+                        blocked.add((x, y))
+        heads = [cell for cell, _attr in self._player_heads_with_health()]
+        return blocked, heads
+
+    def _tick_boss_teleport(self, now):
+        """Telegraph -> sink -> safety-rechecked landing -> emergence.
+
+        Triggered once in HP phases II/III by a *real boss sensor reading*.
+        All sprites and their collision hitboxes use the same action state.
+        A newly occupied landing cell aborts instead of telefragging players.
+        """
+        boss = self.boss
+        if not isinstance(boss, Boss) or not boss.ai_preview:
+            return False
+        tele = boss.teleport
+        action = tele.action
+        if action is not None:
+            if tele.needs_landing(now):
+                # Recheck because the snakes can move during the warning.
+                blocked, heads = self._boss_teleport_safety()
+                if not destination_is_safe(
+                    action.destination, boss.size,
+                    (GRID_WIDTH, GRID_HEIGHT), blocked, heads,
+                ):
+                    boss.cancel_teleport(now)
+                    self.log_combat_event(
+                        "boss_teleport_aborted", reason="landing_occupied",
+                    )
+                    return False
+                boss.x, boss.y = action.destination
+                boss._visual_from = boss._visual_to = (boss.x, boss.y)
+                boss._visual_step_start = now
+                boss.last_move = now
+                tele.arrive(now)
+                self.log_combat_event(
+                    "boss_teleport_arrived", boss=boss.profile_key,
+                    phase=action.stage, destination=action.destination,
+                )
+            return tele.finish(now) or tele.waiting(now)
+
+        if (self.game_state != GameState.BOSS_FIGHT
+                or boss.phases.warning_active(now)
+                or now - boss.spawn_time < BOSS_SPAWN_PROTECTION):
+            return False
+        stage = boss.phases.stage
+        reading = boss.eyes.reading
+        if (not tele.ready(stage, now) or not reading.actionable
+                or reading.predicted_cell is None):
+            return False
+        blocked, heads = self._boss_teleport_safety()
+        if not heads:
+            return False
+        destination = choose_destination(
+            (boss.x, boss.y), boss.size, (GRID_WIDTH, GRID_HEIGHT),
+            blocked, heads, reading.predicted_cell, boss.profile_key,
+        )
+        if destination is None:
+            tele.next_ready_at = now + 3.0
+            return False
+        if not tele.begin((boss.x, boss.y), destination, stage, now):
+            return False
+        # Teleport is an *alternative* tactic, never simultaneous with Swipe,
+        # Frost or an unexpected fresh attack from the former location.
+        boss.cancel_swipe(now)
+        boss.defense.cancel()
+        boss.tactics.cancel(now)
+        ready = now + 3.0
+        boss.next_aoe = max(boss.next_aoe, ready)
+        boss.next_proj = max(boss.next_proj, ready)
+        boss.tactics.next_cast_at = max(boss.tactics.next_cast_at, ready)
+        self.log_combat_event(
+            "boss_teleport_warning", boss=boss.profile_key,
+            style=tele.style, stage=stage,
+            destination=destination, warning_seconds=1.10,
+        )
+        return True
+
     def _scan_boss_defense(self, now):
         """Sense *player-owned* incoming shots only, never hidden attack data."""
         boss = self.boss
