@@ -81,7 +81,16 @@ class BolbuEnemy(NormalEnemy):
     SIGHT_PROFILE = VisionProfile(radius_cells=6, fov_degrees=360,
                                   memory_seconds=2.0, scan_interval=0.15)
     # A ranged sentry in the opt-in preview; existing dice attacks persist.
-    BEHAVIOR_PROFILE = BehaviorProfile(visible_action="GUARD")
+    BEHAVIOR_PROFILE = BehaviorProfile(
+        visible_action="GUARD", patrol_speed=.75, search_speed=.90,
+    )
+    # Bolbu has slow 360° recognition but retains attention for longer.
+    # Its projectile/dice timers remain the existing Classic mechanisms.
+    AI_SIGHT_PROFILE = VisionProfile(
+        radius_cells=6, fov_degrees=360, memory_seconds=5.0,
+        scan_interval=.15, alert_radius_cells=12,
+        reaction_seconds=.55,
+    )
     SHOOT_COOLDOWN = BOLBU_SHOOT_COOLDOWN_SECONDS
     DICE_COOLDOWN = 5
 
