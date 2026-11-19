@@ -64,6 +64,20 @@ def test_memory_and_expiring_remote_eyes_do_not_see_through_time():
     assert not eyes.remote
 
 
+def test_remote_eyes_are_bounded_and_follow_fixed_lifetime():
+    eyes = MedusaEyes()
+    see(eyes, 1)
+    see(eyes, 1.11)
+    assert len(eyes.remote) == 1
+    # Vision continues as boss moves, so a second sensor can be deployed.
+    see(eyes, 4.9, origin=(6, 5), target=(8, 5))
+    assert len(eyes.remote) == 2
+    see(eyes, 8.7, origin=(7, 5), target=(8, 5))
+    assert len(eyes.remote) == 2
+    see(eyes, 11, origin=(7, 5), target=(8, 5))
+    assert len(eyes.remote) <= 2
+
+
 def test_two_player_target_switch_and_reaction_delay():
     eyes = MedusaEyes(heavy=True)
     eyes.observe((5, 5), (1, 0),
