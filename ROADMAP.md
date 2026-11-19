@@ -20,19 +20,24 @@
   Seitwärts-Swipes, 0,18 s Animation und mitbewegte Boss-Hitbox;
   erfolgreicher Windows-Spieltest bei Demus, Ausweichen selbst
   dabei noch nicht sicher beobachtet.
-- 🔧 **Swipe D.1 / Player Projectile Cadence (Draft-PR)** – Spieler-
-  Feuerball 6 → 4,5 Pixel/Frame (25 % weniger nominelle Geschwindigkeit),
-  präzise Subpixel-Bewegung. Pickup-Geschosse halbierte Grundgeschwindigkeit,
-  danach auf maximal 4,5 Pixel/Frame begrenzt, auch alle Multishots.
-  Beseitigung doppelter/dreifacher Updates: JEDES Projektil wird pro
-  Spiel-Frame genau einmal fortbewegt. Der Boss scannt Geschosse vor
-  dem Move; 30 statt 10 Frames Vorhersage für echte Reaktionszeit;
-  Diagnose `PROJ a/b SWIPE n/2 STATUS` im KI-Test + Hitboxen.
-  Zusätzliche Integrationstests mit fliegenden realen Spielerprojektilen.
-  Boss-Angriffswerte und World Studio nicht umgestellt.
-  GitHub CI + Windows-Prüfung und Demus-Spieltest vor Merge.
-- ⬜ **Boss Personality / FrostAge Vertical Slice** – individuelle
-  Kampfprofile und kontrollierte Attacken-Kombination nach Swipe-Test.
+- ✅ **Swipe D.1 / Player Projectile Cadence (#235, main)** –
+  Spieler-Feuerball 4,5 Pixel/Frame und Pickup-/Multishots maximal gleich
+  schnell, nur ein Update/Frame; Spieltest vom 19.11. bestätigt Boss-Swipes.
+- 🔧 **Boss Personality A (eigener Draft-PR)** –
+  fest zugeordnete Bossidentitäten **Medusa / Jäger / Wächter** mit
+  unverwechselbaren, versionierten Bildern und Fähigkeiten:
+  `Boss-RingG60.png` (Medusa, animiert), `Boss-AlexG60.png`
+  (Jäger), `Boss-SkullPurPurG60.png` (Wächter).
+  Kein `random.choice` der Bosse oder ihrer Grafiken mehr: pro
+  Stufe deterministisch Medusa → Jäger → Wächter, wiederholbar
+  bei gleicher Stufe. Jäger: schnell, aggressiver Fernangriff,
+  Swipe; Wächter: größer, Distanzhaltung, Schild;
+  Medusa: Fernaugen, Frostwurf, Schild und Swipe.
+  Neuartige Prioritäten ausschließlich im KI-Test; Classic-Angriffe
+  ohne KI-Test bleiben erhalten. Tests, CI/Windows und manueller
+  Spieltest als Merge-Gate.
+- ⬜ **Boss Phases** – Kampfphasen mit echten HP-Schwellen, Animations-
+  und Vorwarnphasen, fairen Wechseln; erst nach Profil-Spieltest.
 - ⬜ **FrostAge Vertical Slice** – Welt-/Spawn-Gate und drei individuelle
   Gegnerprofile einschließlich eigener Boss-Persönlichkeit, später
   eigene Frost-/Mycelium-Varianten.
