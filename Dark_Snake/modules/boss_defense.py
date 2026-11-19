@@ -23,6 +23,7 @@ class IncomingShot:
     identity: int
     position: tuple[float, float]
     velocity: tuple[float, float]
+    radius_cells: float = .5  # approximate actual projectile hitbox half-extent
 
 
 class MedusaDefense:
