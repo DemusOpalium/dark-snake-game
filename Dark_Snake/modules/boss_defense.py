@@ -81,11 +81,8 @@ class MedusaDefense:
         return (abs(closest_x - boss_center[0]) <= half
                 and abs(closest_y - boss_center[1]) <= half)
 
-    def observe(self, boss_center, facing, boss_size, shots,
-                blockers, now):
-        """Report whether a shield was *newly* activated on this frame."""
-        if now < self.next_ready_at or self.active(now):
-            return False
+    def visible_threats(self, boss_center, facing, boss_size, shots, blockers):
+        """Real, unoccluded threats shared by the shield and lateral swipe."""
         threats = []
         for shot in shots:
             px, py = shot.position
@@ -96,6 +93,16 @@ class MedusaDefense:
                 continue
             if self._is_approaching(shot, boss_center, boss_size):
                 threats.append(shot)
+        return threats
+
+    def observe(self, boss_center, facing, boss_size, shots,
+                blockers, now):
+        """Report whether a shield was *newly* activated on this frame."""
+        if now < self.next_ready_at or self.active(now):
+            return False
+        threats = self.visible_threats(
+            boss_center, facing, boss_size, shots, blockers,
+        )
         if not threats:
             self.candidate_id = None
             self.first_seen_at = None
