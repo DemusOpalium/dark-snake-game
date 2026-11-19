@@ -114,6 +114,8 @@ class MedusaSwipe:
         self.action: SwipeAction | None = None
         self.candidate_id: int | None = None
         self.first_seen_at: float | None = None
+        # Diagnostic only: never changes AI decisions.
+        self.last_reason = "IDLE"
 
     def reset(self):
         self.__init__()
@@ -122,6 +124,7 @@ class MedusaSwipe:
         self.action = None
         self.candidate_id = None
         self.first_seen_at = None
+        self.last_reason = "CANCELLED"
 
     def active(self, now):
         return self.action is not None and self.action.active(now)
@@ -133,8 +136,10 @@ class MedusaSwipe:
                 blockers, grid_size, player_heads, now):
         """Start a swipe only after two continuously-visible observations."""
         if self.active(now):
+            self.last_reason = "SWIPING"
             return None
         if not threats or self.charges(now) == 0:
+            self.last_reason = "NO_THREAT" if not threats else "NO_CHARGE"
             self.candidate_id = None
             self.first_seen_at = None
             return None
@@ -146,14 +151,17 @@ class MedusaSwipe:
         if threat.identity != self.candidate_id:
             self.candidate_id = threat.identity
             self.first_seen_at = now
+            self.last_reason = "ACQUIRING"
             return None
         if self.first_seen_at is None or now - self.first_seen_at < self.REACTION_SECONDS:
+            self.last_reason = "REACTION"
             return None
         target = choose_swipe(
             position, size, threat, shots, blockers, grid_size, player_heads,
         )
         if target is None:
             # Blocked or dangerous => let the existing shield handle the shot.
+            self.last_reason = "NO_SAFE_LANE"
             return None
         slot = next(i for i, ready in enumerate(self.ready_at) if now >= ready)
         self.ready_at[slot] = now + self.RECHARGE_SECONDS
@@ -161,4 +169,5 @@ class MedusaSwipe:
         self.first_seen_at = None
         self.action = SwipeAction(tuple(start_visual), target, now,
                                   self.SWIPE_SECONDS)
+        self.last_reason = "SWIPE"
         return self.action
