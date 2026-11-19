@@ -7,10 +7,20 @@ Lebensdauern und Cooldowns sind Tickzahlen (das Spiel läuft mit ``FPS`` Ticks/s
 
 PLAYER_PROJECTILE_DAMAGE = 10
 PLAYER_PROJECTILE_LIFETIME_TICKS = None  # bisher nur durch den Spielfeldrand begrenzt
-PLAYER_FIREBALL_SPEED_PX_PER_TICK = 6
+PLAYER_FIREBALL_SPEED_PX_PER_TICK = 4.5  # 25% slower than before; fraction-safe movement
 PLAYER_FIREBALL_DAMAGE = 3
 PLAYER_FIREBALL_LIFETIME_TICKS = 180
 PLAYER_FIREBALL_COOLDOWN_SECONDS = 2
+
+# Player auto-shot pickup: half its previous baseline speed, additionally
+# capped by the actual player fireball travel distance per frame.
+PLAYER_GRID_SPEED_MULTIPLIER = 0.5
+
+
+def player_grid_speed_cells_per_tick(speed_factor, grid_size):
+    """New shots only. Vector magnitude cannot exceed a player fireball."""
+    return min(max(0.0, float(speed_factor)) * PLAYER_GRID_SPEED_MULTIPLIER,
+               PLAYER_FIREBALL_SPEED_PX_PER_TICK / grid_size)
 
 BOLBU_PROJECTILE_SPEED_PX_PER_TICK = 4
 BOLBU_PROJECTILE_DAMAGE = 2
