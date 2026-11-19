@@ -25,6 +25,7 @@ class AdminPanel:
         ("emoji9.png", "Zufallszone", "Erzeugt sofort eine zufällige Schadens-, Heil- oder Slow-Zone.", "spawn_random_zone"),
         (None, "Bildzeiten", "Zeigt Bildzeiten und Eingabereaktion nach dem Schließen im Spiel.", "toggle_metrics"),
         (None, "Frost-Test", "Schaltet Frostzonen für bestätigte Feuerballtreffer ein oder aus.", "toggle_frost"),
+        (None, "KI-Test", "Test: Gegner verfolgen gesehene Ziele und suchen die letzte Position.", "toggle_enemy_ai"),
     )
 
     def __init__(self, game):
@@ -62,7 +63,8 @@ class AdminPanel:
                     self.debug_log(self.status)
                     return False
 
-            text = {"toggle_metrics": "ms", "toggle_frost": "F"}.get(method_name, "")
+            text = {"toggle_metrics": "ms", "toggle_frost": "F",
+                    "toggle_enemy_ai": "KI"}.get(method_name, "")
             self.buttons.append(Button(x, y, 58, 58, text, image=image, action=run_action))
 
     def toggle(self):
@@ -133,6 +135,11 @@ class AdminPanel:
         state = "aktiviert" if self.game.frost.toggle() else "deaktiviert"
         return f"Frost-Test {state}."
 
+    def toggle_enemy_ai(self):
+        self.game.enemy_ai_preview = not self.game.enemy_ai_preview
+        state = "aktiviert" if self.game.enemy_ai_preview else "deaktiviert"
+        return f"Vision-KI-Test {state}; nur Bewegung, keine neuen Angriffe."
+
     def spawn_bolbu_item(self):
         x, y = self._adjacent_cell()
         self.game.spawn_item_at(ItemType.SPAWN_BOLBU, x, y)
@@ -199,6 +206,8 @@ class AdminPanel:
             _, name, _, method = self.ACTIONS[index]
             if method == "toggle_frost":
                 name = f"{name} {'an' if self.game.frost.enabled else 'aus'}"
+            elif method == "toggle_enemy_ai":
+                name = f"KI {'an' if self.game.enemy_ai_preview else 'aus'}"
             label = self.label_font.render(name, True, (245, 245, 245))
             screen.blit(label, (button.rect.centerx - label.get_width() // 2, button.rect.bottom + 3))
             if button.is_hovered:
