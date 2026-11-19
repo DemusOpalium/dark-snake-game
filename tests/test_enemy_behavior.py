@@ -234,6 +234,9 @@ def test_ai_preview_reaction_delay_and_alert_radius_work_in_real_game():
     game = _ready_game()
     game.snake = [(9, 5)]
     enemy = _fresh_enemy(instant=False)
+    # During the initial reaction window the first scan must not be spoiled
+    # by an unrelated random patrol step changing the enemy's facing.
+    enemy.last_move = time.time()
     game.enemies = [enemy]
     game.enemy_ai_preview = True
 
