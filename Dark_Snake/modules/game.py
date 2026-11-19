@@ -280,8 +280,13 @@ class Boss:
                     self.navigation_blockers, (GRID_WIDTH, GRID_HEIGHT),
                 )
             if step is None:
-                # Classic and unsighted bosses keep the original random walk.
-                dx, dy = random.choice([-1, 0, 1]), random.choice([-1, 0, 1])
+                if self.ai_preview and self.profile.movement_style == "guard":
+                    # A guardian holds the position while it has no real sight.
+                    # No arbitrary wandering away from the guarded area.
+                    dx = dy = 0
+                else:
+                    # Classic and unsighted hunters/Medusa retain patrol.
+                    dx, dy = random.choice([-1, 0, 1]), random.choice([-1, 0, 1])
             else:
                 dx, dy = step
             self.x += dx
