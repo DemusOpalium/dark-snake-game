@@ -1,6 +1,40 @@
 # 🛣️ ROADMAP.md – Entwicklungsfahrplan
 
-## 🌀 Boss Rift Search B · Wächter Phase III (Windows-Spieltest offen)
+## ✅ Boss-Fertigkeiten: Teleport A / Wächter Rift Search B · Abnahme 19.11.2026
+
+- **Manueller Windows-Spieltest (Demus) bestanden:** Medusa-Portal,
+  Jäger-Sprung und Wächter-Tunnel als Bossfähigkeiten im aktuellen
+  Spielablauf akzeptiert. Besonders die schwarzen Bodenlöcher, der
+  Suchring des Wächters und das Wiederauftauchen wirken gut.
+  Wächter-Phase-III-Fernortung wurde bewusst provoziert und als
+  funktionierend bestätigt.
+- **Status:** **Gameplay-Beta-Niveau der Teleport-/Tunnel-Fertigkeit**
+  nach Nutzerbewertung, nicht das gesamte Spiel oder eine formelle
+  Release-Beta. **Feature accepted / vorerst eingefroren.**
+  Kein weiteres Teleport-Balancing ohne reproduzierbaren Bug,
+  relevante Performance-Messung oder neuen Spieltest-Befund.
+- **Bekannte Beobachtung:** Gelegentlicher abgebrochener Teleport.
+  Im Code ist dies als Sicherheitsmechanik vorgesehen, falls
+  die Ankunftsfläche nach der Zielwarnung besetzt ist; sichtbarer
+  Abbruchring eingebaut. Kein konkreter Fehler nachgewiesen,
+  aber Abbruchrate / Performance bei längeren oder 2P-Läufen
+  weiterhin beobachten. Bestehende Debug-Events können helfen.
+- **Qualität:** PR #242 und #243 sind gemergt; Windows Alpha 2,
+  CodeQL und Pages auf aktuellem `main` grün. Die Prüfsuite schützt
+  u. a. 1P/2P, Sicherheit beim Auftauchen, Sichtregeln und Pausen.
+  Das ersetzt keinen zusätzlichen **manuellen 2P-Windows-Test**.
+- **Nächster Entwicklungsfokus: FrostAge Enemy Vertical Slice.**
+  Vorhandene 17 gestagte FrostAge-Gegnergrafiken und vorbereitete
+  `FROST_PROTOTYPE_BEHAVIORS` nutzen, drei feste Archetypen
+  (Eisskelett / Frostwisp / Frosttitan) zunächst nur im separaten
+  FrostAge-Testmodus aktivieren. Assets, Sprites, HP und Spawn-Gates
+  zuerst zuordnen; danach Bewegung/Sicht/Attacken und 1P/2P testen.
+  **Classic, bestehende Bosse und Karriere-Balance unverändert.**
+- Dokumentation: `PLAYTEST_TELEPORT_2026-11-19.md`.
+
+---
+
+## 🌀 Boss Rift Search B · Wächter Phase III (gemergt #243; Windows-Test bestanden)
 
 - ✅ **Demus-Spieltest:** Vorhandenes Portal-/Tunnel-/Sprungsystem aus
   PR #242 läuft visuell und spielmechanisch gut; in einem Versuch
@@ -29,12 +63,12 @@
   Das ist ein gewollter Sicherheitsabbruch, kein neues Teleport-Target.
 - 🧪 **Regressions-Gate:** 1P/2P, außerhalb Sichtweite, Pause,
   Respawn, Classic aus, andere Bosstypen, harte Landehindernisse
-  und Rendering. **Nur Draft**, erst nach grünem Windows Alpha 2 /
-  CodeQL und Demus-Spieltest zur Freigabe.
+  und Rendering. **Erledigt:** grüne CI, Merge und bestätigter
+  Windows-Wächter-Test; manueller 2P-Nachtest bleibt sinnvoll.
 
 ---
 
-## 🌀 Boss Teleport A · Portal / Tunnel / Sprung · 19.11.2026 (PR, Windows-Test offen)
+## 🌀 Boss Teleport A · Portal / Tunnel / Sprung · 19.11.2026 (gemergt #242; Windows-Test bestanden)
 
 - ✅ **Vorbedingungen:** Boss Personality A mit festen Grafiken; Boss
   Phases A (70 % / 35 % HP) und Boss Balance A wurden von Demus im
