@@ -340,6 +340,23 @@ class Boss:
         else:
             pygame.draw.rect(screen, RED, (pixel_x, pixel_y,
                                            self.size * GRID_SIZE, self.size * GRID_SIZE))
+        # Swipe has a compact violet trail frame, distinct from the shield.
+        # Two pips above the health bar show the independent charged dodges.
+        if self.ai_preview:
+            swipe_now = time.time()
+            if self.swipe.active(swipe_now):
+                pygame.draw.rect(
+                    screen, (192, 133, 244),
+                    (pixel_x - 3, pixel_y - 3,
+                     self.size * GRID_SIZE + 6, self.size * GRID_SIZE + 6),
+                    2, border_radius=4,
+                )
+            for slot, charged_at in enumerate(self.swipe.ready_at):
+                pygame.draw.circle(
+                    screen,
+                    (164, 220, 255) if swipe_now >= charged_at else (85, 77, 107),
+                    (pixel_x + 7 + slot * 11, pixel_y - 18), 3,
+                )
         # Short-lived, one-use shield is visible even without Hitbox Debug.
         # Never modify the boss's authoritative rectangle or gameplay timing.
         if self.ai_preview and self.defense.active(time.time()):
