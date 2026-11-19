@@ -4,6 +4,9 @@ import time
 from config import GRID_SIZE, GRID_WIDTH, GRID_HEIGHT, RED
 from modules.graphics import ENEMY_TIM_IMG, ENEMY_SPOONG_IMG, ENEMY_OMNI_IMG, ENEMY_GLUBS_IMG
 from modules.enemy_vision import VisionProfile, VisionSensor
+from modules.enemy_behavior import (
+    BehaviorProfile, permitted_step, movement_intention, reaction_state, STEPS,
+)
 
 class NormalEnemy:
     GLIDE_SECONDS = 0.12
@@ -11,6 +14,7 @@ class NormalEnemy:
     # unchanged until a separately reviewed behaviour PR connects signals.
     SIGHT_PROFILE = VisionProfile(radius_cells=5, fov_degrees=100,
                                   memory_seconds=1.5, scan_interval=0.15)
+    BEHAVIOR_PROFILE = BehaviorProfile(visible_action="CHASE")
 
     def __init__(self):
         self.x = random.randint(0, GRID_WIDTH - 1)
@@ -29,6 +33,11 @@ class NormalEnemy:
         self.sprint_end_time = 0
         self.facing = (1, 0)
         self.eyes = VisionSensor(self.SIGHT_PROFILE)
+        # Developer-only pilot, off by default: preserves Classic random walk.
+        self.behavior_enabled = False
+        self.behavior_state = "PATROL"
+        self.behavior_profile = self.BEHAVIOR_PROFILE
+        self.navigation_blockers = frozenset()
 
         self.image = random.choice([ENEMY_TIM_IMG, ENEMY_SPOONG_IMG, ENEMY_OMNI_IMG, ENEMY_GLUBS_IMG])
         if self.image:
@@ -50,19 +59,54 @@ class NormalEnemy:
 
     def update(self, player_x=None, player_y=None, *, movement_factor=1.0):
         current_time = self._frame_time = time.time()
-        if not self.sprint_active and random.random() < self.sprint_chance:
+        if self.behavior_enabled:
+            self.behavior_state = reaction_state(
+                self.eyes.result, (self.x, self.y), self.behavior_profile,
+            )
+        else:
+            self.behavior_state = "PATROL"
+        if (not self.behavior_enabled and not self.sprint_active
+                and random.random() < self.sprint_chance):
             self._start_sprint(current_time, self.sprint_duration, player_x, player_y)
 
         current_speed = self.speed * (self.sprint_speed_multiplier if self.sprint_active else 1)
+        if self.behavior_enabled and not self.sprint_active and self.behavior_state in (
+                "CHASE", "RETREAT", "SEARCH"):
+            current_speed *= self.behavior_profile.chase_speed
         current_speed *= movement_factor
         interval = 1.0 / current_speed
         if current_time - self.last_move >= interval:
             self.last_move = current_time
             if self.sprint_active:
                 dx, dy = self.sprint_dir
+            elif self.behavior_enabled:
+                reading = self.eyes.result
+                if (self.behavior_state in ("CHASE", "SEARCH", "RETREAT")
+                        and reading.last_known_cell is not None):
+                    dx, dy = movement_intention(
+                        (self.x, self.y), reading.last_known_cell,
+                        self.behavior_state, self.navigation_blockers,
+                        (GRID_WIDTH, GRID_HEIGHT),
+                    )
+                elif self.behavior_state == "GUARD":
+                    dx = dy = 0
+                else:
+                    # Keep the original patrol's random quality, but constrain
+                    # candidate moves to authored solid sight barriers.
+                    valid = [(0, 0)] + [
+                        step for step in STEPS if permitted_step(
+                            (self.x, self.y), step, self.navigation_blockers,
+                            (GRID_WIDTH, GRID_HEIGHT),
+                        )
+                    ]
+                    dx, dy = random.choice(valid)
             else:
                 dx = random.choice([-1, 0, 1])
                 dy = random.choice([-1, 0, 1])
+            if self.behavior_enabled and not permitted_step(
+                    (self.x, self.y), (dx, dy), self.navigation_blockers,
+                    (GRID_WIDTH, GRID_HEIGHT)):
+                dx = dy = 0
             self._render_start = (self.x, self.y)
             self.x = max(0, min(self.x + dx, GRID_WIDTH - 1))
             self.y = max(0, min(self.y + dy, GRID_HEIGHT - 1))
