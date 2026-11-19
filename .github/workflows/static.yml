@@ -33,11 +33,17 @@ jobs:
         uses: actions/checkout@v4
       - name: Setup Pages
         uses: actions/configure-pages@v5
+      - name: Verify Pages input
+        shell: bash
+        run: |
+          test -f site/index.html || { echo "::error::Missing site/index.html"; exit 1; }
+          echo "Publishing site/, not the entire game repository."
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # Upload entire repository
-          path: '.'
+          # Only publish the authored static site. The old '.' uploaded
+          # ~310 MB of Windows/game assets to Pages on every merge.
+          path: './site'
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
