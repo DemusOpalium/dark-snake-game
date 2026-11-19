@@ -55,7 +55,7 @@ def test_bolbu_spawn_respects_shared_enemy_limit(monkeypatch, players, limit):
     assert game.score == 25
 
 
-def test_multishot_admits_only_free_slots_without_removing_existing_shots(monkeypatch):
+def test_single_auto_shots_respect_projectile_limit_and_existing_boss_shots(monkeypatch):
     monkeypatch.setattr(game_module, "MAX_PLAYER_GRID_PROJECTILES", 3)
     game = Game(headless=True)
     game.start_game(1)
@@ -70,5 +70,8 @@ def test_multishot_admits_only_free_slots_without_removing_existing_shots(monkey
     assert game.projectiles[:2] == [boss_shot, player_shot]
     assert len(game.projectiles) == 4
     assert [shot["projectile_type"] for shot in game.projectiles[2:]] == [
-        "player_projectile", "multishot",
+        "player_projectile", "player_projectile",
     ]
+    # One per trigger, even with a legacy stacked bonus still in memory.
+    game.auto_shoot_for_head((5, 5), Direction.RIGHT)
+    assert len(game.projectiles) == 4
