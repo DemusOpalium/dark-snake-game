@@ -1,5 +1,40 @@
 # 🛣️ ROADMAP.md – Entwicklungsfahrplan
 
+## 🌀 Boss Teleport A · Portal / Tunnel / Sprung · 19.11.2026 (PR, Windows-Test offen)
+
+- ✅ **Vorbedingungen:** Boss Personality A mit festen Grafiken; Boss
+  Phases A (70 % / 35 % HP) und Boss Balance A wurden von Demus im
+  Windows-Spieltest als gut spielbar bestätigt. DualSense 1P erfolgreich.
+- 🔧 **Taktik-Aktivierung:** Ausschließlich Admin **KI-Test**, höchstens
+  ein Ortswechsel bei Phase II und ein weiterer bei Phase III, nur
+  bei echter Boss-Sicht/Relay/Memory. Kein Wand-Durchblick oder
+  Zufalls-Portal ins Spielerfeld. 10 s Abklingzeit.
+- 🔧 **Drei feste Stilvarianten, eine sichere Kernmechanik:**
+  **Medusa = violettes Portal**; **Wächter = Erd-Tunnel mit Schatten**;
+  **Jäger = Sprung mit Landeziel und Schatten**. Original-Bossbild,
+  Fähigkeiten und skalierte Hitbox bleiben erhalten. Visuals derzeit
+  durch Pygame gezeichnet, für spätere Sprites/Animationen gekapselt.
+- 🔧 **Lesbar und fair:** 1,1 s sichtbare Zielwarnung, 0,38 s
+  im Boden verschwinden, 0,35 s Auftauchen, 0,65 s Erholung.
+  Keine neuen Bossangriffe/Swipes/Frost während der Bewegung.
+  Während der Auf-/Abtauchphase keine unsichtbare Trefferhitbox,
+  keine Überraschungs-Körperkollision bis Ende der Erholung.
+- 🔧 **Landung wird zweimal geprüft:** Vollständige Boss-Footprint,
+  Kartenwände, aktuelle 1P/2P-Körper, beide Köpfe mit mindestens
+  3 Feldern Sicherheitsabstand, Items, Feinde, aktive AoE-/Schüsse;
+  Ziel wird unmittelbar vor dem Auftauchen erneut geprüft. Wenn
+  jetzt besetzt: Abbruch, kein Telefrag oder Wand-Clip.
+- 🔧 **Unterbrechungen:** Pause, Editor, Admin, Respawn und
+  ausgeschalteter KI-Test brechen sauber ab; Boss bleibt an einer
+  gültigen Position, ohne verwaiste Hitbox. Bossphasen-Warnung hat
+  Vorrang, normale Classic-Regeln bleiben unverändert.
+- 🧪 **Merge-Gate:** CI/Windows Alpha 2 + CodeQL und danach
+  Demus-Windows-Spieltest **1P und 2P**, insbesondere beide Bossphasen,
+  Zielwarnung, Ein- und Auftauchen, Hindernisse/Spielerkörper, keine
+  Geister-Hitboxen. **World Studio weiter später.**
+
+
+
 ## 🔧 Boss-/Auto-Shoot-Spielbalance · 19.11.2026 (Windows-Test offen)
 
 - ✅ **Ursache von 1–2-Sekunden-Bosskämpfen im Code bestätigt:**
