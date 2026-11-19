@@ -346,7 +346,8 @@ def test_new_body_block_after_round_change_gets_a_fresh_timer(monkeypatch, round
 
 @pytest.mark.parametrize("players,suffix", PLAYER_CASES)
 @pytest.mark.parametrize("protection", ["respawn", "item"])
-def test_invincibility_allows_body_contact(monkeypatch, players, suffix, protection):
+def test_invincibility_protects_hp_but_never_lets_head_pass_own_body(
+        monkeypatch, players, suffix, protection):
     game, clock = setup_turn(monkeypatch, players, suffix, BODY_CONTACT)
     if protection == "respawn":
         game.respawn_invincible_until = clock.now + 1
@@ -355,7 +356,28 @@ def test_invincibility_allows_body_contact(monkeypatch, players, suffix, protect
     game.update()
 
     assert game.lives == 3
-    assert getattr(game, f"snake{suffix}") == [DESTINATION, *BODY_CONTACT[:-1]]
+    assert getattr(game, f"snake{suffix}") == BODY_CONTACT
+    assert (1 if suffix in ("", "1") else 2) in game._blocked_since
+
+
+@pytest.mark.parametrize("players,suffix", PLAYER_CASES)
+def test_item_or_aoe_below_body_never_turns_it_passable(
+        monkeypatch, players, suffix):
+    game, clock = setup_turn(monkeypatch, players, suffix, BODY_CONTACT)
+    # Body at DESTINATION, with both an item and an AoE occupying its cell.
+    item = place_item(game, ItemType.PROJECTILE_SHOOT, DESTINATION)
+    game.effects["invincibility"] = clock.now + 10
+    game.respawn_invincible_until = clock.now + 10
+    from modules.aoe_zones import DamageZone
+    zone = DamageZone((DESTINATION[0] * GRID_SIZE, DESTINATION[1] * GRID_SIZE),
+                      GRID_SIZE, 6, (255, 0, 0, 128), effect_type="damage")
+    game.aoe_zones.append(zone)
+    game.update()
+
+    assert getattr(game, f"snake{suffix}") == BODY_CONTACT
+    assert item in game.items
+    assert game.effects["projectile_shoot"] == 0
+    assert game.lives == 3
 
 
 @pytest.mark.parametrize("players,suffix", PLAYER_CASES)
