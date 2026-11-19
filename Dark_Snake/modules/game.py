@@ -48,6 +48,7 @@ from modules.studio_locale import DEFAULT_STUDIO_LANGUAGE, normalize_studio_lang
 from modules.customization import CustomizationMenu
 from modules.enemies import NormalEnemy
 from modules.boss_medusa import MedusaEyes, medusa_step
+from modules.boss_personality import profile_by_key, profile_for_level, guardian_step
 from modules.boss_tactics import MedusaTactics
 from modules.boss_defense import IncomingShot, MedusaDefense
 from modules.boss_swipe import MedusaSwipe
@@ -154,10 +155,13 @@ def get_aoe_effect():
 
 # === Boss-Klassen ===
 class Boss:
-    def __init__(self, level, health_multiplier=1.0):
+    def __init__(self, level, health_multiplier=1.0, *,
+                 profile_key="medusa", boss_size=None):
+        self.profile = profile_by_key(profile_key)
+        self.profile_key = self.profile.key
         self.x = random.randint(5, GRID_WIDTH - 5)
         self.y = random.randint(5, GRID_HEIGHT - 5)
-        self.size = 3 + level // 2
+        self.size = boss_size if boss_size is not None else 3 + level // 2
         base_health = max(30, 3 + level * 5)
         self.health = int(base_health * health_multiplier)
         self.speed = 1 + level * 0.2 + random.uniform(0, 0.5)
@@ -166,7 +170,11 @@ class Boss:
         self._visual_to = (self.x, self.y)
         self._visual_step_start = self.last_move
         self.chase_speed = 0.5
-        self.eyes = MedusaEyes()
+        self._classic_chase_speed = self.chase_speed
+        self._aoe_interval = 5.0
+        self._projectile_interval = 3.0
+        self.eyes = MedusaEyes(heavy=self.profile.heavy_vision)
+        self.eyes.MAX_EYES = self.profile.remote_eye_limit
         self.tactics = MedusaTactics()
         self.defense = MedusaDefense()
         self.swipe = MedusaSwipe()
@@ -176,76 +184,59 @@ class Boss:
         self.navigation_blockers = frozenset()
         self.attack_mode = "normal"
         self.spawn_time = time.time()  # Zeitpunkt des Spawns
-        boss_files = ["Boss-AlexG60.png", "Boss-BolgiG60.png", "Boss-DemusG60.png",
-                      "Boss-FinG60.png", "Boss-GlobyG60.png", "Boss-NeoG60.png",
-                      "Boss-RingG60.png", "Boss-SkullPurPurG60.png"]
+        # Identity and artwork are linked permanently, never random.
         self.image = None
-        fname = random.choice(boss_files)
-        if fname == "Boss-DemusG60.png":
-            self.frames = []
-            self.current_frame = 0
-            self.last_frame_time = time.time()
-            folder = asset_path("graphics", "Boss001")
-            for i in range(49):
-                frame_filename = os.path.join(folder, f"frame{i:04d}.png")
+        self.frames = []
+        self.current_frame = 0
+        self.last_frame_time = time.time()
+        profile = self.profile
+        self.art_asset = profile.sprite  # inspectable fixed identity for tests/debug
+        footprint_px = self.size * GRID_SIZE
+        if profile.frame_folder:
+            folder = asset_path("graphics", profile.frame_folder)
+            for i in range(profile.frame_count):
+                frame_path = os.path.join(folder, f"frame{i:04d}.png")
                 try:
-                    img = pygame.image.load(frame_filename).convert_alpha()
-                    img = pygame.transform.scale(img, (int(60 * (GRID_SIZE/20)), int(60 * (GRID_SIZE/20))))
-                    self.frames.append(img)
-                except Exception as e:
-                    print(f"Fehler beim Laden von {frame_filename}: {e}")
+                    img = pygame.image.load(frame_path).convert_alpha()
+                    self.frames.append(pygame.transform.scale(
+                        img, (footprint_px, footprint_px),
+                    ))
+                except (OSError, pygame.error) as error:
+                    print(f"Bossbild fehlt: {frame_path} ({error})")
             if self.frames:
                 self.image = self.frames[0]
-        elif fname == "Boss-RingG60.png":
-            self.frames = []
-            self.current_frame = 0
-            self.last_frame_time = time.time()
-            folder = asset_path("graphics", "Boss002")
-            for i in range(15):
-                frame_filename = os.path.join(folder, f"frame{i:04d}.png")
-                try:
-                    img = pygame.image.load(frame_filename).convert_alpha()
-                    img = pygame.transform.scale(img, (int(60 * (GRID_SIZE/20)), int(60 * (GRID_SIZE/20))))
-                    self.frames.append(img)
-                except Exception as e:
-                    print(f"Fehler beim Laden von {frame_filename}: {e}")
-            if self.frames:
-                self.image = self.frames[0]
-        elif fname == "Boss-FinG60.png":
-            self.frames = []
-            self.current_frame = 0
-            self.last_frame_time = time.time()
-            folder = asset_path("graphics", "Boss003")
-            for i in range(15):
-                frame_filename = os.path.join(folder, f"frame{i:04d}.png")
-                try:
-                    img = pygame.image.load(frame_filename).convert_alpha()
-                    img = pygame.transform.scale(img, (int(60 * (GRID_SIZE/20)), int(60 * (GRID_SIZE/20))))
-                    self.frames.append(img)
-                except Exception as e:
-                    print(f"Fehler beim Laden von {frame_filename}: {e}")
-            if self.frames:
-                self.image = self.frames[0]
-        else:
-            path = asset_path("graphics", fname)
+        if self.image is None:
+            path = asset_path("graphics", profile.sprite)
             try:
                 img = pygame.image.load(path).convert_alpha()
-                self.image = pygame.transform.scale(img, (self.size * GRID_SIZE, self.size * GRID_SIZE))
-            except Exception as e:
-                print(f"Fehler beim Laden von Bossgrafik {fname}: {e}")
+                self.image = pygame.transform.scale(
+                    img, (footprint_px, footprint_px),
+                )
+            except (OSError, pygame.error) as error:
+                print(f"Bossbild fehlt: {profile.sprite} ({error})")
         if SOUNDS.get("boss"):
             SOUNDS["boss"].play()
         self.special_attack_timer = time.time() + random.randint(5, 10)
         self.next_aoe = time.time() + 5
         self.next_proj = time.time() + 3
         self.aoe_effect = None
-        self.announcement = "Boss Down Easy Going !!"
+        self.announcement = f"{self.profile.name} erscheint!"
 
     def set_ai_preview(self, enabled):
         """KI-Test only; resets all Medusa information on switch-off."""
         enabled = bool(enabled)
         if enabled != self.ai_preview:
             self.ai_preview = enabled
+            # Boss personalities have different move/attack priorities only
+            # during KI-Test; the original Classic timings remain untouched.
+            self.chase_speed = (
+                self.profile.movement_interval if enabled
+                else self._classic_chase_speed
+            )
+            self._aoe_interval = (self.profile.aoe_interval if enabled else 5.0)
+            self._projectile_interval = (
+                self.profile.projectile_interval if enabled else 3.0
+            )
             self.eyes.reset()
             self.tactics.reset()
             self.defense.reset()
@@ -279,14 +270,23 @@ class Boss:
             self.last_move = current_time
             step = None
             if self.ai_preview and self.eyes.reading.actionable:
-                step = medusa_step(
+                movement = (
+                    guardian_step
+                    if self.profile.movement_style == "guard" else medusa_step
+                )
+                step = movement(
                     (self.x, self.y), self.size,
                     self.eyes.reading.predicted_cell,
                     self.navigation_blockers, (GRID_WIDTH, GRID_HEIGHT),
                 )
             if step is None:
-                # Classic and unsighted bosses keep the original random walk.
-                dx, dy = random.choice([-1, 0, 1]), random.choice([-1, 0, 1])
+                if self.ai_preview and self.profile.movement_style == "guard":
+                    # A guardian holds the position while it has no real sight.
+                    # No arbitrary wandering away from the guarded area.
+                    dx = dy = 0
+                else:
+                    # Classic and unsighted hunters/Medusa retain patrol.
+                    dx, dy = random.choice([-1, 0, 1]), random.choice([-1, 0, 1])
             else:
                 dx, dy = step
             self.x += dx
@@ -301,7 +301,7 @@ class Boss:
         if hasattr(self, 'frames') and self.frames:
             self.update_animation(current_time)
         if current_time >= self.next_aoe:
-            self.next_aoe = current_time + 5
+            self.next_aoe = current_time + self._aoe_interval
             self.aoe_effect = {
                 "image": get_aoe_effect(),
                 "start_time": current_time,
@@ -312,7 +312,7 @@ class Boss:
             if current_time - self.spawn_time >= 3:
                 return "aoe"
         if current_time >= self.next_proj:
-            self.next_proj = current_time + 3
+            self.next_proj = current_time + self._projectile_interval
             if current_time - self.spawn_time >= 3:
                 return "boss_shoot"
         return None
@@ -418,32 +418,24 @@ class Boss:
         return self.health <= 0
 
 class Boss2(Boss):
-    def __init__(self, level, health_multiplier=1.0):
-        super().__init__(level, health_multiplier)
-        self.size = 4 + level // 2
+    def __init__(self, level, health_multiplier=1.0, *,
+                 profile_key="medusa"):
+        # Select the larger footprint BEFORE loading fixed profile artwork.
+        # Otherwise the sprite and authoritative Boss2 hitbox would differ.
+        super().__init__(
+            level, health_multiplier,
+            profile_key=profile_key, boss_size=4 + level // 2,
+        )
         base_health = max(30, 5 + level * 5)
         self.health = int(base_health * health_multiplier)
-        self.speed = 1 + level * 0.25 + random.uniform(0, 0.5)
+        self.speed = 1 + level * .25 + random.uniform(0, .5)
         self.chase_speed = 0.4
-        self.eyes = MedusaEyes(heavy=True)
+        self._classic_chase_speed = self.chase_speed
         self.attack_mode = "shield"
         self.spawn_time = time.time()
-        boss_files = ["Boss-AlexG60.png", "Boss-BolgiG60.png", "Boss-DemusG60.png",
-                      "Boss-FinG60.png", "Boss-GlobyG60.png", "Boss-NeoG60.png",
-                      "Boss-RingG60.png", "Boss-SkullPurPurG60.png"]
-        self.image = None
-        if boss_files:
-            fname = random.choice(boss_files)
-            path = asset_path("graphics", fname)
-            try:
-                img = pygame.image.load(path).convert_alpha()
-                self.image = pygame.transform.scale(img, (self.size * GRID_SIZE, self.size * GRID_SIZE))
-            except Exception as e:
-                print(f"Fehler beim Laden von Bossgrafik {fname}: {e}")
         self.special_attack_timer = time.time() + random.randint(5, 10)
         self.next_aoe = time.time() + 6
         self.next_proj = time.time() + 4
-        self.announcement = "Boss2 Down Easy Going !!"
 
 # === Portal-Klasse ===
 class Portal:
@@ -1269,8 +1261,15 @@ class Game:
     def start_boss_fight(self):
         if self.boss is not None:
             return False
-        boss_class = random.choice([Boss, Boss2])
-        self.boss = boss_class(self.level, health_multiplier=self.settings['boss_health_multiplier'])
+        # Stable boss identity by level: Medusa → Jäger → Wächter.
+        # Artwork and abilities always match the selected profile.
+        profile = profile_for_level(self.level)
+        boss_class = Boss2 if profile.larger_boss else Boss
+        self.boss = boss_class(
+            self.level,
+            health_multiplier=self.settings["boss_health_multiplier"],
+            profile_key=profile.key,
+        )
         self._boss_contact_ready_at.clear()
         self._spawn_item_in_free_cell(ItemType.PROJECTILE_SHOOT)
         self.add_achievement(self.boss.announcement)
@@ -1568,7 +1567,7 @@ class Game:
         if boss.swipe.active(now):
             boss.swipe.last_reason = "SWIPING"
             return
-        if not boss.defense.active(now):
+        if not boss.defense.active(now) and boss.profile.swipe:
             action = boss.swipe.observe(
                 (boss.x, boss.y), boss._visual_position(now), boss.size,
                 visible, shots, self._vision_blockers,
@@ -1584,7 +1583,9 @@ class Game:
                     charges=boss.swipe.charges(now),
                 )
                 return
-        if boss.defense.observe(
+        elif not boss.profile.swipe:
+            boss.swipe.last_reason = "SHIELD_ONLY"
+        if boss.profile.shield and boss.defense.observe(
                 center, boss.facing, boss.size, shots,
                 self._vision_blockers, now):
             self.log_combat_event("boss_shield_raised")
@@ -1598,6 +1599,7 @@ class Game:
         """
         boss = self.boss
         if (not isinstance(boss, Boss) or not boss.ai_preview
+                or not boss.profile.frost_throw
                 or self.game_state != GameState.BOSS_FIGHT):
             return False
         tactics = boss.tactics
@@ -2789,7 +2791,7 @@ class Game:
         reason = boss.swipe.last_reason
         if boss.defense.active(time.time()):
             reason = "SHIELD"
-        label = (f"PROJ {shots}/{threats}  SWIPE "
+        label = (f"{boss.profile.name}  PROJ {shots}/{threats}  SWIPE "
                  f"{boss.swipe.charges(time.time())}/2  {reason}")
         image = self._enemy_ai_debug_font.render(
             label, True, (217, 226, 254),
