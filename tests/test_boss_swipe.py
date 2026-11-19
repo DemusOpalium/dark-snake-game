@@ -46,6 +46,16 @@ def test_swipe_perpendicular_to_actual_incoming_ray_not_into_it():
     assert abs(destination[0] - 5) == 2
 
 
+def test_four_cell_boss_can_clear_a_centered_projectile_with_three_cells():
+    # An oversized boss would still overlap the shot after just two tiles.
+    incoming = shot(position=(13, 7))
+    dst = choose_swipe((5, 5), 4, incoming, (incoming,), (), (45, 35),
+                       rng=lambda candidates: candidates[0])
+    assert dst is not None
+    assert dst[0] == 5
+    assert abs(dst[1] - 5) == 3
+
+
 def test_swipe_respects_full_footprint_and_intermediate_walls():
     incoming = shot()
     assert choose_swipe((5, 5), 3, incoming, (incoming,),
