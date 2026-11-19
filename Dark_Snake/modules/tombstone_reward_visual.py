@@ -5,6 +5,7 @@ All base content, text, skull artwork, and twelve gentle aura phases are cached.
 """
 from __future__ import annotations
 
+import hashlib
 import logging
 import math
 
@@ -28,6 +29,39 @@ BONE = (237, 226, 204)
 MINT = (193, 239, 207)
 HEIRLOOM_GOLD = (239, 214, 168)
 LAVENDER_FROST = (207, 200, 240)
+
+# name, title, description, praise, rank, progress. Light pigments remain
+# legible on near-black stone; no random dark-on-dark text or per-frame flicker.
+INK_THEMES = (
+    ("Frosttinte", MINT, BONE, LAVENDER_FROST, HEIRLOOM_GOLD, (183, 225, 220)),
+    ("Purpurnacht", (218, 184, 244), (237, 225, 242),
+     (200, 219, 243), (236, 199, 239), (190, 226, 211)),
+    ("Blutmond", (244, 180, 196), (238, 225, 216),
+     (228, 199, 237), (244, 214, 181), (193, 226, 218)),
+    ("Nebelgrün", (190, 236, 189), (230, 240, 221),
+     (193, 225, 207), (235, 221, 177), (182, 229, 216)),
+    ("Eiskönig", (179, 218, 248), (226, 236, 246),
+     (203, 209, 249), (239, 221, 187), (187, 230, 246)),
+)
+
+
+def epitaph_ink(career):
+    """Stable 'draw' from unlocked Gothic palettes, only once per saved run.
+
+    Higher career ranks unlock additional visual variants. This selection
+    changes NO XP, award probability or inventory state.
+    """
+    if career is None:
+        return INK_THEMES[0]
+    available = 2 + (career.rank_after >= 5) + (career.rank_after >= 10) + (
+        career.rank_after >= 20
+    )
+    identity = (
+        f"{career.rank_before}:{career.rank_after}:{career.total_xp}:"
+        f"{career.earned_xp}:{career.reward_id or ''}"
+    ).encode("utf-8")
+    roll = int.from_bytes(hashlib.blake2s(identity, digest_size=4).digest(), "big")
+    return INK_THEMES[roll % available]
 
 
 def portrait_size(max_width: int, max_height: int) -> tuple[int, int]:
@@ -85,20 +119,47 @@ class TombstoneRewardPanel(MysticRewardPanel):
             lines[-1] += "…"
         return lines
 
-    def _center_lines(self, target, font, text, *, y, color, max_width, max_lines=3):
-        lines = self._words(font, text, max_width, max_lines)
+    def _engrave(self, target, text, *, name, slot, color, font_size,
+                 min_size=13, max_lines=2, italic=False):
+        """Draw centered text *inside* its stone slot; shrink before clipping.
+
+        Layout and font creation are cached in _prepare, never recalculated
+        on every frame. A dark 1px shadow makes the engraving readable.
+        """
+        width = max(1, slot.width - 4)
+        height = max(1, slot.height - 4)
+        chosen = None
+        for size in range(font_size, min_size - 1, -1):
+            font = pygame.font.SysFont(EPITAPH_FONT, size, bold=True,
+                                       italic=italic)
+            # First try to keep *all* the text, even with high XP totals.
+            wrapped = self._words(font, text, width, 100)
+            step = font.get_linesize() + 3
+            if len(wrapped) <= max_lines and len(wrapped) * step - 3 <= height:
+                chosen = font, wrapped, step
+                break
+        if chosen is None:
+            # Pathological localized text: clamp the final line rather than
+            # letting it spill onto the carved pillars or three skulls.
+            font = pygame.font.SysFont(EPITAPH_FONT, min_size, bold=True,
+                                       italic=italic)
+            step = font.get_linesize() + 3
+            allowed = max(1, min(max_lines, (height + 3) // step))
+            chosen = font, self._words(font, text, width, allowed), step
+        font, lines, step = chosen
+        rects = []
         for index, line in enumerate(lines):
             label = font.render(line, True, color)
-            rect = label.get_rect(midtop=(
-                target.get_width() // 2, y + index * (font.get_linesize() + 3)
+            label_rect = label.get_rect(midtop=(
+                target.get_width() // 2, slot.top + 1 + index * step
             ))
-            # Cached soft engraving shadow gives light letters definition on
-            # the photographed rock without per-frame surface generation.
             shadow = font.render(line, True, (8, 8, 20))
             shadow.set_alpha(190)
-            target.blit(shadow, rect.move(1, 2))
-            target.blit(label, rect)
-        return len(lines)
+            target.blit(shadow, label_rect.move(1, 1))
+            target.blit(label, label_rect)
+            rects.append(label_rect)
+        self.last_text_bounds[name] = tuple(rects)
+        return lines
 
     def _prepare(self, width, career, warning):
         key = (width, career, warning)
@@ -151,45 +212,59 @@ class TombstoneRewardPanel(MysticRewardPanel):
             pygame.draw.circle(surface, (185, 119, 211, 178),
                                icon_centre, radius, 2)
 
-        face_width = int(width * .69)
+        face_width = int(width * .66)
         title, reason, praise = self._narrative(career, warning)
-        title_y = int(height * .353)
-        reason_y = int(height * .457)
-        praise_y = int(height * .557)
-        rank_y = int(height * .657)
-        progress_y = int(height * .711)
-        bar_y = int(height * .797)
-        self._center_lines(surface, font_title, title, y=title_y,
-                           max_width=face_width, max_lines=2,
-                           color=MINT if art is not None
-                           else (220, 187, 241))
-        self._center_lines(surface, font_body, reason, y=reason_y,
-                           max_width=face_width, max_lines=3,
-                           color=BONE)
-        self._center_lines(surface, font_praise, praise, y=praise_y,
-                           max_width=face_width, max_lines=3,
-                           color=LAVENDER_FROST)
+        palette = epitaph_ink(career)
+        self.last_ink_theme = palette[0]
+        cx = width // 2
+        # Relative safe zones sit strictly inside the smooth central stone.
+        # They never reach the external Gothic spires or the skull pedestal.
+        def slot(y, span):
+            return pygame.Rect(cx - face_width // 2, round(height * y),
+                               face_width, round(height * span))
+
+        self.last_slots = {
+            "icon": pygame.Rect(cx - int(width * .13), int(height * .133),
+                                int(width * .26), int(height * .14)),
+            "title": slot(.350, .089),
+            "reason": slot(.450, .096),
+            "praise": slot(.551, .098),
+            "rank": slot(.660, .052),
+            "progress": slot(.721, .073),
+        }
+        self.last_text_bounds = {}
+        self._engrave(surface, title, name="title", slot=self.last_slots["title"],
+                      color=palette[1], font_size=max(19, int(width * .046)),
+                      min_size=15, max_lines=2)
+        self._engrave(surface, reason, name="reason", slot=self.last_slots["reason"],
+                      color=palette[2], font_size=max(16, int(width * .036)),
+                      min_size=13, max_lines=3)
+        self._engrave(surface, praise, name="praise", slot=self.last_slots["praise"],
+                      color=palette[3], font_size=max(16, int(width * .035)),
+                      min_size=13, max_lines=3, italic=True)
         if career is not None:
             earned = f"{career.earned_xp:,}".replace(",", ".")
             total = f"{career.total_xp:,}".replace(",", ".")
             rank = (f"RANG {career.rank_before} → {career.rank_after}  ·  "
                     f"+{earned} XP")
-            self._center_lines(surface, font_small, rank, y=rank_y,
-                               max_width=face_width, max_lines=2,
-                               color=HEIRLOOM_GOLD)
+            self._engrave(surface, rank, name="rank", slot=self.last_slots["rank"],
+                          color=palette[4], font_size=max(15, int(width * .033)),
+                          min_size=12, max_lines=2)
             if career.next_rank_xp is None:
                 progress = f"{total} XP GESAMT · MAXIMALRANG"
                 ratio = 1.0
             else:
                 until = f"{career.xp_to_next_rank:,}".replace(",", ".")
-                progress = f"{total} XP GESAMT · NOCH {until} BIS RANG {career.rank_after + 1}"
+                progress = (f"{total} XP GESAMT · NOCH {until} XP "
+                            f"BIS RANG {career.rank_after + 1}")
                 previous = RANK_MIN_XP[career.rank_after - 1]
                 ratio = max(0., min(1., (career.total_xp - previous) /
                                     max(1, career.next_rank_xp - previous)))
-            self._center_lines(surface, font_small, progress, y=progress_y,
-                               max_width=face_width, max_lines=2,
-                               color=(183, 225, 220))
-            bar = pygame.Rect(cx - int(width * .30), bar_y,
+            self._engrave(surface, progress, name="progress",
+                          slot=self.last_slots["progress"], color=palette[5],
+                          font_size=max(15, int(width * .033)),
+                          min_size=12, max_lines=2)
+            bar = pygame.Rect(cx - int(width * .30), round(height * .806),
                               int(width * .60), max(3, round(width * .008)))
             pygame.draw.rect(surface, (34, 48, 66, 200), bar, border_radius=3)
             fill_width = round(bar.width * ratio)
@@ -197,21 +272,6 @@ class TombstoneRewardPanel(MysticRewardPanel):
                 pygame.draw.rect(surface, (125, 226, 173, 224),
                                  (bar.x, bar.y, fill_width, bar.height),
                                  border_radius=3)
-        # Slots in local coordinates for visual and non-overlap tests.
-        self.last_slots = {
-            "icon": pygame.Rect(cx - int(width * .13), int(height * .133),
-                                int(width * .26), int(height * .14)),
-            "title": pygame.Rect(cx - face_width // 2, title_y, face_width,
-                                 int(height * .085)),
-            "reason": pygame.Rect(cx - face_width // 2, reason_y, face_width,
-                                  int(height * .09)),
-            "praise": pygame.Rect(cx - face_width // 2, praise_y, face_width,
-                                  int(height * .09)),
-            "rank": pygame.Rect(cx - face_width // 2, rank_y, face_width,
-                                int(height * .052)),
-            "progress": pygame.Rect(cx - face_width // 2, progress_y, face_width,
-                                    int(height * .079)),
-        }
 
         self._base = surface
         self._aura = []
