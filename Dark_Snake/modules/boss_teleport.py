@@ -37,13 +37,17 @@ class TeleportAction:
 
     def phase(self, now: float) -> str:
         elapsed = now - self.began_at
-        if elapsed < WARNING_SECONDS:
+        # Seconds are floating-point: e.g. (100 + 1.1) - 100 may be
+        # 1.099999999999994. A tiny tolerance gives exact stage boundaries
+        # without an accidental extra 'warning' frame.
+        epsilon = 1e-9
+        if elapsed + epsilon < WARNING_SECONDS:
             return "warning"
-        if elapsed < WARNING_SECONDS + SINK_SECONDS:
+        if elapsed + epsilon < WARNING_SECONDS + SINK_SECONDS:
             return "sink"
-        if elapsed < WARNING_SECONDS + SINK_SECONDS + EMERGE_SECONDS:
+        if elapsed + epsilon < WARNING_SECONDS + SINK_SECONDS + EMERGE_SECONDS:
             return "emerge"
-        if elapsed < WARNING_SECONDS + SINK_SECONDS + EMERGE_SECONDS + RECOVERY_SECONDS:
+        if elapsed + epsilon < WARNING_SECONDS + SINK_SECONDS + EMERGE_SECONDS + RECOVERY_SECONDS:
             return "recovery"
         return "done"
 
