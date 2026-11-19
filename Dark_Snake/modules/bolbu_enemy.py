@@ -26,6 +26,7 @@ from modules.projectile_config import (
 )
 from modules.enemies import NormalEnemy
 from modules.enemy_vision import VisionProfile
+from modules.enemy_behavior import BehaviorProfile
 from modules.graphics import load_image, load_projectile_image, scale_sprite
 from modules.audio import SOUNDS
 
@@ -79,6 +80,8 @@ class BolbuEnemy(NormalEnemy):
     # behaviour remains unchanged in the first observation-only slice.
     SIGHT_PROFILE = VisionProfile(radius_cells=6, fov_degrees=360,
                                   memory_seconds=2.0, scan_interval=0.15)
+    # A ranged sentry in the opt-in preview; existing dice attacks persist.
+    BEHAVIOR_PROFILE = BehaviorProfile(visible_action="GUARD")
     SHOOT_COOLDOWN = BOLBU_SHOOT_COOLDOWN_SECONDS
     DICE_COOLDOWN = 5
 
