@@ -21,7 +21,7 @@ from modules.game_over_visual import DarkAbyssGameOver, tombstone_scene_layout
 from modules.tombstone_reward_visual import (
     ASPECT, EPITAPH_IMAGE, HOLD_SECONDS as TOMB_HOLD,
     FADE_SECONDS as TOMB_FADE, TombstoneRewardPanel, INK_THEMES,
-    epitaph_ink,
+    epitaph_ink, career_rank_inscription,
 )
 from modules.resources import find_asset
 from modules.skin_inventory import skin_registry
@@ -350,3 +350,36 @@ def test_engraved_palette_is_not_rerolled_every_frame():
                    rect=rect, now=tick, sequence=1)
         assert panel._base is first
         assert panel.last_ink_theme == ink
+
+
+
+@pytest.mark.parametrize("width", [350, 420, 490, 545])
+def test_gravestone_xp_gauge_is_narrower_thicker_and_clear_of_the_text(width):
+    panel = TombstoneRewardPanel()
+    height = round(width * ASPECT)
+    result = CareerCeremony(4, 5, 376, 5305, 7500, "none")
+    canvas = pygame.Surface((width, height), pygame.SRCALPHA)
+    panel.draw(canvas, career=result, warning=False,
+               rect=pygame.Rect(0, 0, width, height), now=10, sequence=1)
+    progress = panel.last_slots["progress"]
+    plate = panel.last_slots["xp_bar"]
+    assert plate.centerx == width // 2
+    assert 0.43 * width < plate.width < 0.50 * width
+    assert plate.height >= 15  # 7+ px fill plus engraved frame
+    assert progress.bottom + 5 <= plate.top
+    assert plate.bottom < round(height * .85)  # Above skulls
+    assert plate.left > round(width * .2)
+    assert plate.right < round(width * .8)
+
+
+@pytest.mark.parametrize("before,after,earned,expected", [
+    (5, 5, 0, "RANG 5  ·  +0 XP"),
+    (4, 5, 376, "RANG 4 AUF 5  ·  +376 XP"),
+    (5, 5, 123456, "RANG 5  ·  +123.456 XP"),
+])
+def test_gothic_rank_inscription_uses_words_instead_of_missing_arrow_glyph(
+        before, after, earned, expected):
+    result = CareerCeremony(before, after, earned, max(7500, earned),
+                            12000, "none")
+    assert career_rank_inscription(result) == expected
+    assert "→" not in career_rank_inscription(result)
