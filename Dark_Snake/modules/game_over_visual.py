@@ -11,6 +11,7 @@ import pygame
 
 from modules.resources import find_asset
 from modules.career_reward_visual import MysticRewardPanel, PANEL_HEIGHT
+from modules.tombstone_reward_visual import TombstoneRewardPanel, portrait_size
 
 LOGGER = logging.getLogger(__name__)
 ABYSS_IMAGE = ("graphics", "game_over", "dark_abyss.png")
@@ -43,6 +44,30 @@ def load_rites():
     except (OSError, ValueError, TypeError) as exc:
         LOGGER.warning("Game Over rites unavailable; using fallback: %s", exc)
         return RITE_FALLBACK
+
+
+def tombstone_scene_layout(size):
+    """Side-by-side: full-size engraved reward and untouched stats/input area.
+
+    Smaller windows intentionally retain the earlier compact layout. The
+    portrait never overlaps the 700px stats panel, name field or action buttons.
+    """
+    width, height = size
+    if width < 1180 or height < 820:
+        return None
+    panel_width = 700
+    gap = 30
+    stone_width, stone_height = portrait_size(
+        width - panel_width - gap - 40, height - 112,
+    )
+    if stone_width < 350:
+        return None
+    group_width = panel_width + gap + stone_width
+    left = (width - group_width) // 2
+    stone_rect = pygame.Rect(left + panel_width + gap,
+                             (height - stone_height) // 2,
+                             stone_width, stone_height)
+    return left, panel_width, stone_rect
 
 
 def choose_rite(rites, *, score, level, foes, relics, bosses, players):
@@ -81,7 +106,8 @@ class DarkAbyssGameOver:
         self._career_card_key = None
         self._career_card_cache = None
         self._reward_images = {}
-        self._mystic_reward = MysticRewardPanel()
+        self._mystic_reward = MysticRewardPanel()  # Medium-window fallback.
+        self._tombstone_reward = TombstoneRewardPanel()
         self._cached_rite_key = None
         self._cached_rite_surface = None
 
@@ -153,10 +179,12 @@ class DarkAbyssGameOver:
             label = self._font_button.render(btn.text, True, FROST)
             surface.blit(label, label.get_rect(center=btn.rect.center))
 
-    def _draw_name_input(self, surface, *, name, width, top, clock_time):
-        x = (surface.get_width() - width) // 2
+    def _draw_name_input(self, surface, *, name, width, top, clock_time,
+                         center_x=None):
+        center_x = surface.get_width() // 2 if center_x is None else center_x
+        x = center_x - width // 2
         label = self._font_kicker.render("EINTRAG INS TOTENBUCH  ·  NAME", True, FROST)
-        self._blit_center(surface, label, surface.get_width() // 2, top)
+        self._blit_center(surface, label, center_x, top)
         rect = pygame.Rect(x + 90, top + 30, width - 180, 51)
         pygame.draw.rect(surface, (6, 14, 29), rect, border_radius=7)
         pygame.draw.rect(surface, (117, 180, 200), rect, 2, border_radius=7)
@@ -250,11 +278,13 @@ class DarkAbyssGameOver:
         width, height = surface.get_size()
         surface.blit(self._image_for((width, height)), (0, 0))
         # The title sits high so the luminous falling abyss remains visible below.
-        panel_width = min(700, width - 40)
-        left = (width - panel_width) // 2
+        scene = (tombstone_scene_layout((width, height))
+                 if career is not None or career_warning else None)
+        panel_width = scene[1] if scene is not None else min(700, width - 40)
+        left = scene[0] if scene is not None else (width - panel_width) // 2
         top = max(20, int(height * 0.057))
         surface.blit(self._panel_for(panel_width), (left, top))
-        center_x = width // 2
+        center_x = left + panel_width // 2
 
         kicker = self._font_kicker.render("DARK SNAKE   /   THE LAST RITE", True, FROST)
         self._blit_center(surface, kicker, center_x, top + 19)
@@ -306,26 +336,33 @@ class DarkAbyssGameOver:
 
         if highscore_entry:
             self._draw_name_input(surface, name=name_input, width=panel_width,
-                                  top=top + 450, clock_time=now)
+                                  top=top + 450, clock_time=now, center_x=center_x)
         else:
             self._draw_buttons(surface, buttons)
 
         if career is not None or career_warning:
-            reward_width = min(742, width - 52)
-            reward_top = top + 564
-            if reward_top + PANEL_HEIGHT + 17 <= height:
-                reward_rect = pygame.Rect(
-                    (width - reward_width) // 2, reward_top,
-                    reward_width, PANEL_HEIGHT,
-                )
-                self._mystic_reward.draw(
+            if scene is not None:
+                # Gothic portrait is next to the original Game Over summary,
+                # never squeezed below the name entry at 1350×930.
+                self._tombstone_reward.draw(
                     surface, career=career, warning=career_warning,
-                    rect=reward_rect, now=now, sequence=reward_sequence,
+                    rect=scene[2], now=now, sequence=reward_sequence,
                 )
             else:
-                # At 900×620 there is not enough space below the name box.
-                # Preserve an unobstructed, legible compact XP card instead
-                # of overlaying the entry field or the actual game buttons.
-                surface.blit(self._career_card(
-                    panel_width, career, career_warning
-                ), (left + 28, top + 350))
+                reward_width = min(742, width - 52)
+                reward_top = top + 564
+                if reward_top + PANEL_HEIGHT + 17 <= height:
+                    reward_rect = pygame.Rect(
+                        (width - reward_width) // 2, reward_top,
+                        reward_width, PANEL_HEIGHT,
+                    )
+                    self._mystic_reward.draw(
+                        surface, career=career, warning=career_warning,
+                        rect=reward_rect, now=now, sequence=reward_sequence,
+                    )
+                else:
+                    # At 900×620 there is not enough space below the name box.
+                    # Preserve an unobstructed compact XP card instead.
+                    surface.blit(self._career_card(
+                        panel_width, career, career_warning
+                    ), (left + 28, top + 350))

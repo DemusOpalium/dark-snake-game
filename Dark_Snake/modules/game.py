@@ -2645,6 +2645,25 @@ class Game:
         """Abyss farewell, preserving leaderboard input and existing button actions."""
         if self._game_over_visual is None:
             self._game_over_visual = DarkAbyssGameOver()
+        # The reward stone occupies the right half of large windows. Move the
+        # two real clickable buttons (not just their painted labels) into the
+        # left summary column. Restore their usual positions when no stone
+        # is shown; no changes to Button callbacks or keyboard navigation.
+        from modules.game_over_visual import tombstone_scene_layout
+        award_or_warning = (self.round_career_result is not None
+                            or (self._round_token is not None
+                                and self._record_completed_rounds))
+        scene = (tombstone_scene_layout(self.screen.get_size())
+                 if award_or_warning else None)
+        if scene is None:
+            button_positions = (WINDOW_WIDTH // 2 - 228,
+                                WINDOW_WIDTH // 2 + 16)
+        else:
+            left, panel_width, _ = scene
+            first_x = left + (panel_width - 2 * 212 - 24) // 2
+            button_positions = (first_x, first_x + 236)
+        for button, x in zip(self.game_over_buttons, button_positions):
+            button.rect.topleft = (x, 520)
         self._game_over_visual.draw(
             self.screen,
             score=self.score,
