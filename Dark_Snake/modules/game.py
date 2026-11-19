@@ -47,6 +47,7 @@ from modules.roof_settings import RoofVisibility
 from modules.studio_locale import DEFAULT_STUDIO_LANGUAGE, normalize_studio_language
 from modules.customization import CustomizationMenu
 from modules.enemies import NormalEnemy
+from modules.boss_medusa import MedusaEyes, medusa_step
 from modules.bolbu_enemy import BolbuEnemy
 from modules.options_menu import OptionsMenu, ExtendedOptionsMenu
 from modules.admin_panel import AdminPanel
@@ -161,6 +162,10 @@ class Boss:
         self._visual_to = (self.x, self.y)
         self._visual_step_start = self.last_move
         self.chase_speed = 0.5
+        self.eyes = MedusaEyes()
+        self.ai_preview = False
+        self.facing = (1, 0)
+        self.navigation_blockers = frozenset()
         self.attack_mode = "normal"
         self.spawn_time = time.time()  # Zeitpunkt des Spawns
         boss_files = ["Boss-AlexG60.png", "Boss-BolgiG60.png", "Boss-DemusG60.png",
@@ -228,14 +233,35 @@ class Boss:
         self.aoe_effect = None
         self.announcement = "Boss Down Easy Going !!"
 
+    def set_ai_preview(self, enabled):
+        """KI-Test only; resets all Medusa information on switch-off."""
+        enabled = bool(enabled)
+        if enabled != self.ai_preview:
+            self.ai_preview = enabled
+            self.eyes.reset()
+
     def update(self, current_time):
         if current_time - self.last_move >= self.chase_speed:
             previous_visual = self._visual_position(current_time)
             self.last_move = current_time
-            self.x += random.choice([-1, 0, 1])
-            self.y += random.choice([-1, 0, 1])
+            step = None
+            if self.ai_preview and self.eyes.reading.actionable:
+                step = medusa_step(
+                    (self.x, self.y), self.size,
+                    self.eyes.reading.predicted_cell,
+                    self.navigation_blockers, (GRID_WIDTH, GRID_HEIGHT),
+                )
+            if step is None:
+                # Classic and unsighted bosses keep the original random walk.
+                dx, dy = random.choice([-1, 0, 1]), random.choice([-1, 0, 1])
+            else:
+                dx, dy = step
+            self.x += dx
+            self.y += dy
             self.x = max(0, min(self.x, GRID_WIDTH - self.size))
             self.y = max(0, min(self.y, GRID_HEIGHT - self.size))
+            if (dx, dy) != (0, 0):
+                self.facing = (dx, dy)
             self._visual_from = previous_visual
             self._visual_to = (self.x, self.y)
             self._visual_step_start = current_time
@@ -335,6 +361,7 @@ class Boss2(Boss):
         self.health = int(base_health * health_multiplier)
         self.speed = 1 + level * 0.25 + random.uniform(0, 0.5)
         self.chase_speed = 0.4
+        self.eyes = MedusaEyes(heavy=True)
         self.attack_mode = "shield"
         self.spawn_time = time.time()
         boss_files = ["Boss-AlexG60.png", "Boss-BolgiG60.png", "Boss-DemusG60.png",
@@ -1554,6 +1581,20 @@ class Game:
             + ([(2, self.snake2[0])] if self.snake2 else [])
             if self.player_count == 2 else []
         )
+        # Boss Medusa Eyes uses the same real 1P/2P heads and authored
+        # occlusion map as NormalEnemy, but only while KI-Test is enabled.
+        # Neither attacks nor boss step cadence change outside this pilot.
+        if isinstance(self.boss, Boss):
+            self.boss.set_ai_preview(self.enemy_ai_preview)
+            self.boss.navigation_blockers = self._vision_blockers
+            if self.enemy_ai_preview:
+                eye_origin = (self.boss.x + self.boss.size // 2,
+                              self.boss.y + self.boss.size // 2)
+                self.boss.eyes.observe(
+                    eye_origin, self.boss.facing, sight_targets,
+                    self._vision_blockers, current_time,
+                    (GRID_WIDTH, GRID_HEIGHT),
+                )
         for enemy in self.enemies:
             if isinstance(enemy, NormalEnemy) and hasattr(enemy, "eyes"):
                 # Sample first so pursuit reacts on this movement tick.
@@ -2508,6 +2549,37 @@ class Game:
     def draw_intro(self):
         self.main_menu.draw(self.screen)
 
+    def _draw_boss_medusa_debug(self, boss):
+        """Developer-only: visible/sensed target and persistent remote eyes."""
+        if not self.enemy_ai_preview or not boss.ai_preview:
+            return
+        origin = (boss.x + boss.size // 2, boss.y + boss.size // 2)
+        center = (round((origin[0] + .5) * GRID_SIZE),
+                  round((origin[1] + .5) * GRID_SIZE))
+        reading = boss.eyes.reading
+        color = ((220, 135, 235) if reading.kind == "VISIBLE"
+                 else (115, 206, 255) if reading.kind == "RELAY"
+                 else (166, 154, 188))
+        pygame.draw.circle(
+            self.screen, color, center,
+            round(boss.eyes.profile.radius_cells * GRID_SIZE), 1,
+        )
+        if reading.last_known_cell is not None:
+            target = (round((reading.last_known_cell[0] + .5) * GRID_SIZE),
+                      round((reading.last_known_cell[1] + .5) * GRID_SIZE))
+            pygame.draw.line(self.screen, color, center, target, 1)
+        if reading.predicted_cell is not None and reading.kind == "VISIBLE":
+            p = reading.predicted_cell
+            pygame.draw.circle(self.screen, (230, 190, 135),
+                               (round((p[0] + .5) * GRID_SIZE),
+                                round((p[1] + .5) * GRID_SIZE)), 4, 1)
+        for eye in boss.eyes.remote:
+            eye_pos = (round((eye.cell[0] + .5) * GRID_SIZE),
+                       round((eye.cell[1] + .5) * GRID_SIZE))
+            pygame.draw.circle(self.screen, (115, 206, 255), eye_pos,
+                               round(4 * GRID_SIZE), 1)
+            pygame.draw.circle(self.screen, (215, 225, 255), eye_pos, 5, 2)
+
     def _draw_enemy_sight_debug(self, enemy):
         """Visualise sensed targets without affecting runtime AI or hitboxes."""
         sensor = enemy.eyes
@@ -2680,6 +2752,8 @@ class Game:
                     # Existing hitbox developer toggle doubles as an eyes
                     # debugger: radius, facing wedge, detected/last-seen head.
                     self._draw_enemy_sight_debug(e)
+            if isinstance(self.boss, Boss):
+                self._draw_boss_medusa_debug(self.boss)
             for item in self.items:
                 pygame.draw.rect(self.screen, item_color, item.get_hitbox(), 2)
             # projectiles
