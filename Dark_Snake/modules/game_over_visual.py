@@ -67,8 +67,10 @@ def tombstone_scene_layout(size):
     )
     if stone_width < 350:
         return None
+    # Ground the skull-carved foot precisely at the screen's lower edge.
+    # The PNG itself remains fully visible and keeps its 2:3 aspect ratio.
     stone_rect = pygame.Rect(left + panel_width + gap,
-                             (height - stone_height) // 2,
+                             height - stone_height,
                              stone_width, stone_height)
     return left, panel_width, stone_rect
 
