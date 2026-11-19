@@ -68,7 +68,7 @@ def test_full_size_tombstone_is_beside_stats_not_over_name_or_buttons(highscore,
     assert stone.last_rect == expected_rect
     assert stone.last_rect.left >= left + panel_width + 30
     assert stone.last_rect.right <= size[0]
-    assert stone.last_rect.bottom < size[1]
+    assert stone.last_rect.bottom == size[1]  # Skull pedestal meets abyss floor.
     assert abs(stone.last_rect.height / stone.last_rect.width - ASPECT) <= .004
     assert stone.last_slots["icon"].centery < stone.last_slots["title"].top
     assert stone.last_slots["title"].bottom < stone.last_slots["reason"].top
