@@ -11,7 +11,30 @@ from modules.projectile_config import (
 )
 from math import atan2, degrees
 
-class BossProjectile:
+
+class _PreciseBossShot:
+    """Keep fractional pixel movement; pygame.Rect coordinates are integers."""
+
+    def _setup_motion(self):
+        if self.speed and self.direction[0] == 0 and self.direction[1] == 0:
+            # Direct callers must not spawn a forever-stationary projectile.
+            self.direction = (1, 0)
+        self._precise_x = float(self.rect.x)
+        self._precise_y = float(self.rect.y)
+
+    def _advance_motion(self):
+        # Allow tests/external effects to reposition a rect intentionally.
+        if (self.rect.x != round(self._precise_x)
+                or self.rect.y != round(self._precise_y)):
+            self._precise_x = float(self.rect.x)
+            self._precise_y = float(self.rect.y)
+        self._precise_x += self.speed * self.direction[0]
+        self._precise_y += self.speed * self.direction[1]
+        self.rect.x = round(self._precise_x)
+        self.rect.y = round(self._precise_y)
+
+
+class BossProjectile(_PreciseBossShot):
     """
     Allgemeines Boss-Projektil mit Richtung, Bild, Geschwindigkeit und optionaler Explosion.
     """
@@ -28,10 +51,10 @@ class BossProjectile:
         angle = degrees(atan2(-self.direction[1], self.direction[0]))
         self.image = pygame.transform.rotate(self.image_orig, angle)
         self.rect = self.image.get_rect(center=(x, y))
+        self._setup_motion()
 
     def update(self):
-        self.rect.x += self.speed * self.direction[0]
-        self.rect.y += self.speed * self.direction[1]
+        self._advance_motion()
         self.lifetime -= 1
         return self.lifetime > 0 and self.is_on_screen()
 
@@ -47,7 +70,7 @@ class BossProjectile:
 
 
 
-class BossFlameProjectile:
+class BossFlameProjectile(_PreciseBossShot):
     """
     Projektil speziell für den Boss – explodiert bei Treffer auf Spieler mit visuellem Effekt.
     """
@@ -65,6 +88,7 @@ class BossFlameProjectile:
         angle = degrees(atan2(-direction[1], direction[0]))
         self.image = pygame.transform.rotate(self.image_orig, angle)
         self.rect = self.image.get_rect(center=(x, y))
+        self._setup_motion()
 
         # DEBUG
         print(f"[BOSS-FLAME] 🔥 Neues BossFlameProjectile gespawnt: Pos=({x},{y}), Dir={direction}, DMG={damage}")
@@ -75,8 +99,7 @@ class BossFlameProjectile:
         pygame.draw.circle(self.spawn_flash_surface, (255, 120, 0, 100), (45, 45), 40)
 
     def update(self):
-        self.rect.x += self.speed * self.direction[0]
-        self.rect.y += self.speed * self.direction[1]
+        self._advance_motion()
         self.lifetime -= 1
         return self.lifetime > 0 and self.is_on_screen()
 
