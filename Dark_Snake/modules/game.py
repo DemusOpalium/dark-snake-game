@@ -878,6 +878,7 @@ class Game:
             self.boss.tactics.cancel(time.time())
             self.boss.defense.cancel()
             self.boss.cancel_swipe(time.time())
+            self.boss.cancel_teleport(time.time())
             self.boss.phases.cancel_warning()
         self.level_editor.toggle()
 
@@ -1041,6 +1042,7 @@ class Game:
                 self.boss.tactics.cancel(time.time())
                 self.boss.defense.cancel()
                 self.boss.cancel_swipe(time.time())
+                self.boss.cancel_teleport(time.time())
                 self.boss.phases.cancel_warning()
             self._paused_state = previous
             self.metrics.cancel_pending()
@@ -1081,6 +1083,7 @@ class Game:
                 self.boss.tactics.cancel(time.time())
                 self.boss.defense.cancel()
                 self.boss.cancel_swipe(time.time())
+                self.boss.cancel_teleport(time.time())
                 self.boss.phases.cancel_warning()
             self.admin_panel.toggle()
 
@@ -2069,6 +2072,7 @@ class Game:
                 self.boss.tactics.cancel(time.time())
                 self.boss.defense.cancel()
                 self.boss.cancel_swipe(time.time())
+                self.boss.cancel_teleport(time.time())
                 self.boss.phases.cancel_warning()
             return
         if not self._gameplay_active():
@@ -2076,6 +2080,7 @@ class Game:
                 self.boss.tactics.cancel(time.time())
                 self.boss.defense.cancel()
                 self.boss.cancel_swipe(time.time())
+                self.boss.cancel_teleport(time.time())
                 self.boss.phases.cancel_warning()
             self._stall_clock_sample = None
             return
@@ -2587,6 +2592,7 @@ class Game:
             self.boss.tactics.cancel(now)
             self.boss.defense.cancel()
             self.boss.cancel_swipe(now)
+            self.boss.cancel_teleport(now)
             self.boss.phases.cancel_warning()
         self._respawn_recent = True
         self.respawn_invincible_until = now + RESPAWN_SECONDS + POST_RESPAWN_PROTECTION
