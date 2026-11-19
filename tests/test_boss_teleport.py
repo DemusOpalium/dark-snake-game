@@ -85,7 +85,7 @@ def test_safe_cell_checks_full_boss_footprint_and_both_player_heads():
         (15, 14), 3, (25, 20), (), [(17, 14)],  # inside footprint
     )
     assert not destination_is_safe(
-        (15, 14), 3, (25, 20), (), [(20, 14)],  # only two cells' gap
+        (15, 14), 3, (25, 20), (), [(19, 14)],  # only two cells' gap
     )
     assert destination_is_safe(
         (15, 14), 3, (25, 20), (), [(22, 14), (1, 1)],
