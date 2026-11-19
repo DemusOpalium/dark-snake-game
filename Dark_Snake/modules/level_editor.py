@@ -1020,7 +1020,8 @@ class LevelEditor:
             return
         name = self._display_name()
         self.game.choose_classic_background(name, self.map, roof_objects=self.roofs,
-                                            roof_visibility=self.roof_visibility)
+                                            roof_visibility=self.roof_visibility,
+                                            collisions=self.collisions)
         self.info = self.tr("{name} für den nächsten Classic-Start gewählt", name=name)
 
     def select_classic_default(self):
