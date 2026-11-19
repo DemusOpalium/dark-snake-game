@@ -1,5 +1,37 @@
 # DARK SNAKE – Windows-Boss-Teleport-Spieltest, 19.11.2026
 
+## Ergänzung: Spielerabnahme Boss Rift Search B
+
+- **PR #242 Boss Teleport A:** gemergt und im Windows-Spieltest visuell
+  erfolgreich (schwarze Bodenlöcher, sink/emerge, Verlagerung).
+- **PR #243 Wächter Rift Search B:** gemergt; Demus hat die
+  Ganzkarten-Suche, den Schatten-/Tunneleffekt und das Auftauchen
+  im Spiel bewusst getestet und als **gut spielbar** bestätigt.
+  Seine Einstufung: **Tunnel-Fertigkeit auf Beta-Niveau**, nicht
+  das gesamte Spiel auf Beta-Release-Level hochstufen.
+- **Abnahmeentscheidung:** Beide Fertigkeiten als spielerisch
+  akzeptiert markieren, ohne derzeit neue Balance- oder Effekt-
+  Umbauten vorzunehmen.
+- **Restbeobachtung:** Manchmal abgebrochener Ortswechsel.
+  Die aktuelle Sicherheitslogik kann das absichtlich auslösen,
+  wenn sich während der Ankunftsvorwarnung ein Objekt in die
+  Landefläche bewegt. Keine verifizierte Fehlfunktion, aber
+  künftige 1P-/2P-Langzeittests sollten den Abbruchgrund aus
+  dem Kampfereignislog, die Framerate sowie die optische
+  Ankunfts-/Hitbox-Synchronität bei Bedarf prüfen.
+- **Technischer Audit (kein unmittelbarer Fix):** Zielwahl und
+  AoE-Kollisionsmaske werden nur bei Teleportversuchen berechnet.
+  Der globale Suchring ist ein weiterer reiner Render-Effekt.
+  Erst mit Framezeit-Messungen entscheiden, ob eine Optimierung
+  sinnvoll wird; aktuell keine spürbaren Probleme gemeldet.
+- **Aktueller `main`:** Windows Alpha 2, CodeQL und Pages grün.
+  Manuelle 2P-Validierung bleibt offen.
+- **Nächster Roadmap-Fokus:** FrostAge-Gegner als isolierter,
+  weltgebundener Vertikalschnitt; bestehende Teleports, Bossphase,
+  Boss-HP und Auto-Shoot nicht anfassen.
+
+---
+
 ## Spielerrückmeldung
 - **Boss Teleport A / schwarze Bodenlöcher** sehen gut aus und
   funktionieren im realen Windows-Test mit etwa drei gezielt
@@ -51,7 +83,7 @@ Trefferzahlen oder individuellen Bosskampfzeiten. Der visuelle
 Teleport-Test ist daher durch die direkte Spielerrückmeldung,
 nicht durch diese JSON-Dateien, bestätigt.
 
-## Verbesserungen in separatem Draft-PR
+## Verbesserungen aus PR #243 (inzwischen gemergt)
 1. **Wächter Phase III:** 1,45 s sichtbar über die ganze Karte
    wandernder Suchkreis aus schwarzem Loch, auch ohne lokale Sicht.
    Andere Boss-Typen und Wächter Phase II bleiben an ihre normale
@@ -65,7 +97,7 @@ nicht durch diese JSON-Dateien, bestätigt.
 4. Vorhandene Regeln erhalten: feste Sprites, Boss-HP,
    Projektilschaden, Snake-Kollision und Teleport-Sicherheitsmasken.
 
-### QA vor Freigabe
+### Ursprünglicher QA-Plan (erste Spielerabnahme erfüllt)
 Admin-KI-Test aktiviert, Level 3 Wächter in Phase III (<35 % HP)
 bringen, Kopf weit vom Boss wegbewegen: globaler Ring, Suchdauer,
 aktuelle Kopfposition und zusätzliche Lande-Vorwarnung prüfen.
