@@ -6,9 +6,7 @@ Only the existing admin KI-Test switch activates this pilot in Classic.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from math import hypot
-
-from modules.enemy_vision import VisionProfile, VisionResult, VisionSensor
+from modules.enemy_vision import VisionProfile, VisionSensor
 
 BOSS_SIGHT = VisionProfile(
     radius_cells=9, fov_degrees=220, alert_radius_cells=14,
@@ -91,7 +89,7 @@ class MedusaEyes:
 
     MAX_EYES = 2
     EYE_DURATION = 9.
-    EYE_COOLDOWN = 9.
+    EYE_COOLDOWN = 3.5
 
     def __init__(self, *, heavy=False):
         self.profile = BOSS2_SIGHT if heavy else BOSS_SIGHT
