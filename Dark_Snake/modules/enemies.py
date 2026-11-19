@@ -10,6 +10,10 @@ from modules.enemy_behavior import (
 
 class NormalEnemy:
     GLIDE_SECONDS = 0.12
+    # KI-Test only: spend most of the actual movement interval gliding,
+    # instead of visibly jumping after 120ms then waiting at a still frame.
+    # Legacy Classic keeps GLIDE_SECONDS unchanged.
+    KI_GLIDE_FRACTION = .9
     # An observation only: existing random walk and sprint probability are
     # unchanged until a separately reviewed behaviour PR connects signals.
     SIGHT_PROFILE = VisionProfile(radius_cells=5, fov_degrees=100,
@@ -110,6 +114,11 @@ class NormalEnemy:
         current_speed *= movement_factor
         interval = 1.0 / current_speed
         if current_time - self.last_move >= interval:
+            # When alert/search tempo changes, the next step may begin before
+            # the previous glide finishes. Continue from the *drawn* position
+            # rather than snapping back to the previous logical grid cell.
+            render_start = (self._interpolated_grid_position()
+                            if self.behavior_enabled else (self.x, self.y))
             self.last_move = current_time
             if self.sprint_active:
                 dx, dy = self.sprint_dir
@@ -141,7 +150,7 @@ class NormalEnemy:
                     (self.x, self.y), (dx, dy), self.navigation_blockers,
                     (GRID_WIDTH, GRID_HEIGHT)):
                 dx = dy = 0
-            self._render_start = (self.x, self.y)
+            self._render_start = render_start
             self.x = max(0, min(self.x + dx, GRID_WIDTH - 1))
             self.y = max(0, min(self.y + dy, GRID_HEIGHT - 1))
             # Use actual movement rather than a speculative/random facing.
@@ -150,7 +159,10 @@ class NormalEnemy:
             if direction != (0, 0):
                 self.facing = direction
             self._render_target = (self.x, self.y)
-            self._glide_duration = min(self.GLIDE_SECONDS, interval)
+            self._glide_duration = (
+                interval * self.KI_GLIDE_FRACTION if self.behavior_enabled
+                else min(self.GLIDE_SECONDS, interval)
+            )
         if self.sprint_active and current_time >= self.sprint_end_time:
             self.sprint_active = False
 
@@ -161,15 +173,25 @@ class NormalEnemy:
         else:
             pygame.draw.rect(screen, RED, rect)
 
-    def get_render_rect(self):
-        # Sample once per update so the sprite and collision queries agree in a frame.
+    def _interpolated_grid_position(self):
+        """Return the per-frame displayed position in grid units.
+
+        The authoritative enemy grid cell stays integral. Both sprite and
+        collision rectangle use the same sample; this is not a second AI.
+        """
         x, y = self.x, self.y
         elapsed = self._frame_time - self.last_move
         if self._render_target == (x, y) and 0 <= elapsed < self._glide_duration:
             alpha = elapsed / self._glide_duration
             start_x, start_y = self._render_start
             x, y = start_x + (x - start_x) * alpha, start_y + (y - start_y) * alpha
-        return pygame.Rect(round(x * GRID_SIZE), round(y * GRID_SIZE), self.width, self.height)
+        return x, y
+
+    def get_render_rect(self):
+        # One simulation frame-time feeds both sprite and collision queries.
+        x, y = self._interpolated_grid_position()
+        return pygame.Rect(round(x * GRID_SIZE), round(y * GRID_SIZE),
+                           self.width, self.height)
 
     def get_hitbox(self):
         """Rectangular collision area matching the scaled enemy sprite."""
