@@ -15,6 +15,30 @@
 
 ---
 
+## 🧪 Classic-Bugfix: feste Schlangenkörper + Auto-Shoot-Pickup (19.11.2026)
+
+- 🔧 **1P/2P-Schlangenkörper immer blockierend** – Schild durch
+  Respawn oder Invincibility-Item schützt vor Fremdschaden, macht
+  Körperzellen aber nicht mehr durchlässig. Tail-Freigabe bleibt nur
+  beim tatsächlichen Verkürzen am selben Zug erlaubt; bei Food und
+  jedem anderen Item auf der Zielzelle bleibt der Tail besetzt.
+  AoE/andere Objekte ändern die Körperkollision nicht. Bestehender
+  3-s-Blockade-/Self-Stall-Timer bleibt erhalten.
+- 🔧 **Boss-Pickup aktiviert Auto-Shoot tatsächlich wieder** –
+  langsamere Projektile werden nicht mehr am eigenen Schlangenkopf
+  als vermeintliche feindliche Treffer gelöscht. Pickup schießt ab
+  dem nächsten spielbaren Update; vorhandenes Multishot-Stacking
+  (bis 6 Extras) bleibt, Zielauswahl berücksichtigt auch den Boss.
+  Ein Spielerprojektil trifft einen normalen Gegner nur einmal;
+  feindliche Bossprojektile treffen keine Gegner.
+- 🧪 **Regressionsschutz** – 1P/2P, Invincibility-Item und
+  Respawn-Schutz, Item/AoE auf belegten Körperzellen, Auto-Shoot
+  beim Boss-Spawn, echte Projektilschritte, einmaliger Gegnertreffer.
+- ⏳ **Merge-Gate** – Windows Alpha 2/CodeQL + Demus-Windows-Spieltest;
+  Boss Phases A bleibt erhalten, World Studio unverändert.
+
+---
+
 ## 🐍 Boss Intelligence 2.0 · Arbeitsstand 19.11.2026
 
 - ✅ **Enemy Vision D (#228)** und **Smooth Movement A (#229)** – schnellere,
