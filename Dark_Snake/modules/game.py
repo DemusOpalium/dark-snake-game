@@ -833,6 +833,7 @@ class Game:
             self.boss.tactics.cancel(time.time())
             self.boss.defense.cancel()
             self.boss.cancel_swipe(time.time())
+            self.boss.phases.cancel_warning()
         self.level_editor.toggle()
 
     def _set_editor_window(self, entering):
@@ -995,6 +996,7 @@ class Game:
                 self.boss.tactics.cancel(time.time())
                 self.boss.defense.cancel()
                 self.boss.cancel_swipe(time.time())
+                self.boss.phases.cancel_warning()
             self._paused_state = previous
             self.metrics.cancel_pending()
         self.game_state = state
@@ -1034,6 +1036,7 @@ class Game:
                 self.boss.tactics.cancel(time.time())
                 self.boss.defense.cancel()
                 self.boss.cancel_swipe(time.time())
+                self.boss.phases.cancel_warning()
             self.admin_panel.toggle()
 
     def reset_game(self):
@@ -1864,12 +1867,14 @@ class Game:
                 self.boss.tactics.cancel(time.time())
                 self.boss.defense.cancel()
                 self.boss.cancel_swipe(time.time())
+                self.boss.phases.cancel_warning()
             return
         if not self._gameplay_active():
             if isinstance(self.boss, Boss):
                 self.boss.tactics.cancel(time.time())
                 self.boss.defense.cancel()
                 self.boss.cancel_swipe(time.time())
+                self.boss.phases.cancel_warning()
             self._stall_clock_sample = None
             return
         current_time = time.time()
@@ -2364,6 +2369,7 @@ class Game:
             self.boss.tactics.cancel(now)
             self.boss.defense.cancel()
             self.boss.cancel_swipe(now)
+            self.boss.phases.cancel_warning()
         self._respawn_recent = True
         self.respawn_invincible_until = now + RESPAWN_SECONDS + POST_RESPAWN_PROTECTION
         self._effect_update_time = time.monotonic()
