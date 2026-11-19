@@ -78,6 +78,9 @@ def test_ai_speed_switch_does_not_snap_sprite_back_to_previous_cell(monkeypatch)
     e.update()
     assert e.x == 6
     clock[0] += .31  # old half-second glide has not yet finished
+    # Advance the normal render frame before changing tempo: merely moving
+    # the mocked wall-clock must not update _frame_time behind the renderer.
+    e.update()
     # The next movement interval drops to ~.28s, so a new step is due.
     e.behavior_profile = BehaviorProfile("CHASE", chase_speed=2)
     before = e.get_render_rect().x
