@@ -193,3 +193,84 @@ def test_debug_eye_range_and_last_seen_marker_draw_on_headless_surface():
     game._draw_enemy_sight_debug(enemy)
     target = (8 * GRID_SIZE + GRID_SIZE // 2, 5 * GRID_SIZE + GRID_SIZE // 2)
     assert game.screen.get_at(target)[:3] != (0, 0, 0)
+
+
+
+@pytest.mark.parametrize("kwargs", [
+    {"alert_radius_cells": 4},
+    {"alert_radius_cells": 101},
+    {"reaction_seconds": -0.01},
+    {"reaction_seconds": 10.01},
+])
+def test_two_zone_profile_refuses_invalid_ranges_and_times(kwargs):
+    with pytest.raises(ValueError):
+        VisionProfile(radius_cells=5, **kwargs)
+
+
+def test_two_radius_sight_requires_confirmation_then_holds_farther_contact():
+    profile = VisionProfile(radius_cells=5, fov_degrees=90,
+                            reaction_seconds=.25, alert_radius_cells=11,
+                            scan_interval=.1, memory_seconds=2)
+    eyes = VisionSensor(profile)
+    assert eyes.observe((5, 5), (1, 0), [(1, (9, 5))], (), now=0).kind == "UNAWARE"
+    assert eyes.candidate_player == 1
+    assert eyes.observe((5, 5), (1, 0), [(1, (9, 5))], (), now=.12).kind == "UNAWARE"
+    assert eyes.observe((5, 5), (1, 0), [(1, (9, 5))], (), now=.30).visible
+    assert eyes.candidate_player is None
+
+    # The head goes beyond 5 but stays in the alerted 11-cell zone.
+    far = eyes.observe((5, 5), (1, 0), [(1, (15, 5))], (), now=.45)
+    assert far.visible and far.last_known_cell == (15, 5)
+
+    # Even the extended radius never grants X-ray vision.
+    blocked = eyes.observe((5, 5), (1, 0), [(1, (15, 5))],
+                           {(8, 5)}, now=.6)
+    assert blocked.kind == "SEARCHING"
+    assert blocked.last_known_cell == (15, 5)
+    assert not blocked.visible
+
+    # Reacquiring a known player while alerted requires no new wake-up delay.
+    assert eyes.observe((5, 5), (1, 0), [(1, (15, 5))], (), now=.8).visible
+
+    # Once the player exceeds both radii for long enough, the sensor forgets.
+    assert eyes.observe((5, 5), (1, 0), [(1, (26, 5))], (), now=1).kind == "SEARCHING"
+    assert eyes.observe((5, 5), (1, 0), [(1, (26, 5))], (), now=3.1).kind == "UNAWARE"
+
+    # Now the faraway head cannot instantly re-acquire from the lost alert zone.
+    assert eyes.observe((5, 5), (1, 0), [(1, (15, 5))], (), now=3.3).kind == "UNAWARE"
+
+
+def test_first_acquisition_is_cancelled_if_the_head_leaves_line_of_sight():
+    eye = VisionSensor(VisionProfile(
+        radius_cells=5, fov_degrees=90, reaction_seconds=.25,
+        alert_radius_cells=10, scan_interval=.1,
+    ))
+    assert eye.observe((5, 5), (1, 0), [(1, (8, 5))], (), now=0).kind == "UNAWARE"
+    assert eye.candidate_player == 1
+    assert eye.observe((5, 5), (1, 0), [(1, (8, 5))], {(7, 5)}, now=.12).kind == "UNAWARE"
+    assert eye.candidate_player is None
+    assert eye.observe((5, 5), (1, 0), [(1, (8, 5))], (), now=.3).kind == "UNAWARE"
+    assert eye.observe((5, 5), (1, 0), [(1, (8, 5))], (), now=.43).kind == "UNAWARE"
+    assert eye.observe((5, 5), (1, 0), [(1, (8, 5))], (), now=.57).visible
+
+
+def test_delay_is_reset_on_target_switch_in_two_player_mode():
+    eye = VisionSensor(VisionProfile(
+        radius_cells=5, fov_degrees=360,
+        reaction_seconds=.3, scan_interval=.1,
+    ))
+    assert eye.observe((5, 5), (1, 0),
+                       [(1, (7, 5)), (2, (9, 5))], (), now=0).kind == "UNAWARE"
+    assert eye.candidate_player == 1
+    assert eye.observe((5, 5), (1, 0),
+                       [(1, (9, 5)), (2, (6, 5))], (), now=.15).kind == "UNAWARE"
+    assert eye.candidate_player == 2 and eye.candidate_since == .15
+    assert eye.observe((5, 5), (1, 0),
+                       [(1, (9, 5)), (2, (6, 5))], (), now=.46).target_player == 2
+
+
+def test_original_profiles_still_detect_instantly_without_extra_radius():
+    sensor = VisionSensor(VisionProfile(radius_cells=5, fov_degrees=360))
+    assert sensor.observe((5, 5), (1, 0), [(1, (9, 5))], (), now=0).visible
+    assert sensor.observe((5, 5), (1, 0), [(1, (12, 5))], (), now=.2).kind == "SEARCHING"
+    assert sensor.profile.alert_radius_cells is None
