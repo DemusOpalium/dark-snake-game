@@ -50,6 +50,7 @@ from modules.enemies import NormalEnemy
 from modules.boss_medusa import MedusaEyes, medusa_step
 from modules.boss_tactics import MedusaTactics
 from modules.boss_defense import IncomingShot, MedusaDefense
+from modules.boss_swipe import MedusaSwipe
 from modules.boss_tactics_visual import draw_medusa_volley
 from modules.bolbu_enemy import BolbuEnemy
 from modules.options_menu import OptionsMenu, ExtendedOptionsMenu
@@ -168,6 +169,7 @@ class Boss:
         self.eyes = MedusaEyes()
         self.tactics = MedusaTactics()
         self.defense = MedusaDefense()
+        self.swipe = MedusaSwipe()
         self.ai_preview = False
         self.facing = (1, 0)
         self.navigation_blockers = frozenset()
@@ -246,8 +248,30 @@ class Boss:
             self.eyes.reset()
             self.tactics.reset()
             self.defense.reset()
+            self.cancel_swipe(time.time())
+            self.swipe.reset()
+
+    def begin_swipe(self, action):
+        """Commit target cell, while collision and sprite follow the same swipe."""
+        self.x, self.y = action.destination
+        self._visual_from = self._visual_to = (self.x, self.y)
+        self._visual_step_start = action.began_at
+        self.last_move = action.began_at
+
+    def cancel_swipe(self, now):
+        """On pause/editor/respawn stop a half-finished movement safely."""
+        if self.swipe.active(now):
+            self._visual_from = self._visual_to = (self.x, self.y)
+            self._visual_step_start = now
+        self.swipe.cancel()
 
     def update(self, current_time):
+        if self.ai_preview and self.swipe.active(current_time):
+            # Never chain a normal grid step or fire a new boss attack mid-dodge.
+            self.last_move = current_time
+            if hasattr(self, 'frames') and self.frames:
+                self.update_animation(current_time)
+            return None
         if current_time - self.last_move >= self.chase_speed:
             previous_visual = self._visual_position(current_time)
             self.last_move = current_time
@@ -298,7 +322,9 @@ class Boss:
             self.last_frame_time = current_time
 
     def _visual_position(self, current_time):
-        """Smooth drawing only; the gameplay hitbox remains on the logical grid."""
+        """Normal glide is cosmetic; Swipe D uses the same pixels as collision."""
+        if self.ai_preview and self.swipe.active(current_time):
+            return self.swipe.action.position(current_time)
         start = self._visual_from
         end = self._visual_to
         duration = max(0.001, self.chase_speed * 0.9)
@@ -314,6 +340,23 @@ class Boss:
         else:
             pygame.draw.rect(screen, RED, (pixel_x, pixel_y,
                                            self.size * GRID_SIZE, self.size * GRID_SIZE))
+        # Swipe has a compact violet trail frame, distinct from the shield.
+        # Two pips above the health bar show the independent charged dodges.
+        if self.ai_preview:
+            swipe_now = time.time()
+            if self.swipe.active(swipe_now):
+                pygame.draw.rect(
+                    screen, (192, 133, 244),
+                    (pixel_x - 3, pixel_y - 3,
+                     self.size * GRID_SIZE + 6, self.size * GRID_SIZE + 6),
+                    2, border_radius=4,
+                )
+            for slot, charged_at in enumerate(self.swipe.ready_at):
+                pygame.draw.circle(
+                    screen,
+                    (164, 220, 255) if swipe_now >= charged_at else (85, 77, 107),
+                    (pixel_x + 7 + slot * 11, pixel_y - 18), 3,
+                )
         # Short-lived, one-use shield is visible even without Hitbox Debug.
         # Never modify the boss's authoritative rectangle or gameplay timing.
         if self.ai_preview and self.defense.active(time.time()):
@@ -351,12 +394,16 @@ class Boss:
         screen.blit(aoe_img, (self.x * GRID_SIZE + offset, self.y * GRID_SIZE + offset))
 
     def get_render_rect(self):
-        rect = pygame.Rect(self.x * GRID_SIZE, self.y * GRID_SIZE,
+        now = time.time()
+        if self.ai_preview and self.swipe.active(now):
+            sx, sy = self.swipe.action.position(now)
+            return pygame.Rect(round(sx * GRID_SIZE), round(sy * GRID_SIZE),
+                               self.size * GRID_SIZE, self.size * GRID_SIZE)
+        return pygame.Rect(self.x * GRID_SIZE, self.y * GRID_SIZE,
                            self.size * GRID_SIZE, self.size * GRID_SIZE)
-        return rect
 
     def get_hitbox(self):
-        """Bosses intentionally retain their generous gameplay rectangle."""
+        """Retain full-size boss collision, and follow a live swipe exactly."""
         return self.get_render_rect()
 
     def get_rect(self):
@@ -715,6 +762,7 @@ class Game:
         if isinstance(self.boss, Boss):
             self.boss.tactics.cancel(time.time())
             self.boss.defense.cancel()
+            self.boss.cancel_swipe(time.time())
         self.level_editor.toggle()
 
     def _set_editor_window(self, entering):
@@ -876,6 +924,7 @@ class Game:
             if isinstance(self.boss, Boss):
                 self.boss.tactics.cancel(time.time())
                 self.boss.defense.cancel()
+                self.boss.cancel_swipe(time.time())
             self._paused_state = previous
             self.metrics.cancel_pending()
         self.game_state = state
@@ -914,6 +963,7 @@ class Game:
             if isinstance(self.boss, Boss):
                 self.boss.tactics.cancel(time.time())
                 self.boss.defense.cancel()
+                self.boss.cancel_swipe(time.time())
             self.admin_panel.toggle()
 
     def reset_game(self):
@@ -1487,7 +1537,11 @@ class Game:
                 or now - boss.spawn_time < BOSS_SPAWN_PROTECTION):
             return
         shots = [
-            IncomingShot(id(shot), tuple(shot["pos"]), tuple(shot["dir"]))
+            IncomingShot(
+                id(shot),
+                (shot["pos"][0] + .5, shot["pos"][1] + .5),
+                tuple(shot["dir"]),
+            )
             for shot in self.projectiles
             if (not shot.get("from_boss") and "pos" in shot
                 and "dir" in shot)
@@ -1501,8 +1555,31 @@ class Game:
                 (flame.rect.centerx / GRID_SIZE, flame.rect.centery / GRID_SIZE),
                 (flame.direction[0] * velocity,
                  flame.direction[1] * velocity),
+                max(flame.rect.width, flame.rect.height) / (2 * GRID_SIZE),
             ))
         center = (boss.x + boss.size / 2, boss.y + boss.size / 2)
+        if boss.swipe.active(now):
+            return
+        if not boss.defense.active(now):
+            visible = boss.defense.visible_threats(
+                center, boss.facing, boss.size, shots,
+                self._vision_blockers,
+            )
+            action = boss.swipe.observe(
+                (boss.x, boss.y), boss._visual_position(now), boss.size,
+                visible, shots, self._vision_blockers,
+                (GRID_WIDTH, GRID_HEIGHT),
+                [head for head, _ in self._player_heads_with_health()],
+                now,
+            )
+            if action is not None:
+                boss.begin_swipe(action)
+                boss.defense.cancel()
+                self.log_combat_event(
+                    "boss_swipe", target=action.destination,
+                    charges=boss.swipe.charges(now),
+                )
+                return
         if boss.defense.observe(
                 center, boss.facing, boss.size, shots,
                 self._vision_blockers, now):
@@ -1628,11 +1705,13 @@ class Game:
             if isinstance(self.boss, Boss):
                 self.boss.tactics.cancel(time.time())
                 self.boss.defense.cancel()
+                self.boss.cancel_swipe(time.time())
             return
         if not self._gameplay_active():
             if isinstance(self.boss, Boss):
                 self.boss.tactics.cancel(time.time())
                 self.boss.defense.cancel()
+                self.boss.cancel_swipe(time.time())
             self._stall_clock_sample = None
             return
         current_time = time.time()
@@ -2115,6 +2194,7 @@ class Game:
         if isinstance(self.boss, Boss):
             self.boss.tactics.cancel(now)
             self.boss.defense.cancel()
+            self.boss.cancel_swipe(now)
         self._respawn_recent = True
         self.respawn_invincible_until = now + RESPAWN_SECONDS + POST_RESPAWN_PROTECTION
         self._effect_update_time = time.monotonic()

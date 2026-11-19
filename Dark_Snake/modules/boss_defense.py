@@ -23,6 +23,7 @@ class IncomingShot:
     identity: int
     position: tuple[float, float]
     velocity: tuple[float, float]
+    radius_cells: float = .5  # approximate actual projectile hitbox half-extent
 
 
 class MedusaDefense:
@@ -81,21 +82,32 @@ class MedusaDefense:
         return (abs(closest_x - boss_center[0]) <= half
                 and abs(closest_y - boss_center[1]) <= half)
 
+    def visible_threats(self, boss_center, facing, boss_size, shots, blockers):
+        """Real, unoccluded threats shared by the shield and lateral swipe."""
+        threats = []
+        for shot in shots:
+            px, py = shot.position
+            # Positions are projectile-centre pixels converted to grid units.
+            # Use their containing grid tile, not Python round-to-even: a
+            # half-cell centre at x=13.5 must not jump to cell 14 and falsely
+            # disappear from the 8-tile detection range.
+            cell = (int(px), int(py))
+            # No 360° omniscience: real view cone and line of sight required.
+            if not can_see((int(boss_center[0]), int(boss_center[1])),
+                           facing, cell, _SHIELD_SIGHT, blockers):
+                continue
+            if self._is_approaching(shot, boss_center, boss_size):
+                threats.append(shot)
+        return threats
+
     def observe(self, boss_center, facing, boss_size, shots,
                 blockers, now):
         """Report whether a shield was *newly* activated on this frame."""
         if now < self.next_ready_at or self.active(now):
             return False
-        threats = []
-        for shot in shots:
-            px, py = shot.position
-            cell = (round(px), round(py))
-            # No 360° omniscience: real view cone and line of sight required.
-            if not can_see((round(boss_center[0]), round(boss_center[1])),
-                           facing, cell, _SHIELD_SIGHT, blockers):
-                continue
-            if self._is_approaching(shot, boss_center, boss_size):
-                threats.append(shot)
+        threats = self.visible_threats(
+            boss_center, facing, boss_size, shots, blockers,
+        )
         if not threats:
             self.candidate_id = None
             self.first_seen_at = None

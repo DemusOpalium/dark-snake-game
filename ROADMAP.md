@@ -12,16 +12,23 @@
   Frostwurf aus bestätigtem Sichtkontakt oder Fernsensor-Relay, feste
   Vorwarnzone (1,35 s), kurzer Einschlag (0,65 s), 10 HP einmalig
   pro Spieler, sechs Sekunden Cooldown; Classic-AoE bleibt erhalten.
-- 🔧 **Boss Defense C (separater PR, Windows-Test offen)** – opt-in
-  Abwehrschild gegen ein eintreffendes Spielerprojektil. Der Boss
-  benötigt einen **sichtbaren, heranfliegenden** Schuss über einen
-  kurzen Reaktionszeitraum (0,06 s), danach schützt eine sichtbare
-  0,8-s-Schildphase maximal *einen* Projektiltreffer. Sieben Sekunden
-  Cooldown. Kein Blick durch Wände, keine unendliche Immunität,
-  Spezial-Items und Classic ohne KI-Test bleiben unverändert.
-- ⬜ **Boss Defense D / Movement** – späteres seitliches Ausweichen mit
-  mehrzelligen Hitboxen und Hindernissen gesondert testen, damit
-  Boss-Timing und Rasterkollisionen nicht durch den Schild-PR kippen.
+- ✅ **Boss Defense C (#233, main; Windows-Spieltest 19.11.)** –
+  opt-in Sicht auf heranfliegende Projektile und kurzer Schutzschild
+  (maximal ein abgewehrter Projektiltreffer, 0,8 s, 7 s Cooldown).
+  Nur bestätigte Beobachtung; keine Wandsicht.
+- 🔧 **Boss Defense D – Swipe Movement (eigener PR, Windows-Test offen)** –
+  zwei getrennt aufladbare Seitwärts-Swipes mit 12 s Ladezeit pro
+  Ladung, ca. 0,18 s Dauer und 2 Zellen Ausweichdistanz. Erst bei
+  0,06 s bestätigter Projektilwahrnehmung, senkrecht zur Flugbahn,
+  nie durch WALL/BARRIER oder über einen Spieler-Kopf. Projektil-
+  Vorhersage für sicheren Endpunkt, andernfalls bestehender Schild.
+  Während des Swipes folgt die echte Boss-Hitbox derselben sichtbaren
+  Interpolation, statt sofort an das Ziel zu springen.
+  Bossangriffe und normale Bewegung sind während des Swipes pausiert,
+  Classic ohne KI-Test unverändert. Auto-Tests + Demus-Windows-Test
+  bleiben verbindliche Merge-Gates.
+- ⬜ **Boss Personality / FrostAge Vertical Slice** – individuelle
+  Kampfprofile und kontrollierte Attacken-Kombination nach Swipe-Test.
 - ⬜ **FrostAge Vertical Slice** – Welt-/Spawn-Gate und drei individuelle
   Gegnerprofile einschließlich eigener Boss-Persönlichkeit, später
   eigene Frost-/Mycelium-Varianten.
