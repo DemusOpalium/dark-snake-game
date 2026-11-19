@@ -19,6 +19,18 @@ from modules.boss_projectiles import BossFlameProjectile, BossProjectile
 from modules.projectile_config import BOSS_PROJECTILE_LIFETIME_TICKS
 
 
+@pytest.fixture(autouse=True)
+def projectile_screen():
+    # Collection of another test module may have replaced the display with
+    # a 1x1 dummy. The is_on_screen() method needs a real drawable area.
+    previous = pygame.display.get_surface()
+    old_size = previous.get_size() if previous is not None else None
+    pygame.display.set_mode((1280, 900))
+    yield
+    if old_size is not None:
+        pygame.display.set_mode(old_size)
+
+
 def game_with_boss():
     game = Game(headless=True)
     game.start_game(1)
