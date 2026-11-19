@@ -1538,6 +1538,7 @@ class Game:
                 (flame.rect.centerx / GRID_SIZE, flame.rect.centery / GRID_SIZE),
                 (flame.direction[0] * velocity,
                  flame.direction[1] * velocity),
+                max(flame.rect.width, flame.rect.height) / (2 * GRID_SIZE),
             ))
         center = (boss.x + boss.size / 2, boss.y + boss.size / 2)
         if boss.swipe.active(now):
