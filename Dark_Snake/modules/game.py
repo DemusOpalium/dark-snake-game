@@ -1241,14 +1241,19 @@ class Game:
             self._stall_clock_sample = None
 
     def _move_snake(self, player, snake, direction, invincible):
-        """Commit a grid step unless the destination remains occupied by the body."""
+        """Keep every body tile solid, including during damage invulnerability.
+
+        The only legal body overlap is the vacating tail on a move without
+        growth; that tile becomes free in the very same grid step. Items,
+        AoE, a respawn shield and a power-up never make body cells passable.
+        """
         x, y = snake[0]
         dx, dy = direction.value
         new_head = ((x + dx) % GRID_WIDTH, (y + dy) % GRID_HEIGHT)
         item_index = next((index for index, item in enumerate(self.items)
                            if (item.x, item.y) == new_head), None)
         occupied = snake[1:-1] if item_index is None else snake[1:]
-        if not invincible and new_head in occupied:
+        if new_head in occupied:
             self._blocked_since.setdefault(player, self._stall_active_time)
             return False
 
@@ -1571,13 +1576,11 @@ class Game:
                              projectile.get("projectile_type", "player_projectile"))
             return True
 
-        snake = self.snake1 if self.player_count == 2 and self.snake1 else self.snake
-        if not snake:
-            return False
-        head_x, head_y = snake[0]
-        head_rect = pygame.Rect(head_x * GRID_SIZE, head_y * GRID_SIZE, GRID_SIZE, GRID_SIZE)
-        shot_rect = pygame.Rect(x * GRID_SIZE, y * GRID_SIZE, GRID_SIZE // 2, GRID_SIZE // 2)
-        return head_rect.colliderect(shot_rect)
+        # Friendly fire is not part of the Classic auto-shoot pickup.
+        # New slow shots start INSIDE their owner's head tile; discarding
+        # them against that head would silently erase every shot on frame 1.
+        # Boss damage is resolved above; the projectile lives on otherwise.
+        return False
 
     def _player_heads_with_health(self):
         players = ((self.snake, "player_health"),) if self.player_count == 1 else (
@@ -1806,23 +1809,35 @@ class Game:
         )
         if slots <= 0:
             return
-        target = None
+        # The pickup targets the nearest real opponent, including the boss
+        # for which this item is deliberately spawned. Never use a stale
+        # random target after the last enemy has disappeared.
+        target_cell = None
         min_dist = float("inf")
         for enemy in self.enemies:
             if time.time() - getattr(enemy, "spawn_time", 0) < 3:
                 continue
-            dist = sqrt((head[0] - enemy.x) ** 2 + (head[1] - enemy.y) ** 2)
+            cell = (enemy.x, enemy.y)
+            dist = sqrt((head[0] - cell[0]) ** 2
+                        + (head[1] - cell[1]) ** 2)
             if dist < min_dist:
-                min_dist = dist
-                target = enemy
+                min_dist, target_cell = dist, cell
+        if self.boss is not None:
+            boss_cell = (self.boss.x + self.boss.size / 2,
+                         self.boss.y + self.boss.size / 2)
+            dist = sqrt((head[0] - boss_cell[0]) ** 2
+                        + (head[1] - boss_cell[1]) ** 2)
+            if dist < min_dist:
+                target_cell = boss_cell
 
         # Half the former pickup-shot speed, then cap its actual *vector*
         # magnitude to the player fireball's per-frame distance.
         shot_speed = player_grid_speed_cells_per_tick(
             self.settings["projectile_speed_factor"], GRID_SIZE,
         )
-        if target:
-            angle = atan2(target.y - head[1], target.x - head[0])
+        if target_cell is not None:
+            angle = atan2(target_cell[1] - head[1],
+                          target_cell[0] - head[0])
         else:
             dx, dy = current_direction.value
             angle = atan2(dy, dx)
@@ -1983,7 +1998,10 @@ class Game:
             enemy_rect = enemy.get_hitbox()
             if current_time - getattr(enemy, 'spawn_time', 0) < 3:
                 continue
-            for proj in self.projectiles:
+            for proj in self.projectiles[:]:
+                if proj.get("from_boss", False):
+                    # Hostile boss bullets never damage the boss's allies.
+                    continue
                 proj_rect = pygame.Rect(
                     proj['pos'][0] * GRID_SIZE,
                     proj['pos'][1] * GRID_SIZE,
@@ -1991,6 +2009,10 @@ class Game:
                     GRID_SIZE
                 )
                 if enemy_rect.colliderect(proj_rect):
+                    # A player pickup shot can hit only one enemy once.
+                    # Otherwise the slower bullet can deal damage on every
+                    # consecutive frame while overlapping the same hitbox.
+                    self.projectiles.remove(proj)
                     enemy.health -= 1
                     if enemy.health <= 0 and enemy in self.enemies:
                         self.enemies.remove(enemy)
@@ -2318,6 +2340,12 @@ class Game:
         elif item.type == ItemType.PROJECTILE_SHOOT:
             self.effects['projectile_shoot'] = max(self.effects['projectile_shoot'], current_time) + 900
             self.extra_auto_shots = min(6, self.extra_auto_shots + 1)
+            # Make the newly collected pickup fire on the next playable
+            # update instead of looking inert for up to two seconds.
+            interval = max(0, self.settings.get('auto_shoot_interval', 0.5))
+            self.last_auto_shoot = current_time - interval
+            self.last_auto_shoot1 = current_time - interval
+            self.last_auto_shoot2 = current_time - interval
             self.score += 40
             self.experience += 20
             self.add_achievement("Multi-Shoot aktiviert!")
