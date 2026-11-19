@@ -74,6 +74,7 @@ from modules.career_ranks import CareerLedger, xp_for_round
 from modules.career_ceremony import career_ceremony_for_round
 from modules.skin_inventory import SkinInventory, skin_registry
 from modules.projectile_config import (
+    BOSS_PROJECTILE_LIFETIME_TICKS,
     MAX_BOSS_FLAMES, MAX_BOSS_GRID_PROJECTILES, MAX_ENEMY_PROJECTILES,
     MAX_PLAYER_GRID_PROJECTILES,
     PLAYER_FIREBALL_COOLDOWN_SECONDS, PLAYER_FIREBALL_DAMAGE,
@@ -1313,6 +1314,13 @@ class Game:
             return False
         center = boss.get_hitbox().center
         self.boss = None
+        # The defeated boss must not leave harmless but misleading purple
+        # projectiles (with lingering debug hitboxes) on the arena.
+        # Player and normal-enemy shots remain untouched.
+        self.projectiles = [
+            shot for shot in self.projectiles if not shot.get("from_boss", False)
+        ]
+        self.boss_flame_projectiles.clear()
         self.effect_manager.stop(getattr(boss, "aura_effect", None))
         self.boss_fight_active = False
         self.game_state = GameState.GAME
@@ -1406,6 +1414,18 @@ class Game:
         new_proj = []
         for proj in self.projectiles:
             dx, dy = proj['dir']
+            if proj.get("from_boss", False):
+                # A zero-velocity boss orb is not a meaningful attack.
+                # Classic contact was already checked earlier in this frame.
+                # Never keep a stationary sprite/hitbox indefinitely.
+                if dx == 0 and dy == 0:
+                    continue
+                remaining = proj.get(
+                    "lifetime_ticks", BOSS_PROJECTILE_LIFETIME_TICKS,
+                ) - 1
+                if remaining <= 0:
+                    continue
+                proj["lifetime_ticks"] = remaining
             new_x = proj['pos'][0] + dx
             new_y = proj['pos'][1] + dy
             proj['pos'] = (new_x, new_y)
@@ -2027,16 +2047,22 @@ class Game:
                             self.boss_shoots_flame()
                             target = self.snake[0] if self.player_count == 1 and self.snake else (self.snake1[0] if self.player_count == 2 and self.snake1 else None)
                             if (target and not invincible
+                                    and self.settings["projectile_speed_factor"] > 0
                                     and sum(shot.get("from_boss", False) for shot in self.projectiles)
                                     < MAX_BOSS_GRID_PROJECTILES):
-                                dx = 1 if target[0] > self.boss.x else -1 if target[0] < self.boss.x else 0
-                                dy = 1 if target[1] > self.boss.y else -1 if target[1] < self.boss.y else 0
+                                # Aim from the *boss centre*, not the top-left
+                                # cell. A player at the old origin could generate
+                                # (0, 0), leaving a permanent purple ball.
+                                aim_x, aim_y = self._boss_projectile_heading(target)
+                                dx = 1 if aim_x > 0 else -1 if aim_x < 0 else 0
+                                dy = 1 if aim_y > 0 else -1 if aim_y < 0 else 0
                                 boss_proj_img = random.choice(BOSS_PROJECTILES) if BOSS_PROJECTILES else PROJECTILE_IMG
                                 proj = {'pos': (self.boss.x, self.boss.y),
                                         'dir': (dx * self.settings['projectile_speed_factor'], dy * self.settings['projectile_speed_factor']),
                                         "effect": "damage",
                                         "from_boss": True,
                                         "projectile_type": "boss_projectile",
+                                        "lifetime_ticks": BOSS_PROJECTILE_LIFETIME_TICKS,
                                         "image": boss_proj_img,
                                         "scale": self.boss.size}
                                 self.projectiles.append(proj)
@@ -3154,6 +3180,21 @@ class Game:
                         surf.blit(img, (x * GRID_SIZE, y * GRID_SIZE))
         self.level_background_surface = surf
         return surf
+    def _boss_projectile_heading(self, target):
+        """Direction from the *centre* of the boss to the target's head.
+
+        When both occupy the same centre tile, retain the last nonzero
+        facing or fall back to EAST; never spawn a zero-speed magic orb.
+        """
+        if self.boss is None:
+            return (1.0, 0.0)
+        dx = target[0] + 0.5 - (self.boss.x + self.boss.size / 2)
+        dy = target[1] + 0.5 - (self.boss.y + self.boss.size / 2)
+        if abs(dx) + abs(dy) < 1e-9:
+            facing = getattr(self.boss, "facing", (1, 0))
+            dx, dy = facing if facing != (0, 0) else (1, 0)
+        return dx, dy
+
     # [KS_TAG: BOSS_FLAME_PROJECTILE]
     def boss_shoots_flame(self):
         from modules.boss_projectiles import BossFlameProjectile
@@ -3171,9 +3212,8 @@ class Game:
             print("[DEBUG] Kein Ziel vorhanden – BossFlameProjectile nicht erzeugt.")
             return
 
-        dx = target[0] - self.boss.x
-        dy = target[1] - self.boss.y
-        distance = max(1, (dx**2 + dy**2)**0.5)
+        dx, dy = self._boss_projectile_heading(target)
+        distance = (dx**2 + dy**2)**0.5
         direction = (dx / distance, dy / distance)
 
         center_x = self.boss.x * GRID_SIZE + (self.boss.size * GRID_SIZE) // 2
