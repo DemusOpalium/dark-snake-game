@@ -1,5 +1,20 @@
 # 🛣️ ROADMAP.md – Entwicklungsfahrplan
 
+## 🧪 Boss-Projektile: Fix für stehende violette Kugeln (Windows-Test offen)
+
+- **Orbs werden nicht mehr mit Null-Flugrichtung erzeugt**: Bossmitte
+  statt Sprite-Startzelle zum Zielen, Fallback auf Blickrichtung.
+- **Boss-/BossFlameProjectiles behalten Subpixel-Bewegung** auch bei
+  flachen diagonalen Flugbahnen (pygame.Rect ist ganzzahlig).
+- **Alte Boss-Orbs** mit (0,0) werden entfernt; Boss-Grid-Geschosse
+  erhalten eine begrenzte Lebensdauer; nach Boss-Sieg verschwinden
+  aktive Boss-Geschosse. 1P/2P-Trefferregel bleibt unverändert.
+- Regressionstests für Nullvektoren, diagonal-flache Bewegung,
+  Ende der Lebensdauer und Cleanup. Windows-Alpha-2 und sichtbarer
+  Test vor Merge. Keine neuen Bossangriffe oder Editoränderungen.
+
+---
+
 ## 🐍 Boss Intelligence 2.0 · Arbeitsstand 19.11.2026
 
 - ✅ **Enemy Vision D (#228)** und **Smooth Movement A (#229)** – schnellere,
