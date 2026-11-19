@@ -56,10 +56,12 @@ from modules.boss_defense import IncomingShot, MedusaDefense
 from modules.boss_swipe import MedusaSwipe
 from modules.boss_teleport import (
     BossTeleport, choose_destination, destination_is_safe,
+    world_scan_target, WORLD_SCAN_SECONDS,
     RECOVERY_SECONDS as TELEPORT_RECOVERY_SECONDS,
 )
 from modules.boss_teleport_visual import (
     draw_teleport_markers, draw_teleport_sprite,
+    draw_world_scan, draw_aborted_teleport,
 )
 from modules.boss_tactics_visual import draw_medusa_volley
 from modules.bolbu_enemy import BolbuEnemy
@@ -307,7 +309,7 @@ class Boss:
             self._visual_step_start = now
         self.swipe.cancel()
 
-    def cancel_teleport(self, now):
+    def cancel_teleport(self, now, *, show_abort=False):
         """Abort a mid-transition warp without leaving ghost hitboxes."""
         action = self.teleport.action
         if action is not None:
@@ -317,9 +319,16 @@ class Boss:
             self._visual_from = self._visual_to = (self.x, self.y)
             self._visual_step_start = now
             self.last_move = now
-        self.teleport.cancel(now)
+        self.teleport.cancel(now, show_abort=show_abort)
 
     def update(self, current_time):
+        if self.ai_preview and self.teleport.scanning():
+            # The guardian's world search is a full-board *warning*, not an
+            # opportunity to cast projectiles, move or strike invisibly.
+            self.last_move = current_time
+            if self.frames:
+                self.update_animation(current_time)
+            return None
         if self.ai_preview and self.teleport.waiting(current_time):
             # Telegraph, sink, emergence AND recovery block every new attack,
             # movement and projectile spawn. Existing bullets keep moving.
@@ -413,6 +422,22 @@ class Boss:
         visual_x, visual_y = self._visual_position(time.time())
         pixel_x, pixel_y = round(visual_x * GRID_SIZE), round(visual_y * GRID_SIZE)
         action = self.teleport.action if self.ai_preview else None
+        if self.ai_preview and self.teleport.scanning():
+            draw_world_scan(
+                screen, (self.x, self.y), self.size,
+                self.teleport.search_started_at, time.time(),
+                GRID_SIZE, GRID_WIDTH, GRID_HEIGHT, self._phase_font,
+            )
+        aborted = self.teleport.abort_visual if self.ai_preview else None
+        if aborted is not None:
+            canceled_action, canceled_at = aborted
+            if time.time() - canceled_at < .55:
+                draw_aborted_teleport(
+                    screen, canceled_action, canceled_at, time.time(),
+                    GRID_SIZE, self.size,
+                )
+            else:
+                self.teleport.abort_visual = None
         if action is not None:
             draw_teleport_markers(
                 screen, action, time.time(), GRID_SIZE, self.size,
@@ -1427,7 +1452,7 @@ class Game:
 
     def _announce_boss_phase(self, boss, stage, now):
         """Tell the player before an altered boss can start a new attack."""
-        if boss.teleport.action is not None:
+        if boss.teleport.action is not None or boss.teleport.scanning():
             boss.cancel_teleport(now)
         boss.tactics.cancel(now)
         boss.defense.cancel()
@@ -1816,9 +1841,10 @@ class Game:
                     action.destination, boss.size,
                     (GRID_WIDTH, GRID_HEIGHT), blocked, heads,
                 ):
-                    boss.cancel_teleport(now)
+                    boss.cancel_teleport(now, show_abort=True)
                     self.log_combat_event(
                         "boss_teleport_aborted", reason="landing_occupied",
+                        boss=boss.profile_key, phase=action.stage,
                     )
                     return False
                 boss.x, boss.y = action.destination
@@ -1838,15 +1864,57 @@ class Game:
             return False
         stage = boss.phases.stage
         reading = boss.eyes.reading
-        if (not tele.ready(stage, now) or not reading.actionable
-                or reading.predicted_cell is None):
-            return False
+        # Phase III Wächter/Ritter explicitly receives a *magical* ability
+        # to search the whole playable board, even beyond normal LOS.
+        # Phase I/II and all other bosses retain normal observation rules.
+        # The scan takes 1.45s and must finish before picking the current
+        # 1P/2P head; it never feeds omniscience into movement or attacks.
+        scanned = False
+        target = None
+        if tele.scanning():
+            if not tele.scan_complete(now):
+                return True
+            heads = [cell for cell, _ in self._player_heads_with_health()]
+            target = world_scan_target((boss.x, boss.y), boss.size, heads)
+            tele.end_search()
+            scanned = True
+            self.log_combat_event(
+                "boss_world_scan_complete", boss=boss.profile_key,
+                target=target,
+            )
+            if target is None:
+                tele.next_ready_at = now + 3.0
+                return False
+        else:
+            if not tele.ready(stage, now):
+                return False
+            if boss.profile_key == "guardian" and stage == 3:
+                if not tele.begin_search(stage, now):
+                    return False
+                boss.cancel_swipe(now)
+                boss.defense.cancel()
+                boss.tactics.cancel(now)
+                quiet_until = now + WORLD_SCAN_SECONDS + 3.0
+                boss.next_proj = max(boss.next_proj, quiet_until)
+                boss.next_aoe = max(boss.next_aoe, quiet_until)
+                boss.tactics.next_cast_at = max(
+                    boss.tactics.next_cast_at, quiet_until,
+                )
+                self.log_combat_event(
+                    "boss_world_scan_warning", boss=boss.profile_key,
+                    stage=stage, scan_seconds=WORLD_SCAN_SECONDS,
+                )
+                return True
+            if not reading.actionable or reading.predicted_cell is None:
+                return False
+            target = reading.predicted_cell
         blocked, heads = self._boss_teleport_safety()
         if not heads:
+            tele.next_ready_at = now + 3.0
             return False
         destination = choose_destination(
             (boss.x, boss.y), boss.size, (GRID_WIDTH, GRID_HEIGHT),
-            blocked, heads, reading.predicted_cell, boss.profile_key,
+            blocked, heads, target, boss.profile_key,
         )
         if destination is None:
             tele.next_ready_at = now + 3.0
@@ -1866,6 +1934,7 @@ class Game:
             "boss_teleport_warning", boss=boss.profile_key,
             style=tele.style, stage=stage,
             destination=destination, warning_seconds=1.10,
+            global_scan=scanned,
         )
         return True
 
@@ -1874,6 +1943,7 @@ class Game:
         boss = self.boss
         if (not isinstance(boss, Boss) or not boss.ai_preview
                 or boss.teleport.waiting(now)
+                or boss.teleport.scanning()
                 or boss.phases.warning_active(now)
                 or now - boss.spawn_time < BOSS_SPAWN_PROTECTION):
             return
@@ -1973,7 +2043,8 @@ class Game:
     def _resolve_boss_body_contact(self, now):
         if (self.boss is None or self.game_state == GameState.GAME_OVER
                 or (isinstance(self.boss, Boss)
-                    and self.boss.teleport.waiting(now))
+                    and (self.boss.teleport.waiting(now)
+                         or self.boss.teleport.scanning()))
                 or now < self.respawn_invincible_until
                 or now - self.boss.spawn_time < BOSS_SPAWN_PROTECTION):
             return False
