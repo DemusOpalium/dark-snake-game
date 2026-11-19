@@ -128,6 +128,10 @@ def test_boss_shoot_event_aims_without_stationary_grid_orbs(monkeypatch):
     boss.spawn_time = 0
     boss.facing = (0, 1)
     game.snake = [(10, 10)]  # previously produced dir=(0,0)
+    # The existing spawn/respawn protection intentionally suppresses the
+    # aimed grid shot. Remove it only for this focused projectile test.
+    game.respawn_invincible_until = 0
+    game.effects["invincibility"] = 0
     # Exercise exactly the real boss_shoot path without random attacks/moves.
     monkeypatch.setattr(boss, "update", lambda now: "boss_shoot")
     game.last_update_time -= 3
