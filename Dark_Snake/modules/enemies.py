@@ -3,9 +3,14 @@ import random
 import time
 from config import GRID_SIZE, GRID_WIDTH, GRID_HEIGHT, RED
 from modules.graphics import ENEMY_TIM_IMG, ENEMY_SPOONG_IMG, ENEMY_OMNI_IMG, ENEMY_GLUBS_IMG
+from modules.enemy_vision import VisionProfile, VisionSensor
 
 class NormalEnemy:
     GLIDE_SECONDS = 0.12
+    # An observation only: existing random walk and sprint probability are
+    # unchanged until a separately reviewed behaviour PR connects signals.
+    SIGHT_PROFILE = VisionProfile(radius_cells=5, fov_degrees=100,
+                                  memory_seconds=1.5, scan_interval=0.15)
 
     def __init__(self):
         self.x = random.randint(0, GRID_WIDTH - 1)
@@ -22,6 +27,8 @@ class NormalEnemy:
         self.sprint_duration = 0.5
         self.sprint_active = False
         self.sprint_end_time = 0
+        self.facing = (1, 0)
+        self.eyes = VisionSensor(self.SIGHT_PROFILE)
 
         self.image = random.choice([ENEMY_TIM_IMG, ENEMY_SPOONG_IMG, ENEMY_OMNI_IMG, ENEMY_GLUBS_IMG])
         if self.image:
@@ -59,6 +66,11 @@ class NormalEnemy:
             self._render_start = (self.x, self.y)
             self.x = max(0, min(self.x + dx, GRID_WIDTH - 1))
             self.y = max(0, min(self.y + dy, GRID_HEIGHT - 1))
+            # Use actual movement rather than a speculative/random facing.
+            direction = (self.x - self._render_start[0],
+                         self.y - self._render_start[1])
+            if direction != (0, 0):
+                self.facing = direction
             self._render_target = (self.x, self.y)
             self._glide_duration = min(self.GLIDE_SECONDS, interval)
         if self.sprint_active and current_time >= self.sprint_end_time:

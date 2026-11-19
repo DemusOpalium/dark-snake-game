@@ -25,6 +25,7 @@ from modules.projectile_config import (
     BOLBU_PROJECTILE_SPEED_PX_PER_TICK, BOLBU_SHOOT_COOLDOWN_SECONDS,
 )
 from modules.enemies import NormalEnemy
+from modules.enemy_vision import VisionProfile
 from modules.graphics import load_image, load_projectile_image, scale_sprite
 from modules.audio import SOUNDS
 
@@ -74,6 +75,10 @@ class BolbuProjectile:
 
 class BolbuEnemy(NormalEnemy):
     """Erweiterter normaler Gegner mit Würfel‑Logik und Projektilen."""
+    # Bolbu has peripheral awareness, but its established dice/shooting
+    # behaviour remains unchanged in the first observation-only slice.
+    SIGHT_PROFILE = VisionProfile(radius_cells=6, fov_degrees=360,
+                                  memory_seconds=2.0, scan_interval=0.15)
     SHOOT_COOLDOWN = BOLBU_SHOOT_COOLDOWN_SECONDS
     DICE_COOLDOWN = 5
 

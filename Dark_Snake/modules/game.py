@@ -558,6 +558,10 @@ class Game:
                                            if headless else self._build_default_background())
         self.classic_level_name = None
         self._classic_level_map = None
+        # Wall/Barrier cells are vision blockers; decorative PNGs are not.
+        # This does not silently change the established Classic movement rules.
+        self._classic_vision_blockers = frozenset()
+        self._vision_blockers = frozenset()
         self._classic_roof_objects = {}
         self._classic_roof_visibility = RoofVisibility()
         self.level_map = None
@@ -774,16 +778,25 @@ class Game:
         self._reset_snake_interpolation()
         self.spawn_food()
         self.level_map = [row.copy() for row in self._classic_level_map] if self._classic_level_map else None
+        self._vision_blockers = self._classic_vision_blockers
         self._roof_objects = self._classic_roof_objects.copy()
         self._roof_visibility = self._classic_roof_visibility
         self.background = self.build_background_from_map()
         self._round_token = begin_round(players)
         self.set_state(GameState.GAME)
 
-    def choose_classic_background(self, name, level_map, *, roof_objects=None, roof_visibility=None):
-        """Remember the chosen visual layers for the next Classic start."""
+    def choose_classic_background(self, name, level_map, *, roof_objects=None,
+                                  roof_visibility=None, collisions=None):
+        """Remember visual layers and authored line-of-sight walls for Classic.
+
+        The physical Classic movement map is NOT changed by this sight layer.
+        """
         self.classic_level_name = name
         self._classic_level_map = [row.copy() for row in level_map] if level_map is not None else None
+        self._classic_vision_blockers = frozenset(
+            cell for cell, kind in (collisions or {}).items()
+            if kind in ("WALL", "BARRIER")
+        )
         self._classic_roof_objects = dict(roof_objects or {})
         self._classic_roof_visibility = roof_visibility if roof_visibility is not None else RoofVisibility()
 
@@ -1511,8 +1524,17 @@ class Game:
             enemy.spawn_time = current_time
             self.enemies.append(enemy)
 
+        # Head cells are current player positions only; 2P is assessed as
+        # two distinct targets, not just the first snake. No damage is dealt
+        # by sight and no behaviour or boss AI changes in this phase.
+        sight_targets = (
+            [(1, self.snake[0])] if self.player_count == 1 and self.snake
+            else ([(1, self.snake1[0])] if self.snake1 else [])
+            + ([(2, self.snake2[0])] if self.snake2 else [])
+            if self.player_count == 2 else []
+        )
         for enemy in self.enemies:
-            # Pass Spielerposition für smartere Gegner
+            # Pass Spielerposition für bisheriges Classic-/Bolbu-Verhalten
             if self.player_count == 1 and self.snake:
                 px, py = self.snake[0]
             elif self.player_count == 2 and self.snake1:
@@ -1524,6 +1546,11 @@ class Game:
                 enemy.update(px, py, movement_factor=factor)
             else:
                 enemy.update(px, py)
+            if isinstance(enemy, NormalEnemy) and hasattr(enemy, "eyes"):
+                enemy.eyes.observe(
+                    (enemy.x, enemy.y), enemy.facing,
+                    sight_targets, self._vision_blockers, current_time,
+                )
             if hasattr(enemy, 'projectiles'):
                 slots = max(0, MAX_ENEMY_PROJECTILES - len(self.enemy_projectiles))
                 admitted = enemy.projectiles[:slots]
@@ -2456,6 +2483,30 @@ class Game:
     def draw_intro(self):
         self.main_menu.draw(self.screen)
 
+    def _draw_enemy_sight_debug(self, enemy):
+        """Visualise sensed targets without affecting runtime AI or hitboxes."""
+        sensor = enemy.eyes
+        x, y = (enemy.x * GRID_SIZE + GRID_SIZE // 2,
+                enemy.y * GRID_SIZE + GRID_SIZE // 2)
+        reach = round(sensor.profile.radius_cells * GRID_SIZE)
+        tint = (115, 239, 178) if sensor.result.visible else (115, 160, 202)
+        pygame.draw.circle(self.screen, tint, (x, y), reach, 1)
+        if sensor.profile.fov_degrees < 360:
+            angle = atan2(enemy.facing[1], enemy.facing[0])
+            half = sensor.profile.fov_degrees * pi / 360
+            for direction in (angle - half, angle + half):
+                point = (round(x + reach * cos(direction)),
+                         round(y + reach * sin(direction)))
+                pygame.draw.line(self.screen, tint, (x, y), point, 1)
+        if sensor.result.last_known_cell is not None:
+            cell = sensor.result.last_known_cell
+            target = (cell[0] * GRID_SIZE + GRID_SIZE // 2,
+                      cell[1] * GRID_SIZE + GRID_SIZE // 2)
+            line_color = ((90, 248, 143) if sensor.result.visible
+                          else (218, 186, 103))
+            pygame.draw.line(self.screen, line_color, (x, y), target, 2)
+            pygame.draw.circle(self.screen, line_color, target, 5, 1)
+
     def draw_game(self, *, include_hud=True):
         # 1. Raster (Hintergrund) zeichnen – unterste Ebene
         self.screen.blit(self.background, (0, 0))
@@ -2584,6 +2635,10 @@ class Game:
             # enemies
             for e in self.enemies:
                 pygame.draw.rect(self.screen, enemy_color, e.get_hitbox(), 2)
+                if isinstance(e, NormalEnemy) and hasattr(e, "eyes"):
+                    # Existing hitbox developer toggle doubles as an eyes
+                    # debugger: radius, facing wedge, detected/last-seen head.
+                    self._draw_enemy_sight_debug(e)
             for item in self.items:
                 pygame.draw.rect(self.screen, item_color, item.get_hitbox(), 2)
             # projectiles
