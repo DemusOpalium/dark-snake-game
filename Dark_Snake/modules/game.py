@@ -1546,7 +1546,7 @@ class Game:
                 enemy.update(px, py, movement_factor=factor)
             else:
                 enemy.update(px, py)
-            if isinstance(enemy, NormalEnemy):
+            if isinstance(enemy, NormalEnemy) and hasattr(enemy, "eyes"):
                 enemy.eyes.observe(
                     (enemy.x, enemy.y), enemy.facing,
                     sight_targets, self._vision_blockers, current_time,
@@ -2635,7 +2635,7 @@ class Game:
             # enemies
             for e in self.enemies:
                 pygame.draw.rect(self.screen, enemy_color, e.get_hitbox(), 2)
-                if isinstance(e, NormalEnemy):
+                if isinstance(e, NormalEnemy) and hasattr(e, "eyes"):
                     # Existing hitbox developer toggle doubles as an eyes
                     # debugger: radius, facing wedge, detected/last-seen head.
                     self._draw_enemy_sight_debug(e)
