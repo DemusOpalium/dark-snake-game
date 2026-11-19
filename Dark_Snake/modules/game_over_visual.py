@@ -57,13 +57,16 @@ def tombstone_scene_layout(size):
         return None
     panel_width = 700
     gap = 30
+    # Keep the proven statistics/name column nearly where it was. Give the
+    # entire gothic outline a deliberate right-side breathing margin instead
+    # of letting its frosty spires almost meet the window edge.
+    left = max(20, round(width * .025))
+    right_margin = max(48, round(width * .058))
     stone_width, stone_height = portrait_size(
-        width - panel_width - gap - 40, height - 112,
+        width - left - panel_width - gap - right_margin, height - 112,
     )
     if stone_width < 350:
         return None
-    group_width = panel_width + gap + stone_width
-    left = (width - group_width) // 2
     stone_rect = pygame.Rect(left + panel_width + gap,
                              (height - stone_height) // 2,
                              stone_width, stone_height)
