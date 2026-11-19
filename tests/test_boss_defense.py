@@ -99,6 +99,9 @@ def test_game_scans_only_player_shots_and_consumes_shield_once(monkeypatch):
         {"pos": (13, 6.5), "dir": (-1, 0), "from_boss": True},
         {"pos": (13, 6.5), "dir": (-1, 0), "from_boss": False},
     ]
+    # Swipe D is preferred when a side lane is free. Block both lanes so
+    # this legacy regression continues to exercise the shield fallback.
+    game._vision_blockers = {(6, 4), (6, 9)}
     initial = boss.health
     game._scan_boss_defense(clock.now)
     assert not boss.defense.active(clock.now)
