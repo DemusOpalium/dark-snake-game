@@ -121,7 +121,9 @@ def test_actual_moving_player_shot_triggers_swipe_when_lane_is_clear(
         }
         game.projectiles = [player_shot]
     else:
-        flame = FlameProjectile(11 * GRID_SIZE, round(6.5 * GRID_SIZE), (-1, 0))
+        # Fireballs have a larger sprite/hitbox than the grid pickup shot.
+        # They must be perceived *early* to permit a 2-cell side dodge.
+        flame = FlameProjectile(13 * GRID_SIZE, round(6.5 * GRID_SIZE), (-1, 0))
         game.flame_projectiles = [flame]
     for _ in range(45):
         game._scan_boss_defense(clock.now)
