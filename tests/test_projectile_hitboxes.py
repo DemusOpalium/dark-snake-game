@@ -150,12 +150,13 @@ def test_successive_boss_fights_remove_only_their_own_aura():
     assert sum(event["type"] == "boss_defeated" for event in game.combat_events) == 2
 
 
-def test_multishot_projectiles_are_identified_separately():
+def test_stacked_auto_shot_bonus_never_creates_boss_burst():
     game = Game(headless=True)
     game.start_game(1)
-    game.extra_auto_shots = 2
+    game.extra_auto_shots = 2  # legacy save / future weapon, not active
     game.auto_shoot_for_head(game.snake[0], game.snake_direction)
-    assert [p["projectile_type"] for p in game.projectiles].count("multishot") == 2
+    assert len(game.projectiles) == 1
+    assert game.projectiles[0]["projectile_type"] == "player_projectile"
 
 
 def test_bolbu_speed_is_documented_pixels_per_tick_and_avoidable():
