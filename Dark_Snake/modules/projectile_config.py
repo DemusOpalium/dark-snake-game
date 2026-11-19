@@ -5,7 +5,11 @@ Klassen mit einem ``pygame.Rect`` bewegen sich dagegen in Pixeln pro Tick.
 Lebensdauern und Cooldowns sind Tickzahlen (das Spiel läuft mit ``FPS`` Ticks/s).
 """
 
-PLAYER_PROJECTILE_DAMAGE = 10
+# Pickup's one guided shot is intentionally weak against regular enemies,
+# and needs many confirmed hits to defeat a multi-phase boss.
+PLAYER_PROJECTILE_DAMAGE = 2  # HP per hit against bosses
+PLAYER_PROJECTILE_ENEMY_DAMAGE = 1  # HP per hit against normal enemies
+MAX_AUTO_SHOTS_PER_HEAD = 1  # no stacked multishot volleys in Classic
 PLAYER_PROJECTILE_LIFETIME_TICKS = None  # bisher nur durch den Spielfeldrand begrenzt
 PLAYER_FIREBALL_SPEED_PX_PER_TICK = 4.5  # 25% slower than before; fraction-safe movement
 PLAYER_FIREBALL_DAMAGE = 3
