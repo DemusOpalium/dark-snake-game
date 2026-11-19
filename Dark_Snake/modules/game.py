@@ -48,6 +48,8 @@ from modules.studio_locale import DEFAULT_STUDIO_LANGUAGE, normalize_studio_lang
 from modules.customization import CustomizationMenu
 from modules.enemies import NormalEnemy
 from modules.boss_medusa import MedusaEyes, medusa_step
+from modules.boss_tactics import MedusaTactics
+from modules.boss_tactics_visual import draw_medusa_volley
 from modules.bolbu_enemy import BolbuEnemy
 from modules.options_menu import OptionsMenu, ExtendedOptionsMenu
 from modules.admin_panel import AdminPanel
@@ -163,6 +165,7 @@ class Boss:
         self._visual_step_start = self.last_move
         self.chase_speed = 0.5
         self.eyes = MedusaEyes()
+        self.tactics = MedusaTactics()
         self.ai_preview = False
         self.facing = (1, 0)
         self.navigation_blockers = frozenset()
@@ -239,6 +242,7 @@ class Boss:
         if enabled != self.ai_preview:
             self.ai_preview = enabled
             self.eyes.reset()
+            self.tactics.reset()
 
     def update(self, current_time):
         if current_time - self.last_move >= self.chase_speed:
@@ -697,6 +701,8 @@ class Game:
         if self.respawn.active:
             self._tick_respawn()
         self.admin_panel.close()
+        if isinstance(self.boss, Boss):
+            self.boss.tactics.cancel(time.time())
         self.level_editor.toggle()
 
     def _set_editor_window(self, entering):
@@ -855,6 +861,8 @@ class Game:
         if state == GameState.INTRO and previous != GameState.INTRO and not self._menu_suspended:
             self.clear_game_state()
         if state == GameState.PAUSE and previous in (GameState.GAME, GameState.BOSS_FIGHT):
+            if isinstance(self.boss, Boss):
+                self.boss.tactics.cancel(time.time())
             self._paused_state = previous
             self.metrics.cancel_pending()
         self.game_state = state
@@ -890,6 +898,8 @@ class Game:
         if self.respawn.active:
             self._tick_respawn()
         if not self._menu_suspended:
+            if isinstance(self.boss, Boss):
+                self.boss.tactics.cancel(time.time())
             self.admin_panel.toggle()
 
     def reset_game(self):
@@ -1450,6 +1460,43 @@ class Game:
             self.handle_death()
         return bool(targets)
 
+    def _tick_medusa_volley(self, now):
+        """Opt-in boss attack: locked telegraph -> one impact per player.
+
+        Existing Classic projectiles, aura, body contact and movement cadence
+        remain independent. Even a relay sighting is an observed position,
+        never a live player position secretly read when out of sight.
+        """
+        boss = self.boss
+        if (not isinstance(boss, Boss) or not boss.ai_preview
+                or self.game_state != GameState.BOSS_FIGHT):
+            return False
+        tactics = boss.tactics
+        if now - boss.spawn_time >= BOSS_SPAWN_PROTECTION:
+            origin = (boss.x + boss.size / 2, boss.y + boss.size / 2)
+            cast = tactics.cast(
+                boss.eyes.reading, now, origin,
+                self._vision_blockers, (GRID_WIDTH, GRID_HEIGHT),
+            )
+            if cast is not None:
+                self.log_combat_event("medusa_frost_warning",
+                                      target=cast.target)
+
+        # Existing player protections also apply to the *new* area attack.
+        if (now < self.respawn_invincible_until
+                or now < self.effects["invincibility"]):
+            return False
+        hits = tactics.hit_players(now, self._player_heads_with_health())
+        for health_attr in hits:
+            setattr(self, health_attr,
+                    getattr(self, health_attr) - tactics.DAMAGE)
+            self.log_combat_event("medusa_frost_hit",
+                                  target=health_attr, damage=tactics.DAMAGE)
+        # 2P damage is collected before a shared-life loss is resolved.
+        if hits and any(getattr(self, key) <= 0 for key in hits):
+            self.handle_death()
+        return self.respawn.active or self.game_state == GameState.GAME_OVER
+
     def _resolve_boss_body_contact(self, now):
         if (self.boss is None or self.game_state == GameState.GAME_OVER
                 or now < self.respawn_invincible_until
@@ -1530,8 +1577,12 @@ class Game:
     # === Haupt‑Update‑Schleife ===============================================
     def update(self):
         if self._tick_respawn():
+            if isinstance(self.boss, Boss):
+                self.boss.tactics.cancel(time.time())
             return
         if not self._gameplay_active():
+            if isinstance(self.boss, Boss):
+                self.boss.tactics.cancel(time.time())
             self._stall_clock_sample = None
             return
         current_time = time.time()
@@ -1595,6 +1646,8 @@ class Game:
                     self._vision_blockers, current_time,
                     (GRID_WIDTH, GRID_HEIGHT),
                 )
+        if self._tick_medusa_volley(current_time):
+            return
         for enemy in self.enemies:
             if isinstance(enemy, NormalEnemy) and hasattr(enemy, "eyes"):
                 # Sample first so pursuit reacts on this movement tick.
@@ -2008,6 +2061,8 @@ class Game:
         self._reset_snake_interpolation()
         now = time.time()
         self.respawn.begin(now)
+        if isinstance(self.boss, Boss):
+            self.boss.tactics.cancel(now)
         self._respawn_recent = True
         self.respawn_invincible_until = now + RESPAWN_SECONDS + POST_RESPAWN_PROTECTION
         self._effect_update_time = time.monotonic()
@@ -2626,6 +2681,11 @@ class Game:
         self.effect_manager.draw(self.screen, "background")
         # 2. AoE-Effekte zeichnen – liegen zwischen Raster und dynamischen Objekten
         self.frost.draw(self.screen)
+        if isinstance(self.boss, Boss) and self.boss.ai_preview:
+            draw_medusa_volley(
+                self.screen, self.boss.tactics.volley,
+                time.time(), GRID_SIZE,
+            )
         for zone in self.aoe_zones:
             zone.draw(self.screen)
         if self.boss:
