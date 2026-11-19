@@ -49,61 +49,57 @@ def _shot_hits_footprint(shot, top_left, size, *, t):
 
 def choose_swipe(position, size, threat, shots, blockers, grid_size,
                  player_heads=(), *, rng=None):
-    """Return two-cell *perpendicular* dodge, or None when no safe lane exists.
+    """Dodge *perpendicular* to the observed ray; never through solid cells.
 
-    Both intermediate footprints must be free and never pass through a
-    current player head. If a projectile may still reach the final footprint,
-    the shield remains the fallback. Never dodge along the incoming ray.
+    Two tiles for normal bosses. A four-tile-wide boss may require a third
+    tile to clear the projectile's full width; use it only if two are unsafe.
+    Predict the whole move and end lane, or fall back to the existing shield.
     """
     vx, vy = threat.velocity
     shots = tuple(shots) or (threat,)
     if vx == 0 and vy == 0:
         return None
-    if abs(vx) >= abs(vy):
-        directions = ((0, 1), (0, -1))
-    else:
-        directions = ((1, 0), (-1, 0))
+    directions = (((0, 1), (0, -1)) if abs(vx) >= abs(vy)
+                  else ((1, 0), (-1, 0)))
 
-    eligible = []
-    for dx, dy in directions:
-        mid = (position[0] + dx, position[1] + dy)
-        dst = (position[0] + 2 * dx, position[1] + 2 * dy)
-        if not (legal_boss_step(position, (dx, dy), size, blockers, grid_size)
-                and legal_boss_step(mid, (dx, dy), size, blockers, grid_size)):
-            continue
-        # A visible side step must not run over any player head.
-        if any(x <= head[0] < x + size and y <= head[1] < y + size
-               for x, y in (mid, dst) for head in player_heads):
-            continue
-        # Check destination against each projectile's near-future path.
-        # A single blocked/misaligned alternative is not a random teleport.
-        if any(_shot_hits_footprint(shot, dst, size, t=t)
-               for shot in shots
-               for t in range(0, 11)):
-            continue
-        # During the 0.18 s swipe, shots can travel about two grid updates.
-        # Sample intermediate positions to avoid swiping *into* a fast shot.
-        if any(_shot_hits_footprint(
+    for stride in ((2, 3) if size >= 4 else (2,)):
+        eligible = []
+        for dx, dy in directions:
+            path = [(position[0] + i * dx, position[1] + i * dy)
+                    for i in range(1, stride + 1)]
+            current = position
+            if any(not legal_boss_step(
+                    previous, (dx, dy), size, blockers, grid_size)
+                   for previous in [current, *path[:-1]]):
+                continue
+            # A visible side step must never run over either player head.
+            if any(x <= head[0] < x + size and y <= head[1] < y + size
+                   for x, y in path for head in player_heads):
+                continue
+            dst = path[-1]
+            if any(_shot_hits_footprint(shot, dst, size, t=t)
+                   for shot in shots for t in range(0, 11)):
+                continue
+            # During the 0.18 s swipe, projectiles travel ~2 grid ticks.
+            # Sample intermediate boss rectangles; no invulnerable teleport.
+            if any(_shot_hits_footprint(
                     shot,
-                    (position[0] + 2 * dx * fraction,
-                     position[1] + 2 * dy * fraction),
+                    (position[0] + stride * dx * fraction,
+                     position[1] + stride * dy * fraction),
                     size, t=2 * fraction,
                 ) for shot in shots for fraction in (.25, .5, .75, 1.0)):
-            continue
-        # Prefer the lane furthest from the threatening projectile track.
-        # Equal scores intentionally vary to keep the movement organic.
-        score = min(
-            hypot(dst[0] + size / 2 - (shot.position[0] + t * shot.velocity[0]),
-                  dst[1] + size / 2 - (shot.position[1] + t * shot.velocity[1]))
-            for shot in shots for t in (2, 4, 6, 8, 10)
-        )
-        eligible.append((score, dst))
-    if not eligible:
-        return None
-    best = max(score for score, _ in eligible)
-    candidates = [dest for score, dest in eligible if abs(score - best) < 1e-8]
-    return (rng or random.choice)(candidates)
-
+                continue
+            score = min(
+                hypot(dst[0] + size / 2 - (shot.position[0] + t * shot.velocity[0]),
+                      dst[1] + size / 2 - (shot.position[1] + t * shot.velocity[1]))
+                for shot in shots for t in (2, 4, 6, 8, 10)
+            )
+            eligible.append((score, dst))
+        if eligible:
+            best = max(score for score, _ in eligible)
+            candidates = [dest for score, dest in eligible if abs(score - best) < 1e-8]
+            return (rng or random.choice)(candidates)
+    return None
 
 class MedusaSwipe:
     """Two independent charges, each restoring after 12 seconds."""
