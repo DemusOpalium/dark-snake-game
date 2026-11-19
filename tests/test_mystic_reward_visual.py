@@ -196,9 +196,12 @@ def test_large_responsive_scene_never_stretches_art_or_covers_stats(size):
     left, panel_width, rect = layout
     assert left >= 0
     assert rect.left >= left + panel_width + 30
-    assert rect.right <= size[0]
+    assert rect.right <= size[0] - round(size[0] * .055)
     assert rect.bottom <= size[1]
     assert abs(rect.height / rect.width - 1.5) < .004
+    # Side-by-side arrangement preserves the original full-width stats panel.
+    assert left >= 20
+    assert panel_width == 700
 
 
 def test_tombstone_fades_at_15_plus_3_seconds_and_resets_for_new_run():
@@ -231,6 +234,11 @@ def test_tombstone_renders_real_reward_only_and_all_text_centred(reward):
     panel.draw(screen, career=result, warning=False,
                rect=rect, now=1, sequence="x")
     assert panel._base.get_size() == rect.size
+    # Gothic typography is bold throughout, including the former thin
+    # description lines; the praise line retains the scroll-like italic.
+    assert len(panel._font_cache) == 4
+    assert all(font.get_bold() for font in panel._font_cache)
+    assert panel._font_cache[2].get_italic()
     assert panel.last_slots["icon"].centerx == rect.width // 2
     for name in ("title", "reason", "praise", "rank", "progress"):
         assert panel.last_slots[name].centerx == rect.width // 2
