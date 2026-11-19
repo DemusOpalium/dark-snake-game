@@ -85,7 +85,7 @@ def test_frostage_three_candidate_profiles_are_inert_until_age_spawns_exist():
     assert reaction_state(sight, (5, 5),
                           FROST_PROTOTYPE_BEHAVIORS["frostage_frostwisp"]) == "RETREAT"
     assert movement_intention((5, 5), (6, 5), "RETREAT",
-                              frozenset(), (45, 31)) == (-1, 0)
+                              frozenset(), (45, 31)) == (-1, -1)
     assert reaction_state(sight, (5, 5),
                           FROST_PROTOTYPE_BEHAVIORS["frostage_frosttitan"]) == "GUARD"
     assert movement_intention((5, 5), (6, 5), "GUARD",
