@@ -1,6 +1,6 @@
 # 🛣️ ROADMAP.md – Entwicklungsfahrplan
 
-## 🧪 Boss-Projektile: Fix für stehende violette Kugeln (Windows-Test offen)
+## ✅ Boss-Projektile (#237) – Windows-Spieltest 19.11. erfolgreich
 
 - **Orbs werden nicht mehr mit Null-Flugrichtung erzeugt**: Bossmitte
   statt Sprite-Startzelle zum Zielen, Fallback auf Blickrichtung.
@@ -38,21 +38,26 @@
 - ✅ **Swipe D.1 / Player Projectile Cadence (#235, main)** –
   Spieler-Feuerball 4,5 Pixel/Frame und Pickup-/Multishots maximal gleich
   schnell, nur ein Update/Frame; Spieltest vom 19.11. bestätigt Boss-Swipes.
-- 🔧 **Boss Personality A (eigener Draft-PR)** –
-  fest zugeordnete Bossidentitäten **Medusa / Jäger / Wächter** mit
-  unverwechselbaren, versionierten Bildern und Fähigkeiten:
-  `Boss-RingG60.png` (Medusa, animiert), `Boss-AlexG60.png`
-  (Jäger), `Boss-SkullPurPurG60.png` (Wächter).
-  Kein `random.choice` der Bosse oder ihrer Grafiken mehr: pro
-  Stufe deterministisch Medusa → Jäger → Wächter, wiederholbar
-  bei gleicher Stufe. Jäger: schnell, aggressiver Fernangriff,
-  Swipe; Wächter: größer, Distanzhaltung, Schild;
-  Medusa: Fernaugen, Frostwurf, Schild und Swipe.
-  Neuartige Prioritäten ausschließlich im KI-Test; Classic-Angriffe
-  ohne KI-Test bleiben erhalten. Tests, CI/Windows und manueller
-  Spieltest als Merge-Gate.
-- ⬜ **Boss Phases** – Kampfphasen mit echten HP-Schwellen, Animations-
-  und Vorwarnphasen, fairen Wechseln; erst nach Profil-Spieltest.
+- ✅ **Boss Personality A (#236, main, Spieltest 19.11.)** –
+  feste Bossidentitäten, kein Grafik-/Eigenschaften-Zufall:
+  Medusa = `Boss-RingG60.png` (animiert), Jäger =
+  `Boss-AlexG60.png`, Wächter = `Boss-SkullPurPurG60.png`.
+  Feste Level-Rotation, KI-Test-Persönlichkeiten getrennt vom Classic.
+- 🔧 **Boss Phases A (eigener Draft-PR; Windows-Test offen)** –
+  pro Persönlichkeit **Phase I (>70% HP), II (≤70%), III (≤35%)**
+  mit echten max-HP-Werten. Pro Wechsel 1,2 s gut erkennbare
+  Vorwarnung am Boss, keine neu ausgelösten Angriffe währenddessen
+  und 0,65 s Erholung vor dem nächsten Boss-Spezialangriff.
+  Große Treffer überspringen keine Zwischenphase; Übergang nur
+  einmal, keine Extra-Leben-/Schadens-/Score-Manipulation.
+  Jäger verstärkt Verfolgung, Projektilkadenz und Swipe-Aufladung;
+  Wächter verstärkt Stellung, AoE und Schild-Aufladung;
+  Medusa kombiniert Frostwurf, Fernaugen und taktische Bewegung.
+  Bossbild und Hitbox bleiben beim Phasenwechsel erhalten.
+  Bei Pausen/Respawn/Editor wird die Warnung neu gestartet,
+  statt nach abgelaufener Echtzeit überraschend anzugreifen.
+  KI-Test als Gate, Classic aus unverändert.
+  Windows Alpha 2 / CodeQL / Demus' 1P/2P-Spieltest vor Merge.
 - ⬜ **FrostAge Vertical Slice** – Welt-/Spawn-Gate und drei individuelle
   Gegnerprofile einschließlich eigener Boss-Persönlichkeit, später
   eigene Frost-/Mycelium-Varianten.
