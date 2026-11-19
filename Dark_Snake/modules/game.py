@@ -170,6 +170,7 @@ class Boss:
         self.tactics = MedusaTactics()
         self.defense = MedusaDefense()
         self.swipe = MedusaSwipe()
+        self._boss_shot_debug = (0, 0)  # shots, genuinely threatening shots
         self.ai_preview = False
         self.facing = (1, 0)
         self.navigation_blockers = frozenset()
@@ -250,6 +251,7 @@ class Boss:
             self.defense.reset()
             self.cancel_swipe(time.time())
             self.swipe.reset()
+            self._boss_shot_debug = (0, 0)
 
     def begin_swipe(self, action):
         """Commit target cell, while collision and sprite follow the same swipe."""
@@ -1558,13 +1560,15 @@ class Game:
                 max(flame.rect.width, flame.rect.height) / (2 * GRID_SIZE),
             ))
         center = (boss.x + boss.size / 2, boss.y + boss.size / 2)
+        # Keep observation counts only for the opt-in developer hitbox view.
+        visible = boss.defense.visible_threats(
+            center, boss.facing, boss.size, shots, self._vision_blockers,
+        )
+        boss._boss_shot_debug = (len(shots), len(visible))
         if boss.swipe.active(now):
+            boss.swipe.last_reason = "SWIPING"
             return
         if not boss.defense.active(now):
-            visible = boss.defense.visible_threats(
-                center, boss.facing, boss.size, shots,
-                self._vision_blockers,
-            )
             action = boss.swipe.observe(
                 (boss.x, boss.y), boss._visual_position(now), boss.size,
                 visible, shots, self._vision_blockers,
@@ -2777,6 +2781,28 @@ class Game:
             pygame.draw.circle(self.screen, (115, 206, 255), eye_pos,
                                round(4 * GRID_SIZE), 1)
             pygame.draw.circle(self.screen, (215, 225, 255), eye_pos, 5, 2)
+        # Small, explicit diagnosis: shots present vs. actually visible and
+        # approaching. No extra permanent HUD, only KI-Test + Hitbox debug.
+        shots, threats = boss._boss_shot_debug
+        reason = boss.swipe.last_reason
+        if boss.defense.active(time.time()):
+            reason = "SHIELD"
+        label = (f"PROJ {shots}/{threats}  SWIPE "
+                 f"{boss.swipe.charges(time.time())}/2  {reason}")
+        image = self._enemy_ai_debug_font.render(
+            label, True, (217, 226, 254),
+        )
+        text_x = max(0, min(
+            WINDOW_WIDTH - image.get_width() - 6,
+            boss.x * GRID_SIZE,
+        ))
+        text_y = max(36, boss.y * GRID_SIZE - 34)
+        backing = pygame.Rect(
+            text_x - 3, text_y - 2,
+            image.get_width() + 6, image.get_height() + 4,
+        )
+        pygame.draw.rect(self.screen, (16, 22, 31), backing, border_radius=3)
+        self.screen.blit(image, (text_x, text_y))
 
     def _draw_enemy_sight_debug(self, enemy):
         """Visualise sensed targets without affecting runtime AI or hitboxes."""
