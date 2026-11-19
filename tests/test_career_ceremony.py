@@ -163,10 +163,11 @@ def test_game_over_renders_verified_card_and_keeps_highscore_name(
     # Dark Abyss appears. Complete that transition for this UI test.
     game._death_soul_event = None
     game.draw()
-    mystical = game._game_over_visual._mystic_reward
+    mystical = game._game_over_visual._tombstone_reward
     assert mystical._base is not None
     first_card = mystical._base
-    assert mystical.last_rect.y > game._game_over_visual._panel_size[1]
+    assert mystical.last_rect.right <= game.screen.get_width()
+    assert mystical.last_rect.top >= 0
     before = (game.name_input, game.score, game.round_career_result)
     game.draw()
     assert mystical._base is first_card
@@ -203,7 +204,7 @@ def test_inventory_failure_shows_pending_reward_without_losing_xp(
     assert game.skin_inventory_error == "skin inventory unavailable"
     game._death_soul_event = None
     game.draw()
-    assert game._game_over_visual._mystic_reward._base is not None
+    assert game._game_over_visual._tombstone_reward._base is not None
 
 
 def test_aborted_unrecorded_round_never_shows_fake_career_prize(tmp_path, monkeypatch):
