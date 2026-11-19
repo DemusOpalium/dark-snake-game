@@ -46,8 +46,9 @@ def draw_medusa_volley(surface, volley, now, grid_size):
             1.0, (now - volley.started_at)
             / MedusaTactics.WARNING_SECONDS,
         ))
-        ox = (volley.origin[0] + .5) * grid_size
-        oy = (volley.origin[1] + .5) * grid_size
+        # The origin is already the boss footprint center (grid units).
+        ox = volley.origin[0] * grid_size
+        oy = volley.origin[1] * grid_size
         px = round(ox + (center[0] - ox) * fraction)
         py = round(oy + (center[1] - oy) * fraction)
         pygame.draw.circle(surface, (110, 217, 255), (px, py),
