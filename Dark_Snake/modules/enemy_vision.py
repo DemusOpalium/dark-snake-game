@@ -20,6 +20,10 @@ class VisionProfile:
     fov_degrees: float = 100.0
     memory_seconds: float = 1.5
     scan_interval: float = 0.15
+    # None preserves the Phase A/B semantics. Explicit settings are only
+    # used for the opt-in AI pilot; not for every Classic spawn.
+    alert_radius_cells: float | None = None
+    reaction_seconds: float = 0.0
 
     def __post_init__(self):
         if not 0 < self.radius_cells <= 100:
@@ -30,6 +34,11 @@ class VisionProfile:
             raise ValueError("Erinnerungszeit muss zwischen 0 und 60 Sekunden liegen.")
         if not 0.02 <= self.scan_interval <= 2:
             raise ValueError("Sichtprüfintervall muss zwischen 0,02 und 2 Sekunden liegen.")
+        if (self.alert_radius_cells is not None
+                and not self.radius_cells <= self.alert_radius_cells <= 100):
+            raise ValueError("Alarmradius muss mindestens dem Entdeckungsradius entsprechen.")
+        if not 0 <= self.reaction_seconds <= 10:
+            raise ValueError("Reaktionszeit muss zwischen 0 und 10 Sekunden liegen.")
 
 
 @dataclass(frozen=True, slots=True)
@@ -89,10 +98,12 @@ def has_line_of_sight(start: Cell, end: Cell, blockers) -> bool:
 
 
 def can_see(origin: Cell, facing: Cell, target: Cell,
-            profile: VisionProfile, blockers=frozenset()) -> bool:
+            profile: VisionProfile, blockers=frozenset(), *,
+            radius_cells: float | None = None) -> bool:
     dx, dy = target[0] - origin[0], target[1] - origin[1]
     distance_sq = dx * dx + dy * dy
-    if distance_sq > profile.radius_cells * profile.radius_cells:
+    radius = profile.radius_cells if radius_cells is None else radius_cells
+    if distance_sq > radius * radius:
         return False
     if distance_sq and profile.fov_degrees < 360:
         fx, fy = facing
@@ -108,34 +119,67 @@ def can_see(origin: Cell, facing: Cell, target: Cell,
 
 
 class VisionSensor:
-    """One sensor per opponent. A timed reading, zero side effects on combat."""
+    """Per-opponent sight with optional reaction delay and two alert radii.
+
+    Discover within radius_cells, react after a continuous confirmation delay,
+    then see as far as alert_radius_cells while alerted. Occlusion and angle
+    always apply in both radii; never track players through opaque walls.
+    Memory permits searching the *last seen position*, not omniscient chase.
+    """
 
     def __init__(self, profile: VisionProfile):
         self.profile = profile
         self.result = VisionResult()
         self.next_scan_at = float("-inf")
+        self.candidate_player: int | None = None
+        self.candidate_since: float | None = None
 
     def observe(self, origin: Cell, facing: Cell, targets: Iterable[Target],
                 blockers, now: float) -> VisionResult:
-        # Only check geometry about 6-7 times/second, not once per frame.
-        # Future calls keep the same observation until this sensor's next tick.
         if now < self.next_scan_at:
             return self.result
         self.next_scan_at = now + self.profile.scan_interval
+        remembered = (self.result.last_seen_at is not None
+                      and now - self.result.last_seen_at
+                      <= self.profile.memory_seconds)
+        alerted = self.result.visible or remembered
+        radius = (self.profile.alert_radius_cells
+                  if alerted and self.profile.alert_radius_cells is not None
+                  else self.profile.radius_cells)
+
         visible = []
         for player, cell in targets:
-            if can_see(origin, facing, cell, self.profile, blockers):
-                dist = (cell[0] - origin[0]) ** 2 + (cell[1] - origin[1]) ** 2
-                visible.append((dist, player, cell))
+            if can_see(origin, facing, cell, self.profile, blockers,
+                       radius_cells=radius):
+                distance = ((cell[0] - origin[0]) ** 2
+                            + (cell[1] - origin[1]) ** 2)
+                visible.append((distance, player, cell))
+
         if visible:
-            # Always deterministic for equidistant 1P/2P targets.
             _, player, cell = min(visible)
-            self.result = VisionResult("VISIBLE", player, cell, now)
-        elif (self.result.last_seen_at is not None
-              and now - self.result.last_seen_at <= self.profile.memory_seconds):
+            # No delay after a *confirmed* detection, including a switch in
+            # 2P. On first contact, a target must remain in sight for the
+            # configured time. A new candidate resets the delay.
+            if not alerted and player != self.candidate_player:
+                self.candidate_player = player
+                self.candidate_since = now
+            if (alerted or self.profile.reaction_seconds == 0
+                    or (self.candidate_since is not None
+                        and now - self.candidate_since
+                        >= self.profile.reaction_seconds)):
+                self.candidate_player = None
+                self.candidate_since = None
+                self.result = VisionResult("VISIBLE", player, cell, now)
+                return self.result
+        else:
+            # Continuous sight required during initial target acquisition.
+            self.candidate_player = None
+            self.candidate_since = None
+
+        if remembered:
             self.result = VisionResult(
                 "SEARCHING", self.result.target_player,
-                self.result.last_known_cell, self.result.last_seen_at
+                self.result.last_known_cell, self.result.last_seen_at,
             )
         else:
             self.result = VisionResult()
@@ -144,3 +188,5 @@ class VisionSensor:
     def reset(self):
         self.result = VisionResult()
         self.next_scan_at = float("-inf")
+        self.candidate_player = None
+        self.candidate_since = None
