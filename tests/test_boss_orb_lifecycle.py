@@ -11,7 +11,7 @@ import pygame
 import pytest
 
 pygame.init()
-pygame.display.set_mode((1, 1))
+pygame.display.set_mode((1280, 900))
 
 from config import GRID_SIZE
 from modules.game import Game
