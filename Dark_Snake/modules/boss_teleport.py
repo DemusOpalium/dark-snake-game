@@ -1,8 +1,11 @@
 """Boss Teleport A: deterministic safe relocation and reusable transition states.
 
-All calculations are in grid cells. This module never moves a snake, changes
-damage, reads unobserved player locations as tactical targets, or creates
-projectiles. The game's AI-Test gate is the only way to enable it.
+All calculations are in grid cells. This module never moves a snake,
+changes damage or creates projectiles. Normal tactical targeting remains bound
+to Medusa Eyes. The explicit Guardian Phase III world scan is the *only*
+exception: it can acquire a live head anywhere after a visible 1.45 s pulse,
+and only for a separately telegraphed, collision-safe tunnel relocation.
+The game's AI-Test gate is the only way to enable it.
 """
 from __future__ import annotations
 
@@ -108,9 +111,9 @@ def choose_destination(origin, size, grid_size, blocked_cells, player_heads,
                        observed_target, profile_key):
     """Find a deterministic *free* landing cell near the observed target.
 
-    The target must come from the boss sensor (VISIBLE/RELAY/SEARCHING),
-    never from real unobserved player coordinates. Real bodies/heads may be
-    consulted only as a collision *safety* mask.
+    The target normally comes from boss sensors (VISIBLE/RELAY/SEARCHING).
+    Only a finished guardian Phase III world scan can supply a globally
+    detected player head. Bodies/heads also act as a collision *safety* mask.
     """
     if observed_target is None:
         return None
