@@ -79,15 +79,15 @@ def test_prediction_is_bounded_by_two_cells_and_game_bounds():
     see(eyes, 5)
     see(eyes, 5.11)
     result = see(eyes, 5.25, target=(10, 5))
-    assert result.visible if hasattr(result, "visible") else result.kind == "VISIBLE"
+    assert result.kind == "VISIBLE"
     assert result.predicted_cell[0] <= 12
     assert result.predicted_cell[0] >= 10
 
 
 def test_boss_steps_respect_large_footprint_and_blocked_diagonals():
     # A 4x4 boss cannot clip one cell of its footprint across a wall.
-    assert medusa_step((5, 5), 4, (15, 5), frozenset({(9, 6)}), (40, 35)) != (1, 0)
-    assert medusa_step((5, 5), 4, (15, 5), frozenset(), (40, 35)) == (1, 0)
+    assert medusa_step((5, 5), 4, (15, 7), frozenset({(9, 6)}), (40, 35)) != (1, 0)
+    assert medusa_step((5, 5), 4, (15, 7), frozenset(), (40, 35)) == (1, 0)
     assert medusa_step((0, 0), 4, (-100, -100), frozenset(), (40, 35)) == (0, 0)
 
 
