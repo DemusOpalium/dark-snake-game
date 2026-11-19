@@ -1791,10 +1791,9 @@ class Game:
         if self._tick_medusa_volley(current_time):
             return
 
-        # Sense the *previous* real position first, then move each player,
-        # enemy and boss shot once, ahead of the collision-resolution passes.
-        # This gives the Medusa a full visibility frame before a shot arrives.
-        self.update_projectiles()
+        # Perception uses the current projectile position before its sole
+        # frame move. Keep Classic hit checks *before* projectile advancement
+        # to preserve the original 1P/2P once-per-flight hit order.
         for enemy in self.enemies:
             if isinstance(enemy, NormalEnemy) and hasattr(enemy, "eyes"):
                 # Sample first so pursuit reacts on this movement tick.
@@ -1923,6 +1922,9 @@ class Game:
         if self.projectiles and current_time >= self.respawn_invincible_until and self.game_state != GameState.GAME_OVER:
             self._resolve_classic_boss_projectile_hits()
             invincible = current_time < self.respawn_invincible_until
+        # Exactly one world-projectile advancement per gameplay update;
+        # never repeat it inside the snake movement tick.
+        self.update_projectiles()
         if self.game_state == GameState.GAME_OVER:
             return
         if self.player_count == 1 and self.snake:
