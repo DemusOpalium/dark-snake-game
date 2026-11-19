@@ -54,6 +54,13 @@ from modules.boss_balance import boss_max_health
 from modules.boss_tactics import MedusaTactics
 from modules.boss_defense import IncomingShot, MedusaDefense
 from modules.boss_swipe import MedusaSwipe
+from modules.boss_teleport import (
+    BossTeleport, choose_destination, destination_is_safe,
+    RECOVERY_SECONDS as TELEPORT_RECOVERY_SECONDS,
+)
+from modules.boss_teleport_visual import (
+    draw_teleport_markers, draw_teleport_sprite,
+)
 from modules.boss_tactics_visual import draw_medusa_volley
 from modules.bolbu_enemy import BolbuEnemy
 from modules.options_menu import OptionsMenu, ExtendedOptionsMenu
@@ -185,6 +192,7 @@ class Boss:
         self.tactics = MedusaTactics()
         self.defense = MedusaDefense()
         self.swipe = MedusaSwipe()
+        self.teleport = BossTeleport(self.profile_key)
         self._boss_shot_debug = (0, 0)  # shots, genuinely threatening shots
         self.ai_preview = False
         self.facing = (1, 0)
@@ -249,6 +257,8 @@ class Boss:
             self.defense.reset()
             self.cancel_swipe(time.time())
             self.swipe.reset()
+            self.cancel_teleport(time.time())
+            self.teleport.reset()
             self._boss_shot_debug = (0, 0)
             self.phases.reset()
             if enabled:
@@ -297,7 +307,26 @@ class Boss:
             self._visual_step_start = now
         self.swipe.cancel()
 
+    def cancel_teleport(self, now):
+        """Abort a mid-transition warp without leaving ghost hitboxes."""
+        action = self.teleport.action
+        if action is not None:
+            self.x, self.y = (
+                action.destination if self.teleport.landed else action.origin
+            )
+            self._visual_from = self._visual_to = (self.x, self.y)
+            self._visual_step_start = now
+            self.last_move = now
+        self.teleport.cancel(now)
+
     def update(self, current_time):
+        if self.ai_preview and self.teleport.waiting(current_time):
+            # Telegraph, sink, emergence AND recovery block every new attack,
+            # movement and projectile spawn. Existing bullets keep moving.
+            self.last_move = current_time
+            if self.frames:
+                self.update_animation(current_time)
+            return None
         if self.ai_preview and self.swipe.active(current_time):
             # Never chain a normal grid step or fire a new boss attack mid-dodge.
             self.last_move = current_time
@@ -383,7 +412,16 @@ class Boss:
     def draw(self, screen):
         visual_x, visual_y = self._visual_position(time.time())
         pixel_x, pixel_y = round(visual_x * GRID_SIZE), round(visual_y * GRID_SIZE)
-        if self.image:
+        action = self.teleport.action if self.ai_preview else None
+        if action is not None:
+            draw_teleport_markers(
+                screen, action, time.time(), GRID_SIZE, self.size,
+            )
+            draw_teleport_sprite(
+                screen, self.image, (pixel_x, pixel_y),
+                self.size * GRID_SIZE, action, time.time(),
+            )
+        elif self.image:
             screen.blit(self.image, (pixel_x, pixel_y))
         else:
             pygame.draw.rect(screen, RED, (pixel_x, pixel_y,
@@ -473,6 +511,10 @@ class Boss:
 
     def get_render_rect(self):
         now = time.time()
+        if self.ai_preview and self.teleport.hidden(now):
+            # No invisible hitbox left at the departure tile, and no
+            # surprise hitbox at the arrival tile while emerging.
+            return pygame.Rect(0, 0, 0, 0)
         if self.ai_preview and self.swipe.active(now):
             sx, sy = self.swipe.action.position(now)
             return pygame.Rect(round(sx * GRID_SIZE), round(sy * GRID_SIZE),
@@ -1382,6 +1424,8 @@ class Game:
 
     def _announce_boss_phase(self, boss, stage, now):
         """Tell the player before an altered boss can start a new attack."""
+        if boss.teleport.action is not None:
+            boss.cancel_teleport(now)
         boss.tactics.cancel(now)
         boss.defense.cancel()
         # Existing projectiles/areas finish normally; no instant attack
@@ -1419,6 +1463,10 @@ class Game:
         """Apply boss damage and process the reward/transition exactly once."""
         boss = self.boss
         if boss is None:
+            return False
+        if isinstance(boss, Boss) and boss.ai_preview and boss.teleport.hidden(time.time()):
+            # During sinking/emerging even direct special damage cannot hit
+            # an invisible or half-materialized boss.
             return False
         # A shield can only be raised by an observed incoming player shot.
         # The existing projectile-consumption path still removes that hit.
@@ -1696,6 +1744,7 @@ class Game:
         """Sense *player-owned* incoming shots only, never hidden attack data."""
         boss = self.boss
         if (not isinstance(boss, Boss) or not boss.ai_preview
+                or boss.teleport.waiting(now)
                 or boss.phases.warning_active(now)
                 or now - boss.spawn_time < BOSS_SPAWN_PROTECTION):
             return
@@ -1761,6 +1810,7 @@ class Game:
         """
         boss = self.boss
         if (not isinstance(boss, Boss) or not boss.ai_preview
+                or boss.teleport.waiting(now)
                 or boss.phases.warning_active(now)
                 or not boss.profile.frost_throw
                 or self.game_state != GameState.BOSS_FIGHT):
@@ -1793,6 +1843,8 @@ class Game:
 
     def _resolve_boss_body_contact(self, now):
         if (self.boss is None or self.game_state == GameState.GAME_OVER
+                or (isinstance(self.boss, Boss)
+                    and self.boss.teleport.waiting(now))
                 or now < self.respawn_invincible_until
                 or now - self.boss.spawn_time < BOSS_SPAWN_PROTECTION):
             return False
@@ -1962,6 +2014,7 @@ class Game:
                     self._vision_blockers, current_time,
                     (GRID_WIDTH, GRID_HEIGHT),
                 )
+            self._tick_boss_teleport(current_time)
         self._scan_boss_defense(current_time)
         if self._tick_medusa_volley(current_time):
             return
