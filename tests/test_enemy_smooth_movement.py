@@ -71,18 +71,19 @@ def test_ai_speed_switch_does_not_snap_sprite_back_to_previous_cell(monkeypatch)
     e.set_ai_preview(True)
     e.sprint_chance = 0
     e.eyes.result = VisionResult("VISIBLE", 1, (15, 5), clock[0])
-    first_interval = 1.0 / (e.AI_MOVEMENT_SPEED * e.behavior_profile.chase_speed)
+    from modules.enemy_behavior import BehaviorProfile
+    e.behavior_profile = BehaviorProfile("CHASE", chase_speed=1)
+    first_interval = 1.0 / e.AI_MOVEMENT_SPEED
     clock[0] += first_interval + .01
     e.update()
     assert e.x == 6
-    clock[0] += e._glide_duration * .45
-    e.update()
+    clock[0] += .31  # old half-second glide has not yet finished
+    # The next movement interval drops to ~.28s, so a new step is due.
+    e.behavior_profile = BehaviorProfile("CHASE", chase_speed=2)
     before = e.get_render_rect().x
     assert 5 * GRID_SIZE < before < 6 * GRID_SIZE
 
-    # A speed/timing change triggers an early next move in the middle
-    # of the original interpolation: the next tween starts at 'before'.
-    e.last_move = clock[0] - 1
+    # The next tween must start at the last drawn position, not old cell 6.
     e.update()
     assert e.x == 7
     assert e.get_render_rect().x == before
