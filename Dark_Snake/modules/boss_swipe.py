@@ -11,6 +11,7 @@ from math import ceil, hypot
 import random
 
 from modules.boss_medusa import legal_boss_step
+from modules.boss_defense import MedusaDefense
 
 
 @dataclass(frozen=True)
@@ -87,8 +88,12 @@ def choose_swipe(position, size, threat, shots, blockers, grid_size,
                    for x, y in path for head in player_heads):
                 continue
             dst = path[-1]
+            # Slow player shots can take 20+ ticks to reach the boss.
+            # Checking only 10 ticks made a visually successful swipe
+            # collide with the same fireball a moment later.
             if any(_shot_hits_footprint(shot, dst, size, t=t)
-                   for shot in shots for t in range(0, 11)):
+                   for shot in shots
+                   for t in range(MedusaDefense.MAX_FRAMES_AHEAD + 1)):
                 continue
             # During the 0.18 s swipe, projectiles travel ~2 grid ticks.
             # Sample intermediate boss rectangles; no invulnerable teleport.
