@@ -21,6 +21,14 @@ ASPECT = 1536 / 1024  # Source PNG; preserve proportions, never stretch the art.
 HOLD_SECONDS = 15.0
 FADE_SECONDS = 3.0
 
+# Gothic stone should read like engraved relief, not small grey overlay text.
+# Georgia is bundled with Windows; SysFont has a safe fallback elsewhere.
+EPITAPH_FONT = "Georgia"
+BONE = (237, 226, 204)
+MINT = (193, 239, 207)
+HEIRLOOM_GOLD = (239, 214, 168)
+LAVENDER_FROST = (207, 200, 240)
+
 
 def portrait_size(max_width: int, max_height: int) -> tuple[int, int]:
     """Fit the entire portrait (including the three skulls) into available space."""
@@ -81,8 +89,15 @@ class TombstoneRewardPanel(MysticRewardPanel):
         lines = self._words(font, text, max_width, max_lines)
         for index, line in enumerate(lines):
             label = font.render(line, True, color)
-            target.blit(label, label.get_rect(midtop=(target.get_width() // 2,
-                                                       y + index * (font.get_linesize() + 3))))
+            rect = label.get_rect(midtop=(
+                target.get_width() // 2, y + index * (font.get_linesize() + 3)
+            ))
+            # Cached soft engraving shadow gives light letters definition on
+            # the photographed rock without per-frame surface generation.
+            shadow = font.render(line, True, (8, 8, 20))
+            shadow.set_alpha(190)
+            target.blit(shadow, rect.move(1, 2))
+            target.blit(label, rect)
         return len(lines)
 
     def _prepare(self, width, career, warning):
@@ -108,13 +123,19 @@ class TombstoneRewardPanel(MysticRewardPanel):
                              border_radius=max(8, width // 15))
 
         cx = width // 2
-        font_title = pygame.font.SysFont("Segoe UI", max(17, int(width * .047)),
-                                        bold=True)
-        font_body = pygame.font.SysFont("Segoe UI", max(15, int(width * .038)))
-        font_praise = pygame.font.SysFont("Segoe UI", max(15, int(width * .038)),
-                                         italic=True)
-        font_small = pygame.font.SysFont("Segoe UI", max(14, int(width * .035)),
-                                        bold=True)
+        font_title = pygame.font.SysFont(
+            EPITAPH_FONT, max(19, int(width * .046)), bold=True
+        )
+        font_body = pygame.font.SysFont(
+            EPITAPH_FONT, max(16, int(width * .036)), bold=True
+        )
+        font_praise = pygame.font.SysFont(
+            EPITAPH_FONT, max(16, int(width * .035)), bold=True, italic=True
+        )
+        font_small = pygame.font.SysFont(
+            EPITAPH_FONT, max(15, int(width * .033)), bold=True
+        )
+        self._font_cache = (font_title, font_body, font_praise, font_small)
 
         art = self._picture(career)
         icon_centre = (cx, round(height * .202))
@@ -140,14 +161,14 @@ class TombstoneRewardPanel(MysticRewardPanel):
         bar_y = int(height * .797)
         self._center_lines(surface, font_title, title, y=title_y,
                            max_width=face_width, max_lines=2,
-                           color=(155, 234, 190) if art is not None
-                           else (221, 172, 239))
+                           color=MINT if art is not None
+                           else (220, 187, 241))
         self._center_lines(surface, font_body, reason, y=reason_y,
                            max_width=face_width, max_lines=3,
-                           color=(232, 231, 240))
+                           color=BONE)
         self._center_lines(surface, font_praise, praise, y=praise_y,
                            max_width=face_width, max_lines=3,
-                           color=(171, 219, 231))
+                           color=LAVENDER_FROST)
         if career is not None:
             earned = f"{career.earned_xp:,}".replace(",", ".")
             total = f"{career.total_xp:,}".replace(",", ".")
@@ -155,7 +176,7 @@ class TombstoneRewardPanel(MysticRewardPanel):
                     f"+{earned} XP")
             self._center_lines(surface, font_small, rank, y=rank_y,
                                max_width=face_width, max_lines=2,
-                               color=(217, 211, 246))
+                               color=HEIRLOOM_GOLD)
             if career.next_rank_xp is None:
                 progress = f"{total} XP GESAMT · MAXIMALRANG"
                 ratio = 1.0
@@ -167,7 +188,7 @@ class TombstoneRewardPanel(MysticRewardPanel):
                                     max(1, career.next_rank_xp - previous)))
             self._center_lines(surface, font_small, progress, y=progress_y,
                                max_width=face_width, max_lines=2,
-                               color=(164, 216, 214))
+                               color=(183, 225, 220))
             bar = pygame.Rect(cx - int(width * .30), bar_y,
                               int(width * .60), max(3, round(width * .008)))
             pygame.draw.rect(surface, (34, 48, 66, 200), bar, border_radius=3)
