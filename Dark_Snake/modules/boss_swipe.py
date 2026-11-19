@@ -41,10 +41,10 @@ def _shot_hits_footprint(shot, top_left, size, *, t):
     sy = shot.position[1] + t * shot.velocity[1]
     # Existing grid shots use a one-cell hitbox. The wider player fireball
     # swept rect is handled by the *actual* collision check in Game.
-    half_projectile = .5
+    half_projectile = shot.radius_cells
     x, y = top_left
-    return (x - half_projectile <= sx <= x + size + half_projectile
-            and y - half_projectile <= sy <= y + size + half_projectile)
+    return (x - half_projectile < sx < x + size + half_projectile
+            and y - half_projectile < sy < y + size + half_projectile)
 
 
 def choose_swipe(position, size, threat, shots, blockers, grid_size,
@@ -56,6 +56,7 @@ def choose_swipe(position, size, threat, shots, blockers, grid_size,
     the shield remains the fallback. Never dodge along the incoming ray.
     """
     vx, vy = threat.velocity
+    shots = tuple(shots) or (threat,)
     if vx == 0 and vy == 0:
         return None
     if abs(vx) >= abs(vy):
