@@ -17,6 +17,8 @@ RELEVANT_EVENTS = {
     "boss_phase_warning", "boss_phase_active",
     "boss_world_scan_warning", "boss_world_scan_complete",
     "boss_teleport_warning", "boss_teleport_arrived", "boss_teleport_aborted",
+    "boss_charge_warning", "boss_charge_started", "boss_charge_hit",
+    "boss_charge_impact", "boss_charge_recovered", "boss_charge_aborted",
     "boss_shield_raised", "boss_shield_blocked",
     "medusa_frost_warning", "medusa_frost_hit",
     "portal_activated", "item_pickup", "item_applied", "boss_body_contact",
