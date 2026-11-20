@@ -82,6 +82,7 @@ from modules.death_fog import AbyssFogVisual, FINAL_DEATH_SECONDS
 from modules.dice_visual import FrostDiceResultVisual
 from modules.round_progress import RoundJournal, begin_round, completed_round
 from modules.dev_recorder import DeveloperRecorder
+from modules.dev_session import DeveloperSession
 from modules.dev_vitals import VitalObserver
 from modules.dev_feedback_ui import DeveloperFeedbackUI
 from modules.career_ranks import CareerLedger, xp_for_round
@@ -726,9 +727,15 @@ class Game:
         # Headless development simulations do not affect real player history.
         self._round_journal = RoundJournal()
         self.dev_recorder = DeveloperRecorder()
+        self.dev_session = DeveloperSession()
         self._dev_vitals = VitalObserver()
         self.dev_feedback = DeveloperFeedbackUI()
         self._dev_button_rect = pygame.Rect(0, 0, 0, 0)
+        self._dev_save_rect = pygame.Rect(0, 0, 0, 0)
+        self._dev_save_notice_until = 0.0
+        self._dev_save_success = False
+        self._dev_settings_previous = {}
+        self._dev_last_round_id = None
         self._dev_ui_font = pygame.font.SysFont("Segoe UI", 14, bold=True)
         self._dev_feedback_opened_at = None
         self._dev_badge_until = 0.0
@@ -902,7 +909,7 @@ class Game:
             "level_studio": self._open_level_editor,
             "controls": lambda: self.set_state(GameState.CONTROLS),
             "developer": lambda: self.set_state(GameState.SIMULATION),
-            "quit": lambda: sys.exit(),
+            "quit": self._dev_quit,
         }, can_continue=self.can_continue, background=load_frostage_background(TITLE_IMG))
 
     def _open_level_editor(self):
@@ -916,6 +923,9 @@ class Game:
             self.boss.cancel_teleport(time.time())
             self.boss.phases.cancel_warning()
         self.level_editor.toggle()
+        if self.dev_session.active:
+            self.dev_session.event("studio_toggle", active=self.level_editor.active)
+            self.dev_session.checkpoint("studio_toggle")
 
     def _set_editor_window(self, entering):
         if self.headless:
@@ -1029,6 +1039,15 @@ class Game:
                     record_event(f"Temporäre Einstellungsdatei konnte nicht entfernt werden: {exc}")
         set_music_volume(self.settings['bg_music_volume'])
         set_sound_volume(self.settings['sfx_volume'])
+        if self.dev_session.active:
+            changed = sorted(k for k, v in self.settings.items()
+                             if self._dev_settings_previous.get(k) != v)
+            self.dev_session.event("settings_saved", changed_keys=changed, success=saved)
+            if not saved:
+                self.dev_session.event("session_warning", code="settings_save_failed")
+            if saved:
+                self._dev_settings_previous = dict(self.settings)
+            self.dev_session.checkpoint("settings_saved")
         return saved
 
     def start_game(self, players):
@@ -1049,6 +1068,7 @@ class Game:
         self._round_token = begin_round(players)
         self.dev_recorder.begin_round(self._round_token, context={
             "players": players,
+            "session_id": self.dev_session.session_id if self.dev_session.active else None,
             "initial_speed": self.settings["initial_speed"],
             "difficulty": self.settings["difficulty"],
             "boss_health_multiplier": self.settings["boss_health_multiplier"],
@@ -1059,6 +1079,7 @@ class Game:
             "vision_blockers": sorted(self._vision_blockers),
         })
         self._dev_capture_vitals("round_start", checkpoint=True)
+        self.dev_session.round_start(self._round_token)
         self.set_state(GameState.GAME)
 
     def choose_classic_background(self, name, level_map, *, roof_objects=None,
@@ -1094,6 +1115,11 @@ class Game:
             self._paused_state = previous
             self.metrics.cancel_pending()
         self.game_state = state
+        if (self.dev_session.active and previous is not None and
+                previous != state):
+            self.dev_session.event(
+                "navigation", source=previous.name, destination=state.name,
+            )
         playing = self._gameplay_active()
         if playing and not was_playing:
             self._stall_clock_sample = time.monotonic()
@@ -1135,7 +1161,15 @@ class Game:
             self.admin_panel.toggle()
 
     def reset_game(self):
-        self.dev_recorder.finish("reset")
+        was_recording = self.dev_recorder.active
+        if was_recording:
+            self._dev_capture_vitals("reset_end", checkpoint=True)
+        report_saved = self.dev_recorder.finish("reset")
+        if was_recording:
+            self.dev_session.round_end(
+                getattr(self, "_round_token", None), "reset",
+                report_saved=report_saved,
+            )
         self._dev_vitals.reset()
         self.dev_feedback.clear()
         self._dev_preboss_asked = False
@@ -1235,7 +1269,15 @@ class Game:
 
     def clear_game_state(self):
         """Drop every object belonging to a round before showing a menu."""
-        self.dev_recorder.finish("menu_exit")
+        was_recording = self.dev_recorder.active
+        if was_recording:
+            self._dev_capture_vitals("menu_exit", checkpoint=True)
+        report_saved = self.dev_recorder.finish("menu_exit")
+        if was_recording:
+            self.dev_session.round_end(
+                getattr(self, "_round_token", None), "menu_exit",
+                report_saved=report_saved,
+            )
         self.dev_feedback.clear()
         self._dev_end_pending = False
         self.respawn.clear()
@@ -1477,6 +1519,13 @@ class Game:
         # Snapshot captures both player HP and shared lives BEFORE any boss damage.
         self._dev_capture_vitals("boss_entry", checkpoint=True)
         self.dev_recorder.checkpoint("boss_spawn")
+        if self.dev_session.active:
+            self.dev_session.event(
+                "boss_checkpoint", stage="spawn", boss=self.boss.profile_key,
+                level=self.level,
+                round_id=self._round_token["round_id"] if self._round_token else None,
+            )
+            self.dev_session.checkpoint("boss_spawn")
         boss_center = ((self.boss.x + self.boss.size / 2) * GRID_SIZE,
                        (self.boss.y + self.boss.size / 2) * GRID_SIZE)
         self.boss.aura_effect = self.effect_manager.spawn(
@@ -1499,15 +1548,87 @@ class Game:
         self.dev_recorder.event(event_type, **details)
         if event_type == "boss_defeated":
             self.dev_recorder.checkpoint("boss_defeated")
+            if self.dev_session.active:
+                self.dev_session.event(
+                    "boss_checkpoint", stage="defeated",
+                    boss=details.get("boss"), level=self.level,
+                    round_id=self._round_token["round_id"] if self._round_token else None,
+                )
+                self.dev_session.checkpoint("boss_defeated")
         record_event(event_type + (f": {details}" if details else ""))
 
     def _toggle_dev_recorder(self):
-        """Explicit main-menu opt-in, never a hidden gameplay keybinding."""
+        """One opt-in session covers menu visits and any number of rounds."""
         if self._menu_suspended:
-            return  # A suspended round cannot change recording halfway through.
+            return
         requested = not self.dev_recorder.enabled
-        if self.dev_recorder.configure(requested):
-            self._dev_badge_until = time.monotonic() + 2.0
+        if requested:
+            if self.dev_recorder.configure(True):
+                self.dev_session.start()
+                self._dev_settings_previous = dict(self.settings)
+        else:
+            if self.dev_session.active and not self.dev_session.end("disabled"):
+                self._dev_save_success = False
+                self._dev_save_notice_until = time.monotonic() + 3.0
+                return  # Save failure: remain enabled, show red status.
+            self.dev_recorder.configure(False)
+        self._dev_badge_until = time.monotonic() + 2.0
+
+    def _dev_save_session(self):
+        if not self.dev_session.active:
+            return False
+        round_ok = (self.dev_recorder.checkpoint("manual")
+                    if self.dev_recorder.active else True)
+        session_ok = self.dev_session.checkpoint("manual")
+        saved = round_ok and session_ok
+        self._dev_save_success = saved
+        self._dev_save_notice_until = time.monotonic() + 3.0
+        return saved
+
+    def _dev_mark_issue(self):
+        if not self.dev_session.active:
+            return
+        self.dev_session.event(
+            "tester_marker",
+            screen="WORLD_STUDIO" if self.level_editor.active else self.game_state.name,
+            level=self.level,
+            boss=getattr(self.boss, "profile_key", None),
+            round_id=self._round_token.get("round_id") if self._round_token else None,
+        )
+        self.dev_session.checkpoint("tester_marker")
+        self._dev_badge_until = time.monotonic() + 3
+
+    def _dev_mark_test_intent(self):
+        """Optional F10 after a completed round. Does not alter technical end."""
+        if (not self.dev_session.active or not self.dev_session.rounds
+                or not self.dev_session.rounds[-1].get("finished_at")):
+            return False
+        latest = self.dev_session.rounds[-1]
+        if latest.get("tester_intent") == "intentional_test_end":
+            return True
+        report_ok = True
+        if self.dev_recorder.round_id == latest["round_id"]:
+            report_ok = self.dev_recorder.mark_tester_intent("intentional_test_end")
+        session_ok = self.dev_session.mark_round_intent("intentional_test_end")
+        self._dev_save_success = report_ok and session_ok
+        self._dev_save_notice_until = time.monotonic() + 3.0
+        return self._dev_save_success
+
+    def _dev_shutdown(self):
+        """Best-effort close, no effect on career files or gameplay results."""
+        if self.dev_recorder.active:
+            self._dev_capture_vitals("quit", checkpoint=True)
+            report_saved = self.dev_recorder.finish("quit")
+            self.dev_session.round_end(
+                getattr(self, "_round_token", None), "quit",
+                report_saved=report_saved,
+            )
+        if self.dev_session.active:
+            self.dev_session.end("quit")
+
+    def _dev_quit(self):
+        self._dev_shutdown()
+        sys.exit()
 
     def _dev_capture_vitals(self, source, *, checkpoint=False):
         """Telemetry only: never modify HP, lives, RNG or movement."""
@@ -1590,6 +1711,48 @@ class Game:
             label = "DEV+  AN  [F8]" if enabled else "DEV+  AUS  [F8]"
             text = self._dev_ui_font.render(label, True, (222, 245, 248))
             self.screen.blit(text, text.get_rect(center=self._dev_button_rect.center))
+            # Visible manual checkpoint, only once the session contains data.
+            if self.dev_session.active and self.dev_session.has_data:
+                self._dev_save_rect = pygame.Rect(
+                    self.screen.get_width() - 175, 50, 160, 31,
+                )
+                status = (
+                    "SPEICHERFEHLER" if (self.dev_session.error or
+                        self.dev_recorder.error and self.dev_recorder.active or
+                        time.monotonic() < self._dev_save_notice_until
+                        and not self._dev_save_success) else
+                    "GESPEICHERT" if time.monotonic() < self._dev_save_notice_until
+                                   and self._dev_save_success else
+                    "SPEICHERN" if self.dev_session.dirty else "GESPEICHERT"
+                )
+                good = not self.dev_session.error and (
+                    status == "GESPEICHERT"
+                )
+                color = (32, 88, 70) if good else (
+                    (100, 35, 45) if status == "SPEICHERFEHLER"
+                    else (49, 62, 91)
+                )
+                pygame.draw.rect(self.screen, color, self._dev_save_rect,
+                                 border_radius=6)
+                pygame.draw.rect(self.screen, (134, 213, 179) if good
+                                 else (119, 150, 171), self._dev_save_rect,
+                                 1, border_radius=6)
+                caption = self._dev_ui_font.render(status, True, (231, 245, 244))
+                self.screen.blit(
+                    caption, caption.get_rect(center=self._dev_save_rect.center),
+                )
+            else:
+                self._dev_save_rect = pygame.Rect(0, 0, 0, 0)
+            if (self.dev_session.active and self.dev_session.rounds and
+                    self.dev_session.rounds[-1].get("finished_at")):
+                hint = ("F10: TEST MARKIERT" if
+                        self.dev_session.rounds[-1].get("tester_intent")
+                        == "intentional_test_end" else
+                        "F10: TEST BEWUSST")
+                label = self._dev_ui_font.render(hint, True, (179, 207, 210))
+                self.screen.blit(label, label.get_rect(
+                    topcenter=(self.screen.get_width() - 95, 87),
+                ))
         elif (self.dev_recorder.enabled and self.game_state
               in (GameState.GAME, GameState.BOSS_FIGHT, GameState.PAUSE)):
             show_full = time.monotonic() < self._dev_badge_until
@@ -2570,7 +2733,16 @@ class Game:
             for zone in self.aoe_zones:
                 zone.update()
                 if zone.is_inside(player_obj.pos) and not invincible:
+                    previous_hp = player_obj.health
                     zone.apply_effect(player_obj)
+                    if self.dev_recorder.active and player_obj.health != previous_hp:
+                        self.dev_recorder.event(
+                            "aoe_hp_effect", player=1,
+                            kind=getattr(zone, "effect_type", "unknown"),
+                            hp_before=round(previous_hp, 3),
+                            hp_after=round(player_obj.health, 3),
+                            source_code="Dark_Snake/modules/game.py::Game.update",
+                        )
                     if not hasattr(zone, "debug_triggered"):
                         print(f"DEBUG: AoE-Effekt '{zone.effect_type}' auf Singleplayer angewendet.")
                         zone.debug_triggered = True
@@ -2587,7 +2759,16 @@ class Game:
             for zone in self.aoe_zones:
                 zone.update()
                 if zone.is_inside(p1_obj.pos) and not invincible:
+                    previous_hp = p1_obj.health
                     zone.apply_effect(p1_obj)
+                    if self.dev_recorder.active and p1_obj.health != previous_hp:
+                        self.dev_recorder.event(
+                            "aoe_hp_effect", player=1,
+                            kind=getattr(zone, "effect_type", "unknown"),
+                            hp_before=round(previous_hp, 3),
+                            hp_after=round(p1_obj.health, 3),
+                            source_code="Dark_Snake/modules/game.py::Game.update",
+                        )
                     if not hasattr(zone, "debug_triggered_p1"):
                         print(f"DEBUG: AoE-Effekt '{zone.effect_type}' auf Spieler 1 angewendet.")
                         zone.debug_triggered_p1 = True
@@ -2603,7 +2784,16 @@ class Game:
             for zone in self.aoe_zones:
                 zone.update()
                 if zone.is_inside(p2_obj.pos) and not invincible:
+                    previous_hp = p2_obj.health
                     zone.apply_effect(p2_obj)
+                    if self.dev_recorder.active and p2_obj.health != previous_hp:
+                        self.dev_recorder.event(
+                            "aoe_hp_effect", player=2,
+                            kind=getattr(zone, "effect_type", "unknown"),
+                            hp_before=round(previous_hp, 3),
+                            hp_after=round(p2_obj.health, 3),
+                            source_code="Dark_Snake/modules/game.py::Game.update",
+                        )
                     if not hasattr(zone, "debug_triggered_p2"):
                         print(f"DEBUG: AoE-Effekt '{zone.effect_type}' auf Spieler 2 angewendet.")
                         zone.debug_triggered_p2 = True
@@ -2992,7 +3182,32 @@ class Game:
             items_collected=self.round_items_collected,
             lives_lost=self.round_death_count,
         )
-        self.dev_recorder.finish(reason)
+        report_ok = self.dev_recorder.finish(reason)
+        self._dev_last_round_id = token["round_id"]
+        boss_names = [
+            event.get("data", {}).get("boss")
+            for event in self.dev_recorder.events
+            if event.get("type") == "boss_spawn"
+        ]
+        final_hp = (
+            {"1": round(self.player_health, 2)}
+            if self.player_count == 1 else
+            {"1": round(self.player_health_p1, 2),
+             "2": round(self.player_health_p2, 2)}
+        )
+        self.dev_session.round_end(
+            token, reason, report_saved=report_ok, summary={
+                "score": self.score,
+                "level": self.level,
+                "enemies_defeated": self.round_enemies_defeated,
+                "bosses_defeated": self.round_bosses_defeated,
+                "items_collected": self.round_items_collected,
+                "lives_lost": self.round_death_count,
+                "lives_remaining": self.lives,
+                "end_hp": final_hp,
+                "bosses_seen": boss_names[-8:],
+            },
+        )
         self._dev_end_pending = was_recording and not self.headless
         try:
             snapshot = completed_round(
@@ -3023,6 +3238,9 @@ class Game:
             return True
         except (OSError, ValueError, TypeError) as exc:
             self.round_progress_error = str(exc)
+            if self.dev_session.active:
+                self.dev_session.event("session_warning", code="round_progress_save_failed")
+                self.dev_session.checkpoint("round_progress_failure")
             record_event(f"Rundenfortschritt konnte nicht gespeichert werden: {exc}")
             return False
 
@@ -3119,17 +3337,42 @@ class Game:
         for event in events:
             if event.type == pygame.QUIT:
                 if not self._handle_level_editor_event(event):
-                    sys.exit()
+                    self._dev_quit()
                 continue
             # A feedback modal owns all input. No controls leak into gameplay.
             if self.dev_feedback.active:
-                self.dev_feedback.handle_event(
+                subject = self.dev_feedback.current[0]
+                before = len(self.dev_recorder.report.get("feedback", [])) if self.dev_recorder.report else 0
+                dismissed = self.dev_feedback.handle_event(
                     event, self.dev_recorder, self.screen.get_size(),
                 )
+                if dismissed and self.dev_session.active:
+                    feedback = self.dev_recorder.report.get("feedback", []) if self.dev_recorder.report else []
+                    saved = len(feedback) > before
+                    answer = feedback[-1] if saved else {}
+                    self.dev_session.feedback(
+                        subject, rating=answer.get("rating"), saved=saved,
+                        item_verdict=answer.get("item_verdict"),
+                    )
                 if not self.dev_feedback.active:
                     self._dev_feedback_resume()
                 continue
+            if (self.dev_session.active and event.type == pygame.KEYDOWN
+                    and event.key == pygame.K_F9 and
+                    self.game_state != GameState.CONTROLS):
+                self._dev_mark_issue()
+                continue
+            if (self.dev_session.active and event.type == pygame.KEYDOWN
+                    and event.key == pygame.K_F10 and
+                    self.game_state in (GameState.INTRO, GameState.GAME_OVER)
+                    and not self.level_editor.active):
+                self._dev_mark_test_intent()
+                continue
             if self.game_state == GameState.INTRO and not self.level_editor.active:
+                if (event.type == pygame.MOUSEBUTTONDOWN and event.button == 1
+                        and self._dev_save_rect.collidepoint(event.pos)):
+                    self._dev_save_session()
+                    continue
                 if (event.type == pygame.MOUSEBUTTONDOWN and event.button == 1
                         and self._dev_button_rect.collidepoint(event.pos)):
                     self._toggle_dev_recorder()
@@ -3842,11 +4085,16 @@ class Game:
         self.metrics.record_phase("events", start, after_events)
         self.metrics.record_phase("update", after_events, after_update)
         self.draw()
+        self.dev_session.maybe_autosave()
 
     def run(self):
-        while True:
-            self.run_frame()
-            self.clock.tick(FPS)
+        try:
+            while True:
+                self.run_frame()
+                self.clock.tick(FPS)
+        finally:
+            # Also covers editor-specific SystemExit paths.
+            self._dev_shutdown()
 
     # [KS_TAG: LEVEL_EDITOR_BACKGROUND]
     def _build_default_background(self):

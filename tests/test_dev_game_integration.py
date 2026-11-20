@@ -66,3 +66,82 @@ def test_preboss_feedback_freeze_preserves_live_boss_timers(tmp_path):
     assert not game.dev_feedback.active
     assert game.boss.next_proj >= before_proj + 3
     assert game.dev_recorder.active
+
+
+def test_menu_dev_save_button_works_after_options_and_remains_on(tmp_path):
+    game = Game(headless=True)
+    game.dev_session.directory = tmp_path
+    game._toggle_dev_recorder()
+    assert game.dev_session.active
+    assert not game.dev_session.has_data
+    game.set_state(GameState.SETTINGS)
+    game.set_state(GameState.INTRO)
+    assert game.dev_session.has_data
+    assert game._dev_save_session()
+    assert game.dev_recorder.enabled
+    assert game.dev_session.active
+    assert not game.dev_session.dirty
+    session_files = list(tmp_path.glob("dev-session-*.json"))
+    assert len(session_files) == 1
+
+
+def test_two_runs_keep_same_session_id_and_distinct_round_ids(tmp_path):
+    game = Game(headless=True)
+    game.dev_session.directory = tmp_path
+    game.dev_recorder._directory = tmp_path
+    game._toggle_dev_recorder()
+    game.start_game(1)
+    first = game._round_token
+    session_id = game.dev_session.session_id
+    assert game.dev_recorder.report["context"]["session_id"] == session_id
+    game.dev_recorder.finish("reset")
+    game.dev_session.round_end(first, "reset", report_saved=True)
+    game.start_game(2)
+    second = game._round_token
+    assert first["round_id"] != second["round_id"]
+    assert game.dev_session.session_id == session_id
+    assert len(game.dev_session.rounds) == 2
+
+
+def test_record_deliberate_test_end_after_gameover_without_changing_reason(tmp_path):
+    game = Game(headless=True)
+    game.dev_session.directory = tmp_path
+    game.dev_recorder._directory = tmp_path
+    game._toggle_dev_recorder()
+    game.start_game(1)
+    token = game._round_token
+    assert game.dev_recorder.finish("life_depleted")
+    game.dev_session.round_end(token, "life_depleted", report_saved=True)
+    assert game._dev_mark_test_intent()
+    assert game.dev_recorder.report["finish_reason"] == "life_depleted"
+    assert game.dev_recorder.report["tester_intent"] == "intentional_test_end"
+    assert game.dev_session.rounds[-1]["tester_intent"] == "intentional_test_end"
+
+
+def test_active_round_reset_is_sealed_in_both_report_layers(tmp_path):
+    import json
+    game = Game(headless=True)
+    game.dev_session.directory = tmp_path
+    game.dev_recorder._directory = tmp_path
+    game._toggle_dev_recorder()
+    game.start_game(1)
+    rid = game._round_token["round_id"]
+    game.reset_game()
+    assert game.dev_session.rounds[0]["finish_reason"] == "reset"
+    report = json.loads((tmp_path / ("dev-round-" + rid + ".json")).read_text(encoding="utf-8"))
+    assert report["finish_reason"] == "reset"
+    assert game.dev_session.active
+
+
+def test_quit_flushes_both_json_files_without_changing_career(tmp_path):
+    import json
+    game = Game(headless=True)
+    game.dev_session.directory = tmp_path
+    game.dev_recorder._directory = tmp_path
+    game._toggle_dev_recorder()
+    game.start_game(1)
+    game._dev_shutdown()
+    session = json.loads(next(tmp_path.glob("dev-session-*.json")).read_text(encoding="utf-8"))
+    assert not session["active"]
+    assert session["rounds"][0]["finish_reason"] == "quit"
+    assert not game.dev_recorder.active

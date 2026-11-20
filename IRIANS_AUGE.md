@@ -85,3 +85,42 @@ für die ganze Runde gezählt). UI-Feedback-Standbilder werden nicht
 als normale Gameplay-Intervalle gewertet. Diese Werte sind kein
 Monitor-Feedback, keine echte Input-Latenz und kein Ersatz für
 vergleichbare Windows-Benchmarks nach `QUALITY_PERFORMANCE_PLAN.md`.
+
+
+## DEV+-Sitzung und manueller Speicherknopf (PR E)
+- **Einmal DEV+ AN** startet eine lokale `dev-session-<session_id>.json`.
+  Diese Sitzung läuft über Hauptmenü, Optionen, Steuerung, Level Studio
+  und beliebig viele Classic-Runden weiter, bis DEV+ AUS oder Quit.
+- Im Hauptmenü erscheint **SPEICHERN**, sobald relevante Sitzungsdaten
+  gesammelt wurden (z. B. einmal Optionen aufgerufen oder eine Runde
+  gespielt). Ein Klick schreibt einen zusätzlichen atomaren Checkpoint,
+  **beendet die Sitzung nicht**. **GESPEICHERT** bedeutet, dass die
+  Sitzungsdatei geschrieben wurde; **SPEICHERFEHLER** bedeutet, dass
+  der Speicherstatus nicht bestätigt werden konnte.
+- Session-Zwischensicherung: bei Beginn/Ende jeder Runde, beim Speichern
+  von Einstellungen, beim Editor-Aufruf, bei Spielerfeedback, nach F9,
+  außerdem alle ca. 90 Sekunden bei Änderungen und best effort beim Quit.
+- **F9** setzt einen Entwickler-Marker (Bereich/Level/Boss/Runden-ID),
+  ohne rohe Tastatureingaben zu protokollieren.
+- **F10** markiert nach einer beendeten Runde freiwillig
+  `intentional_test_end`. Der technische Endgrund (`life_depleted`,
+  `self_stall`) bleibt unverändert. Im Hauptmenü ist die Funktion
+  nach dem ersten abgeschlossenen Run sichtbar.
+- Die Sitzungsdatei speichert Verweise auf die
+  `dev-round-<round_id>.json/.html`-Einzelberichte, **pro Runde auch
+  einen kompakten Überblick** (Punkte, Level, Gegner, Bosse, Items,
+  Leben/HP am Ende und Bewertungen ohne Freitexte). So reicht **eine
+  Session-JSON für den Rundenvergleich**; detaillierte Bossereignisse
+  und Bewegungsdaten bleiben in den Einzelberichten.
+  Dazu eine kleine zeitliche Liste von Navigation, Einstellungen (nur geänderte
+  **Schlüsselnamen**, keine rohen Eingaben), Editor-Status und Markern.
+  **Keine Datei wird hochgeladen.** Die einzelnen Boss-/HP-Daten
+  bleiben in den pro-Runde-Dateien; 20 Sitzungen und 20 Rundenberichte
+  werden jeweils in eigenen Namensräumen begrenzt.
+- Wenn der Datenträger schreibgeschützt oder voll ist, darf eine
+  fehlerhafte Sicherung nicht als erfolgreich angezeigt werden und
+  DEV+ nicht stillschweigend ausgeschaltet werden.
+- Mehr zum Recherchestand, den exakten Quellen und der Testmatrix:
+  [Forschungs-/Testkonzept](docs/IRIANS_AUGE_RESEARCH_2026-11-20.md).
+
+**PR D + E sind Entwürfe; ohne Gameplay-Abnahme und Windows-CI nicht mergen.**
