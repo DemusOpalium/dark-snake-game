@@ -120,7 +120,7 @@ class DeveloperSession:
         self.event("round_started", round_id=name, players=token.get("players"))
         self.checkpoint("round_started")
 
-    def round_end(self, token, reason, *, report_saved=False):
+    def round_end(self, token, reason, *, report_saved=False, summary=None):
         if not self.active or not token:
             return
         name = str(token["round_id"])
@@ -129,10 +129,28 @@ class DeveloperSession:
                 item["finished_at"] = _utc()
                 item["finish_reason"] = str(reason)[:70]
                 item["report_saved"] = bool(report_saved)
+                if summary is not None:
+                    item["summary"] = _safe(summary)
                 break
         self.event("round_finished", round_id=name,
                    reason=str(reason)[:70], report_saved=bool(report_saved))
         self.checkpoint("round_finished")
+
+    def feedback(self, subject, *, rating=None, saved=False, item_verdict=None):
+        """Persist one subject/rating per response, never free-text in session."""
+        if not self.active:
+            return False
+        if saved and self.rounds:
+            row = {
+                "subject": str(subject)[:80],
+                "rating": rating if type(rating) is int and 0 <= rating <= 5 else None,
+                "item_verdict": _safe(item_verdict),
+            }
+            history = self.rounds[-1].setdefault("feedback_ratings", [])
+            if len(history) < 30:
+                history.append(row)
+        self.event("feedback_dismissed", subject=subject, rating=rating, saved=saved)
+        return self.checkpoint("feedback")
 
     def mark_round_intent(self, intent):
         if not self.active or not self.rounds:
