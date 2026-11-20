@@ -49,3 +49,30 @@ Boss-Teleport, Berichtspfad und Game Over prüfen.
   verschoben. Für diese Freeze-/Resume-Integration ist ein **echter
   Windows-Spieltest erforderlich**, insbesondere 1P/2P, erster
   Boss, Teleport und Game Over.
+
+## PR C – Offline-Auswertung / Bossfight-Map
+- Bei Boss-Ende und Game Over werden **event-basierte** Boss-Zeitachsen,
+  Phasen, Warnungen, Teleport-Landungen/Abbrüche, Schadenssummen, Item-
+  Effekte, Score/XP-Snapshots und die 250-ms-Positionen analysiert.
+- Zusätzlich zur Entwickler-JSON entsteht eine **statische lokale HTML-Map**
+  mit SVG-Raster/Heatmap (Spieler 1/2, Boss, Sichtblocker), Ereignistabelle,
+  expliziten Bewertungen und Code-Wegweisern. **Kein JavaScript,
+  Internet, Tracking, CDN oder Upload**.
+- Bei Schreibfehlern oder HTML-Fehlern bleiben Spielergebnis und
+  Original-JSON maßgeblich. Die Reportdateien im eigenen Verzeichnis
+  sind auf maximal 20 abgeschlossene/zwischengespeicherte Runden begrenzt.
+- Offline kann die Kartenansicht auch später neu erzeugt werden:
+  `python scripts/analyze_dev_report.py PFAD/ZUM/dev-round-xxx.json`.
+- Heatmap zeigt **Besuchsproben**, keine vollständigen Einzelbild-
+  Bewegungsbahnen. Alle Werte folgen protokollierten Ereignissen,
+  keine behaupteten Gefühlsanalysen oder erdachten Boss-Attacken.
+
+## QA und Freigabe
+Die PRs sind **gestapelt**: A → B → C. Erst A nach Review,
+Windows-/2P-Spieltest und grünem CI mergen, dann B und C jeweils
+gegen `main` aktualisieren und getrennt abnehmen. Test mit
+1P/2P, erster Boss und zweiter Boss, Phase III Wächter/Rift,
+Portal/Itembewertungen, GameOver-Feedback, Berichtskorruption,
+schreibgeschütztem Ordner, Menü-Rückkehr, Pausen und
+verschiedenen Bildschirmgrößen. Keine automatische Veröffentlichung
+von Daten auf GitHub.
