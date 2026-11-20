@@ -208,6 +208,15 @@ class DeveloperRecorder:
             })
         return self.checkpoint("player_feedback")
 
+    def mark_tester_intent(self, intent):
+        """Optional, after Game Over: intentional test is NOT a boss-balance vote."""
+        if self.report is None or not self.enabled:
+            return False
+        if intent not in ("intentional_test_end", "normal_play"):
+            return False
+        self.report["tester_intent"] = intent
+        return self.checkpoint("tester_intent")
+
     def _snapshot(self, checkpoint):
         result = dict(self.report)
         result["checkpoint"] = checkpoint
@@ -219,7 +228,7 @@ class DeveloperRecorder:
         # Analyze only at milestones, not in the rendering/update loop.
         # Recompute after any size trimming so summary matches retained events.
         while True:
-            if checkpoint in ("boss_defeated", "round_end", "player_feedback"):
+            if checkpoint in ("boss_defeated", "round_end", "player_feedback", "tester_intent"):
                 try:
                     from modules.dev_analysis import analyze_report
                     result["analysis"] = analyze_report(result)
@@ -265,7 +274,7 @@ class DeveloperRecorder:
                     temp = None
                     self.last_report = target
                     self.error = None
-                    if reason in ("boss_defeated", "round_end", "player_feedback"):
+                    if reason in ("boss_defeated", "round_end", "player_feedback", "tester_intent"):
                         # HTML is a convenience only. JSON remains authoritative.
                         self._write_html(directory, payload, target.stem)
                     self._prune(directory)
