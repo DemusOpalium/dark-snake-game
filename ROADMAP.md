@@ -1,5 +1,46 @@
 # 🛣️ ROADMAP.md – Entwicklungsfahrplan
 
+## 🌐 Offizielle DARK-SNAKE-Webseite · GitHub Pages (20.11.2026)
+
+- **Warum überhaupt HTML?** GitHub Pages versuchte zuvor, den gesamten
+  rund 310 MB großen Spielbestand als Website hochzuladen und der
+  Deploy-Workflow wurde rot. PR **#241** begrenzte den Deployment-Inhalt
+  auf `site/` und legte dafür eine kleine HTML-Startseite an.
+- **Neue bewusste Aufgabe:** Aus dem technischen Fix entsteht die
+  öffentliche **DE/EN-Spielpräsentation** mit originalen Screenshots,
+  Bossprofilen, FrostAge-Tile-Beispielen, World Studio, persönlichem
+  Projekttext und gut sichtbarem **kostenlosem Windows-Alpha-Download**.
+- **Technische Trennung:** `site/index.html` + `site/styles.css` +
+  `site/main.js` sind reine statische Webdateien. Keine Pygame-Runtime,
+  keine Windows-EXE-Bestandteile, kein Browser-Spiel.
+  `.github/workflows/static.yml` veröffentlicht bei Merge auf `main`
+  ausschließlich `site/` nach GitHub Pages.
+- **Veröffentlichungsziel:** https://demusopalium.github.io/dark-snake-game/
+  plus sichtbare Links aus README (DE/EN). Das Repo-Feld
+  **About → Website** muss bei Bedarf Demus selbst setzen; ein
+  erfolgreicher Pages-Workflow ersetzt nicht den manuellen Live-Sichttest.
+- **Wahrheits- und Release-Regel:** Veröffentlichtes Windows-Alpha
+  vom **13.11.2026** und neuerer Entwicklungsstand auf `main` immer
+  auseinanderhalten. Boss-Teleport/Rift sind neuer als das Release;
+  Rollattacke und FrostAge-Normalgegner sind weiterhin **geplant**.
+- **Pflege durch Agents:** Bei relevanten Releases/Spielbildern die
+  Website **mitdenken, aber nie ungefragt mit neuen privaten Dateien
+  füllen**. Jeder Website-Update-PR prüft Aktualität der Behauptungen,
+  Herkunft/Lizenzen/Größe der Bilder, **DE und EN zusammen**,
+  Tastatur/Mobil/Reduced Motion, wichtige Links, Tests und
+  GitHub-Pages-Deployment. Details: [Website-Pflegevertrag](site/README.md)
+  und [Bildquellenmanifest](site/asset-manifest.json).
+- **Performance:** Ohne Framework, Webfonts, Tracking oder externes
+  JavaScript. Kleine Echtspiel-Screenshots und Boss-Icons zuerst;
+  größere Galerie-/Tile-PNGs erst beim Scrollen laden. Vor weiterer
+  Bildausweitung komprimierte Web-Versionen und Ladezeiten messen.
+- **Status:** Website-Redesign als separater **Draft-PR** zur
+  Windows-/Browser-Sichtprobe, **kein Gameplay-Code geändert**.
+  Boss-Entwicklung bleibt als nächster Spiel-PR priorisiert.
+
+---
+
+
 ## 🧭 Aktuelle Entwicklungsschiene – BOSSE (von Demus entschieden)
 
 - **Priorität:** Bestehende Boss-Sprites und Fähigkeiten vervollständigen;
