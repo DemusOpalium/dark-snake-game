@@ -1519,6 +1519,13 @@ class Game:
         # Snapshot captures both player HP and shared lives BEFORE any boss damage.
         self._dev_capture_vitals("boss_entry", checkpoint=True)
         self.dev_recorder.checkpoint("boss_spawn")
+        if self.dev_session.active:
+            self.dev_session.event(
+                "boss_checkpoint", stage="spawn", boss=self.boss.profile_key,
+                level=self.level,
+                round_id=self._round_token["round_id"] if self._round_token else None,
+            )
+            self.dev_session.checkpoint("boss_spawn")
         boss_center = ((self.boss.x + self.boss.size / 2) * GRID_SIZE,
                        (self.boss.y + self.boss.size / 2) * GRID_SIZE)
         self.boss.aura_effect = self.effect_manager.spawn(
@@ -1541,6 +1548,13 @@ class Game:
         self.dev_recorder.event(event_type, **details)
         if event_type == "boss_defeated":
             self.dev_recorder.checkpoint("boss_defeated")
+            if self.dev_session.active:
+                self.dev_session.event(
+                    "boss_checkpoint", stage="defeated",
+                    boss=details.get("boss"), level=self.level,
+                    round_id=self._round_token["round_id"] if self._round_token else None,
+                )
+                self.dev_session.checkpoint("boss_defeated")
         record_event(event_type + (f": {details}" if details else ""))
 
     def _toggle_dev_recorder(self):
