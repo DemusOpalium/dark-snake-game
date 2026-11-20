@@ -1,5 +1,36 @@
 # 🛣️ ROADMAP.md – Entwicklungsfahrplan
 
+## 👁️ Playtest-Befunde 19.–20.11.2026 · aktuell dokumentierter Stand
+
+- **Neues zentrales Testprotokoll:** [Irians Auge: 1P/2P/Hotfix-Spieltests](docs/playtests/IRIANS_AUGE_PLAYTEST_2026-11-20.md).
+  Nur aggregierte, nicht private Spielerberichte. Umsetzungspfade und offene
+  Punkte stehen unter [Boss-Design #257](https://github.com/DemusOpalium/dark-snake-game/issues/257)
+  und [DEV+-Qualitätsnachtest #258](https://github.com/DemusOpalium/dark-snake-game/issues/258).
+- **Verifizierter Entwicklungsstand:** DEV+-Recorder, Feedback, Analyse,
+  globale Sitzungsdatei und manueller Speicherknopf sind auf `main`.
+  Der Game-Over-Menücrash (`topcenter`), verkürzte HP-Snapshots und
+  nachfolgende Analyse-Exception wurden im **gemergten PR #256**
+  korrigiert. Nachfolgender **1P-Windows-Test ohne erneuten Crash**
+  berichtet; vollständige **2P-Hotfix-Abnahme und neue numerische
+  DEV+-Vital-Snapshots noch offen**.
+- **Playtests:** 1P 2.235 Punkte / zwei Bosse (mit DEV+-Rundenbericht);
+  2P 2.265 Punkte / zwei Bosse (mit DEV+-Session, aber altem
+  Analysefehler); 1P 1.810 Punkte nach Hotfix (Fortschrittsdaten
+  vorhanden, zugehöriger neuer DEV+-Detailbericht nicht eingesehen).
+  Keine verallgemeinerte Balancebewertung aus einzelnen Testtoden.
+- **Entscheidender Scope-Hinweis des Testers:** World Studio wurde nur
+  **durchgeklickt und mit bewusst leerem Level gespeichert**; kein
+  Editor-Defekt/fehlendes Level-Design nachgewiesen. World Studio und
+  Item-/Bolbu-Arbeit bleiben **später**; jetzt vorhandene Bossfähigkeiten
+  und danach isolierter Medusa Roll/Charge A.
+- **Dokumentation vs. CI:** Dieses Protokoll hält gesammelte
+  Spielererfahrung fest; Actions-Workflows bleiben automatisierte Builds
+  und Tests, nicht das Wissens-Backlog. Ältere Abschnitte unten enthalten
+  teils **historische PR-Planungsstände**; für den aktuellen Status
+  gilt diese Fortschreibung.
+
+---
+
 ## 🌐 Offizielle DARK-SNAKE-Webseite · GitHub Pages (20.11.2026)
 
 - **Warum überhaupt HTML?** GitHub Pages versuchte zuvor, den gesamten
