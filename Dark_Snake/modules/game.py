@@ -1558,7 +1558,7 @@ class Game:
             return
         self.dev_session.event(
             "tester_marker",
-            screen=self.game_state.name,
+            screen="WORLD_STUDIO" if self.level_editor.active else self.game_state.name,
             level=self.level,
             boss=getattr(self.boss, "profile_key", None),
             round_id=self._round_token.get("round_id") if self._round_token else None,
@@ -1708,10 +1708,10 @@ class Game:
                 self._dev_save_rect = pygame.Rect(0, 0, 0, 0)
             if (self.dev_session.active and self.dev_session.rounds and
                     self.dev_session.rounds[-1].get("finished_at")):
-                hint = ("F10: TESTENDE MARKIERT" if
+                hint = ("F10: TEST MARKIERT" if
                         self.dev_session.rounds[-1].get("tester_intent")
                         == "intentional_test_end" else
-                        "F10: TEST ABSICHTLICH")
+                        "F10: TEST BEWUSST")
                 label = self._dev_ui_font.render(hint, True, (179, 207, 210))
                 self.screen.blit(label, label.get_rect(
                     topcenter=(self.screen.get_width() - 95, 87),
@@ -3295,7 +3295,8 @@ class Game:
                     self._dev_feedback_resume()
                 continue
             if (self.dev_session.active and event.type == pygame.KEYDOWN
-                    and event.key == pygame.K_F9 and not self.level_editor.active):
+                    and event.key == pygame.K_F9 and
+                    self.game_state != GameState.CONTROLS):
                 self._dev_mark_issue()
                 continue
             if (self.dev_session.active and event.type == pygame.KEYDOWN
