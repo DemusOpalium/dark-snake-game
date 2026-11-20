@@ -24,7 +24,7 @@ def test_multiple_rounds_in_one_session(tmp_path):
     assert saved["rounds"][0]["round_id"] == "1" * 32
     assert saved["rounds"][1]["round_id"] == "2" * 32
     assert saved["events"][-1]["type"] == "session_finished"
-    assert saved["active"]  # snapshot taken before session state is closed
+    assert not saved["active"]  # stored status reflects intentional close
 
 
 def test_session_missing_directory_cannot_kill_ui(tmp_path):
@@ -37,6 +37,7 @@ def test_session_missing_directory_cannot_kill_ui(tmp_path):
     assert not session.checkpoint("manual")
     assert session.dirty
     assert not session.end()
+    assert session.active  # failed flush cannot silently turn recording off
 
 
 def test_only_known_events_and_no_frame_disk_churn(tmp_path):
