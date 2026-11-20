@@ -118,10 +118,10 @@ Diese Aussagen sind **Testerurteile und Vorschläge**, keine bewiesenen Fehler.
       Warnrichtung, sichere Trefferhitbox und Recovery.
 
 ## 6 · Tracking auf GitHub
-- **Boss-Ideen und 1P/2P-Balancing-Hypothesen:** Issue [#257](../../issues/257).
-- **Irians Auge / Heilzone / Hotfix-Nachtest / Highscore-Namen:** Issue [#258](../../issues/258).
+- **Boss-Ideen und 1P/2P-Balancing-Hypothesen:** Issue [#257](https://github.com/DemusOpalium/dark-snake-game/issues/257).
+- **Irians Auge / Heilzone / Hotfix-Nachtest / Highscore-Namen:** Issue [#258](https://github.com/DemusOpalium/dark-snake-game/issues/258).
 - **DEV+ Entwicklungsfolge:** PRs #248–#255;
-  **Post-GameOver-/HP-Hotfix:** PR [#256](../../pull/256), bereits
+  **Post-GameOver-/HP-Hotfix:** PR [#256](https://github.com/DemusOpalium/dark-snake-game/pull/256), bereits
   gemergt (CI/CodeQL grün). Neue Release-/Spielabnahme bleibt getrennt
   von CI.
 - **Boss-Prototyp-Konzept:** [BOSS_ROLL_CHARGE_CONCEPT_2026-11-19.md](../../BOSS_ROLL_CHARGE_CONCEPT_2026-11-19.md).
