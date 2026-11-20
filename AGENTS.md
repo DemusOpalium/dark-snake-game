@@ -19,6 +19,8 @@
   recorder, feedback dialogs, item effects, boss events or visualization.
   Source: `Dark_Snake/modules/dev_recorder.py` (bounded JSON and
   checkpoints), `dev_feedback_ui.py` (optional player opinions),
+  `dev_vitals.py` (read-only HP/shared lives), `dev_session.py`
+  (cross-round menu/session summaries and atomic save),
   `dev_analysis.py` (read-only timelines/heatmap), integration in
   `Dark_Snake/modules/game.py`, offline CLI
   `scripts/analyze_dev_report.py`.
