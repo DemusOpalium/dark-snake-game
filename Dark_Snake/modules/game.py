@@ -735,6 +735,7 @@ class Game:
         self._dev_save_notice_until = 0.0
         self._dev_save_success = False
         self._dev_settings_previous = {}
+        self._dev_last_round_id = None
         self._dev_ui_font = pygame.font.SysFont("Segoe UI", 14, bold=True)
         self._dev_feedback_opened_at = None
         self._dev_badge_until = 0.0
@@ -1065,6 +1066,7 @@ class Game:
         self._round_token = begin_round(players)
         self.dev_recorder.begin_round(self._round_token, context={
             "players": players,
+            "session_id": self.dev_session.session_id if self.dev_session.active else None,
             "initial_speed": self.settings["initial_speed"],
             "difficulty": self.settings["difficulty"],
             "boss_health_multiplier": self.settings["boss_health_multiplier"],
@@ -1564,6 +1566,22 @@ class Game:
         self.dev_session.checkpoint("tester_marker")
         self._dev_badge_until = time.monotonic() + 3
 
+    def _dev_mark_test_intent(self):
+        """Optional F10 after a completed round. Does not alter technical end."""
+        if (not self.dev_session.active or not self.dev_session.rounds
+                or not self.dev_session.rounds[-1].get("finished_at")):
+            return False
+        latest = self.dev_session.rounds[-1]
+        if latest.get("tester_intent") == "intentional_test_end":
+            return True
+        report_ok = True
+        if self.dev_recorder.round_id == latest["round_id"]:
+            report_ok = self.dev_recorder.mark_tester_intent("intentional_test_end")
+        session_ok = self.dev_session.mark_round_intent("intentional_test_end")
+        self._dev_save_success = report_ok and session_ok
+        self._dev_save_notice_until = time.monotonic() + 3.0
+        return self._dev_save_success
+
     def _dev_shutdown(self):
         """Best-effort close, no effect on career files or gameplay results."""
         if self.dev_recorder.active:
@@ -1688,6 +1706,16 @@ class Game:
                 )
             else:
                 self._dev_save_rect = pygame.Rect(0, 0, 0, 0)
+            if (self.dev_session.active and self.dev_session.rounds and
+                    self.dev_session.rounds[-1].get("finished_at")):
+                hint = ("F10: TESTENDE MARKIERT" if
+                        self.dev_session.rounds[-1].get("tester_intent")
+                        == "intentional_test_end" else
+                        "F10: TEST ABSICHTLICH")
+                label = self._dev_ui_font.render(hint, True, (179, 207, 210))
+                self.screen.blit(label, label.get_rect(
+                    topcenter=(self.screen.get_width() - 95, 87),
+                ))
         elif (self.dev_recorder.enabled and self.game_state
               in (GameState.GAME, GameState.BOSS_FIGHT, GameState.PAUSE)):
             show_full = time.monotonic() < self._dev_badge_until
@@ -3091,6 +3119,7 @@ class Game:
             lives_lost=self.round_death_count,
         )
         report_ok = self.dev_recorder.finish(reason)
+        self._dev_last_round_id = token["round_id"]
         self.dev_session.round_end(
             token, reason, report_saved=report_ok,
         )
@@ -3241,6 +3270,12 @@ class Game:
             if (self.dev_session.active and event.type == pygame.KEYDOWN
                     and event.key == pygame.K_F9 and not self.level_editor.active):
                 self._dev_mark_issue()
+                continue
+            if (self.dev_session.active and event.type == pygame.KEYDOWN
+                    and event.key == pygame.K_F10 and
+                    self.game_state in (GameState.INTRO, GameState.GAME_OVER)
+                    and not self.level_editor.active):
+                self._dev_mark_test_intent()
                 continue
             if self.game_state == GameState.INTRO and not self.level_editor.active:
                 if (event.type == pygame.MOUSEBUTTONDOWN and event.button == 1
