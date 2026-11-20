@@ -509,6 +509,32 @@
 
 **Ziel:** Flexible, hochwertige Darstellung bei möglichst geringer Rechenlast.
 
+### 💡 Grafik-Modernisierung und optionale Shader – IDEE / Machbarkeitsstudie (20.11.2026)
+
+**Noch keine Codeänderung, keine Engine-Migration und keine neue Pflichtabhängigkeit.**
+Eine zusätzlich eingeholte externe Projekteinschätzung bestätigt den Wunsch,
+Pygame weiterzuverwenden und die FrostAge-Optik gezielt zu verbessern.
+Dies ist ein **Vorschlag**, kein verifizierter Leistungsnachweis.
+
+- **Kurzfristig nach den Bossen:** vorhandenen `EffectManager` nutzen:
+  kleine, begrenzte Partikelsysteme, Glow-/Trail-Sprites und weichere
+  Frost-/Portal-/Boss-Effekte; Gameplay-Kollisionen unverändert.
+- **Optional später:** Pillow/NumPy als *Offline*-Grafikwerkzeug;
+  pygame-ce nur in einer separaten Testumgebung.
+- **Shader-/Bloom-Studie:** ModernGL ausschließlich in eigenem
+  Proof-of-Concept und optionalem Rendering-Pfad prüfen. Pygame
+  `display.update()` kann nicht unverändert auf OPENGL laufen.
+  Risiken: zusätzliche Texturkopien, Window-Handling, HUD, Treiber und
+  PyInstaller-Build. Bestehenden Renderer als funktionierenden
+  Rückweg behalten.
+- **Messung vor Entscheidung:** 1P/2P-Framezeiten (Median/P95/P99),
+  Draw/Present, Speicher, Skalierung, VFX-Budget, GameOver/DEV+-Overlay,
+  schwächere Hardware, Effektreduktion und Blink-/Shake-Optionen.
+- **Status:** nur Ideenspeicher. Implementierung erst nach bewusstem
+  Auftrag, getrennten Draft-PRs und echter Windows-Abnahme.
+  **Bosse / Medusa Roll/Charge behalten Vorrang.**
+- **Studienblatt:** [Grafik-/Shader-Machbarkeit 20.11.2026](docs/graphics/GRAFIK_SHADER_MACHBARKEIT_2026-11-20.md).
+
 - ✅ Grafik-Loader bereits vorhanden.
 - ✅ AoE-Grafiken und animierte Effekte teilweise vorhanden.
 - ✅ PNG-/WebP-Animationsfolgen im EffectManager unterstützt.
