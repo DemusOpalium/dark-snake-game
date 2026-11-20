@@ -82,6 +82,7 @@ from modules.death_fog import AbyssFogVisual, FINAL_DEATH_SECONDS
 from modules.dice_visual import FrostDiceResultVisual
 from modules.round_progress import RoundJournal, begin_round, completed_round
 from modules.dev_recorder import DeveloperRecorder
+from modules.dev_feedback_ui import DeveloperFeedbackUI
 from modules.career_ranks import CareerLedger, xp_for_round
 from modules.career_ceremony import career_ceremony_for_round
 from modules.skin_inventory import SkinInventory, skin_registry
@@ -724,6 +725,11 @@ class Game:
         # Headless development simulations do not affect real player history.
         self._round_journal = RoundJournal()
         self.dev_recorder = DeveloperRecorder()
+        self.dev_feedback = DeveloperFeedbackUI()
+        self._dev_button_rect = pygame.Rect(0, 0, 0, 0)
+        self._dev_ui_font = pygame.font.SysFont("Segoe UI", 14, bold=True)
+        self._dev_feedback_opened_at = None
+        self._dev_badge_until = 0.0
         self._career_ledger = CareerLedger()
         self._skin_inventory = SkinInventory()
         self._record_completed_rounds = not headless
@@ -1127,6 +1133,13 @@ class Game:
 
     def reset_game(self):
         self.dev_recorder.finish("reset")
+        self.dev_feedback.clear()
+        self._dev_preboss_asked = False
+        self._dev_boss_reviews = 0
+        self._dev_portal_seen = False
+        self._dev_bolbu_seen = False
+        self._dev_seen_items = {}
+        self._dev_end_pending = False
         self.respawn.clear()
         self._respawn_recent = False
         self._menu_suspended = False
@@ -1219,6 +1232,8 @@ class Game:
     def clear_game_state(self):
         """Drop every object belonging to a round before showing a menu."""
         self.dev_recorder.finish("menu_exit")
+        self.dev_feedback.clear()
+        self._dev_end_pending = False
         self.respawn.clear()
         self._respawn_recent = False
         self._menu_suspended = False
@@ -1462,6 +1477,11 @@ class Game:
             "boss_aura", boss_center, {"loop": True, "lifetime": 60.0},
         )
         record_event(f"Bosskampf gestartet: Level {self.level}")
+        if (self.dev_recorder.active and not self._dev_preboss_asked
+                and not self.headless):
+            self._dev_preboss_asked = True
+            self._dev_ask("zone_before_boss",
+                          "Wie fair war die Zone bis zum ersten Boss?")
         return True
 
     def add_achievement(self, message):
@@ -1474,6 +1494,98 @@ class Game:
         if event_type == "boss_defeated":
             self.dev_recorder.checkpoint("boss_defeated")
         record_event(event_type + (f": {details}" if details else ""))
+
+    def _toggle_dev_recorder(self):
+        """Explicit main-menu opt-in, never a hidden gameplay keybinding."""
+        if self._menu_suspended:
+            return  # A suspended round cannot change recording halfway through.
+        requested = not self.dev_recorder.enabled
+        if self.dev_recorder.configure(requested):
+            self._dev_badge_until = time.monotonic() + 2.0
+
+    def _dev_item_state(self, now):
+        """Actual runtime effects before/after pickup, not guessed item stats."""
+        return {
+            "score": self.score,
+            "xp": self.experience,
+            "speed": self.speed,
+            "boss_hp": self.boss.health if self.boss is not None else None,
+            "enemies": len(self.enemies),
+            "effects_left_s": {
+                name: round(max(0.0, until - now), 2)
+                for name, until in self.effects.items() if until > now
+            },
+            "auto_shoot_interval": self.settings.get("auto_shoot_interval"),
+        }
+
+    def _dev_ask(self, subject, prompt, *, items=()):
+        if not self.dev_recorder.enabled or self.headless:
+            return
+        started = self.dev_feedback.active
+        if self.dev_feedback.enqueue(subject, prompt, items=items) and not started:
+            self._dev_feedback_opened_at = time.time()
+            self._suspend_stall_clock()
+            self.metrics.cancel_pending()
+
+    def _dev_ask_round_end(self):
+        """Only relevant topics; no question for every boss phase or pickup."""
+        if not self.dev_recorder.enabled or self.headless:
+            return
+        if not self._dev_preboss_asked:
+            self._dev_ask("zone_round_end", "Wie fair war die Zone dieser Runde?")
+        if self._dev_portal_seen:
+            self._dev_ask("portal", "Waren Portale und ihre Warnungen verständlich?")
+        if self._dev_bolbu_seen:
+            self._dev_ask("enemy:bolbu", "Wie fair war der zusätzliche Bolbu-Gegner?")
+        items = sorted(
+            (name for name in self._dev_seen_items if name != "FOOD"),
+            key=lambda name: (-self._dev_seen_items[name], name),
+        )
+        if items:
+            self._dev_ask("item", "Welches Item sollte überarbeitet werden?",
+                          items=items)
+
+    def _dev_feedback_resume(self):
+        """Apply a once-only frozen-time correction after a complete modal queue."""
+        if self._dev_feedback_opened_at is None:
+            return
+        elapsed = max(0.0, time.time() - self._dev_feedback_opened_at)
+        self._dev_feedback_opened_at = None
+        shift_round_timers(self, elapsed)
+        if isinstance(self.boss, Boss):
+            self.boss_fight_started_at += elapsed
+            self.boss._visual_step_start += elapsed
+            self.boss.teleport.next_ready_at += elapsed
+        self.respawn_invincible_until += elapsed
+        self.last_update_time = time.time()
+        self._effect_update_time = time.monotonic()
+        self._stall_clock_sample = time.monotonic()
+        self.dev_recorder.event("feedback_pause_end", seconds=round(elapsed, 2))
+
+    def _draw_dev_indicator(self):
+        if self.game_state == GameState.INTRO and not self.level_editor.active:
+            self._dev_button_rect = pygame.Rect(
+                self.screen.get_width() - 175, 12, 160, 32,
+            )
+            enabled = self.dev_recorder.enabled
+            surface = pygame.Surface(self._dev_button_rect.size, pygame.SRCALPHA)
+            surface.fill((27, 83, 81, 215) if enabled else (25, 29, 50, 215))
+            self.screen.blit(surface, self._dev_button_rect)
+            pygame.draw.rect(self.screen, (136, 224, 185) if enabled
+                             else (109, 138, 160), self._dev_button_rect, 1,
+                             border_radius=6)
+            label = "DEV+  AN  [F8]" if enabled else "DEV+  AUS  [F8]"
+            text = self._dev_ui_font.render(label, True, (222, 245, 248))
+            self.screen.blit(text, text.get_rect(center=self._dev_button_rect.center))
+        elif (self.dev_recorder.enabled and self.game_state
+              in (GameState.GAME, GameState.BOSS_FIGHT, GameState.PAUSE)):
+            show_full = time.monotonic() < self._dev_badge_until
+            label = "DEV+ AUFZEICHNUNG" if show_full else "DEV+"
+            text = self._dev_ui_font.render(label, True, (169, 235, 223))
+            rect = text.get_rect(topright=(self.screen.get_width() - 12, 10))
+            backdrop = rect.inflate(12, 8)
+            pygame.draw.rect(self.screen, (13, 27, 40), backdrop, border_radius=5)
+            self.screen.blit(text, rect)
 
     def _announce_boss_phase(self, boss, stage, now):
         """Tell the player before an altered boss can start a new attack."""
@@ -1568,9 +1680,21 @@ class Game:
             ), 2),
         )
         self.round_bosses_defeated += 1
+        if (self.dev_recorder.active and not self.headless
+                and self._dev_boss_reviews < 3):
+            self._dev_boss_reviews += 1
+            self._dev_ask(
+                f"boss:{getattr(boss, 'profile_key', 'classic')}:{self.round_bosses_defeated}",
+                "Wie fair und spannend war dieser Bosskampf?",
+            )
         return True
 
     def activate_portal(self, event):
+        self._dev_portal_seen = self._dev_portal_seen or self.dev_recorder.active
+        self.dev_recorder.event(
+            "portal_activated", event_type=type(event).__name__,
+            level=self.level, world=self.classic_level_name,
+        )
         self.portal_effect_active = True
         self.portal_effect_end = time.time() + 60
         self.portal_spawn_cooldown = time.time() + 300
@@ -2085,6 +2209,11 @@ class Game:
         for health_attr in targets:
             self._boss_contact_ready_at[health_attr] = now + BOSS_BODY_HIT_INTERVAL
             setattr(self, health_attr, getattr(self, health_attr) - BOSS_BODY_DAMAGE)
+        self.dev_recorder.event(
+            "boss_body_contact", player_health_fields=targets,
+            damage_each=BOSS_BODY_DAMAGE,
+            after_hp={attr: getattr(self, attr) for attr in targets},
+        )
         if SOUNDS.get("damage"):
             SOUNDS["damage"].play()
         # Both players take their hit before the shared life can reset their health.
@@ -2233,6 +2362,10 @@ class Game:
             enemy = NormalEnemy()
             enemy.spawn_time = current_time
             self.enemies.append(enemy)
+            self.dev_recorder.event(
+                "enemy_spawn", kind="NormalEnemy", cell=[enemy.x, enemy.y],
+                level=self.level,
+            )
 
         # Head cells are current player positions only, including both
         # players in 2P. An opt-in admin switch can now feed these real
@@ -2552,6 +2685,10 @@ class Game:
         # Ende Update
     def handle_item_pickup(self, item, *, source="field"):
         current_time = time.time()
+        before_item = self._dev_item_state(current_time) if self.dev_recorder.active else None
+        if self.dev_recorder.active and source == "field":
+            name = item.type.name
+            self._dev_seen_items[name] = self._dev_seen_items.get(name, 0) + 1
         self.dev_recorder.event(
             "item_pickup", item=item.type.name, source=source,
             cell=[item.x, item.y], level=self.level,
@@ -2644,6 +2781,8 @@ class Game:
                 self.enemies.append(bolbu)
             self.score += 25 * spawn_count
             self.add_achievement(f"{spawn_count} Bolbu gespawnt!")
+            self._dev_bolbu_seen = self._dev_bolbu_seen or (spawn_count > 0 and self.dev_recorder.active)
+            self.dev_recorder.event("enemy_spawn", kind="BolbuEnemy", count=spawn_count, source="item")
 
         elif item.type == ItemType.PROJECTILE_SHOOT:
             self.effects['projectile_shoot'] = max(self.effects['projectile_shoot'], current_time) + 900
@@ -2659,6 +2798,12 @@ class Game:
             self.score += 40
             self.experience += 20
             self.add_achievement("Auto-Shoot aktiviert!")
+        if before_item is not None:
+            self.dev_recorder.event(
+                "item_applied", item=item.type.name, source=source,
+                before=before_item, after=self._dev_item_state(current_time),
+                source_code="Dark_Snake/modules/game.py::Game.handle_item_pickup",
+            )
         if self.experience >= self.exp_to_next_level:
             self.level_up()
 
@@ -2812,7 +2957,16 @@ class Game:
         if (not self._record_completed_rounds or token is None
                 or self._round_recorded or self.game_state != GameState.GAME_OVER):
             return False
+        was_recording = self.dev_recorder.active
+        self.dev_recorder.event(
+            "round_summary", reason=reason, score=self.score, level=self.level,
+            enemies_defeated=self.round_enemies_defeated,
+            bosses_defeated=self.round_bosses_defeated,
+            items_collected=self.round_items_collected,
+            lives_lost=self.round_death_count,
+        )
         self.dev_recorder.finish(reason)
+        self._dev_end_pending = was_recording and not self.headless
         try:
             snapshot = completed_round(
                 token, reason=reason, score=self.score, level=self.level,
@@ -2938,6 +3092,22 @@ class Game:
                 if not self._handle_level_editor_event(event):
                     sys.exit()
                 continue
+            # A feedback modal owns all input. No controls leak into gameplay.
+            if self.dev_feedback.active:
+                self.dev_feedback.handle_event(
+                    event, self.dev_recorder, self.screen.get_size(),
+                )
+                if not self.dev_feedback.active:
+                    self._dev_feedback_resume()
+                continue
+            if self.game_state == GameState.INTRO and not self.level_editor.active:
+                if (event.type == pygame.MOUSEBUTTONDOWN and event.button == 1
+                        and self._dev_button_rect.collidepoint(event.pos)):
+                    self._toggle_dev_recorder()
+                    continue
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_F8:
+                    self._toggle_dev_recorder()
+                    continue
             # Do not accept leaderboard names or menu clicks behind the final
             # 2.4-second death animation. Window close remains available.
             if (self.game_state == GameState.GAME_OVER and
@@ -3117,11 +3287,18 @@ class Game:
     def draw(self):
         start = self.metrics.stamp()
         self._render()
+        self._draw_dev_indicator()
+        if self.dev_feedback.active:
+            self.dev_feedback.draw(self.screen, SNAKE_HEAD_IMG)
         if (self.metrics.enabled and not self.admin_panel.active and not self.level_editor.active
                 and self.game_state in (GameState.GAME, GameState.BOSS_FIGHT)):
             self.metrics.draw(self.screen)
         before_present = self.metrics.stamp()
         pygame.display.update()
+        self.dev_recorder.frame_mark(
+            game_active=(not self.dev_feedback.active and self.game_state
+                         in (GameState.GAME, GameState.BOSS_FIGHT)),
+        )
         presented = self.metrics.stamp()
         self.metrics.record_phase("draw", start, before_present)
         self.metrics.record_phase("present", before_present, presented)
@@ -3546,6 +3723,9 @@ class Game:
 
     def draw_game_over(self):
         """Abyss farewell, preserving leaderboard input and existing button actions."""
+        if self._dev_end_pending:
+            self._dev_end_pending = False
+            self._dev_ask_round_end()
         if self._game_over_visual is None:
             self._game_over_visual = DarkAbyssGameOver()
         # The reward stone occupies the right half of large windows. Move the
@@ -3612,8 +3792,15 @@ class Game:
         # A frame that starts behind an overlay may resume gameplay via input.
         if not was_playing:
             self._stall_clock_sample = None
+        feedback_was_active = self.dev_feedback.active
         self.handle_events()
         after_events = self.metrics.stamp()
+        if feedback_was_active or self.dev_feedback.active:
+            # Freeze ALL gameplay and countdown updates while writing feedback.
+            # On dismissal, shift live timers by the frozen duration.
+            self.metrics.record_phase("events", start, after_events)
+            self.draw()
+            return
         in_countdown = self._tick_respawn()
         if not in_countdown and self._gameplay_active():
             self.update()
