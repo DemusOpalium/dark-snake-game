@@ -99,8 +99,14 @@ def test_grid_boss_zero_direction_removed_but_player_shot_untouched():
     game.snake = [(3, 3)]
     still_boss = {"from_boss": True, "pos": (25.0, 20.0),
                   "dir": (0, 0), "projectile_type": "boss_projectile"}
-    player_shot = {"pos": (22.0, 23.0), "dir": (0, 0),
+    # Boss spawn is randomized (x/y >= 5). The old test shot at (22, 23)
+    # could accidentally land inside the boss and be correctly consumed.
+    # Isolate zero-direction filtering from unrelated boss-hit collisions.
+    player_shot = {"pos": (0.0, 0.0), "dir": (0, 0),
                    "projectile_type": "player_projectile"}
+    assert not game.boss.get_rect().colliderect(
+        pygame.Rect(0, 0, GRID_SIZE, GRID_SIZE)
+    )
     game.projectiles = [still_boss, player_shot]
     game.update_projectiles()
     assert game.projectiles == [player_shot]
