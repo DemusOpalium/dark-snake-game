@@ -28,7 +28,7 @@ AUTO_SAVE_SECONDS = 90
 EVENTS = {
     "session_started", "session_finished", "navigation", "studio_toggle",
     "settings_saved", "round_started", "round_finished", "feedback_dismissed",
-    "tester_marker", "session_warning",
+    "tester_marker", "session_warning", "tester_intent",
 }
 
 
@@ -133,6 +133,16 @@ class DeveloperSession:
         self.event("round_finished", round_id=name,
                    reason=str(reason)[:70], report_saved=bool(report_saved))
         self.checkpoint("round_finished")
+
+    def mark_round_intent(self, intent):
+        if not self.active or not self.rounds:
+            return False
+        if intent not in ("intentional_test_end", "normal_play"):
+            return False
+        self.rounds[-1]["tester_intent"] = intent
+        self.event("tester_intent", round_id=self.rounds[-1]["round_id"],
+                   intent=intent)
+        return self.checkpoint("tester_intent")
 
     def _payload(self, reason):
         output = {
