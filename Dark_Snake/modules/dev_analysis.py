@@ -21,6 +21,7 @@ RELEVANT_EVENTS = {
     "medusa_frost_warning", "medusa_frost_hit",
     "portal_activated", "item_pickup", "item_applied", "boss_body_contact",
     "enemy_spawn", "player_feedback", "vitals_snapshot", "vitals_change",
+    "aoe_hp_effect",
 }
 
 
