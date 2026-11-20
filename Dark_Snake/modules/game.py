@@ -2302,6 +2302,152 @@ class Game:
         )
         return True
 
+
+    def _boss_snake_bodies(self):
+        """Non-head cells of both snakes are solid during charge motion."""
+        snakes = ((self.snake,) if self.player_count == 1
+                  else (self.snake1, self.snake2))
+        return {cell for snake in snakes for cell in snake[1:]}
+
+    def _cancel_boss_charge(self, now, reason):
+        boss = self.boss
+        if not isinstance(boss, Boss):
+            return False
+        action = boss.cancel_charge(now)
+        if action is None:
+            return False
+        self.log_combat_event(
+            "boss_charge_aborted", boss=boss.profile_key,
+            reason=reason, cell=(boss.x, boss.y),
+        )
+        return True
+
+    def _tick_boss_charge(self, now):
+        """One fixed Medusa charge with continuous 1P/2P contact geometry.
+
+        Called every active render frame (not just on a Snake grid move).
+        Damage equals ordinary boss-body contact, never added to it.
+        """
+        boss = self.boss
+        if (not isinstance(boss, Boss) or not boss.ai_preview
+                or boss.profile_key != "medusa"
+                or self.game_state != GameState.BOSS_FIGHT):
+            return False
+        charge = boss.charge
+        action = charge.action
+        if action is not None:
+            before, after, began, impact, finished = charge.tick(now)
+            if began:
+                self.log_combat_event(
+                    "boss_charge_started", boss=boss.profile_key,
+                    destination=action.destination,
+                )
+            if action.started:
+                # Re-check newly occupied non-head body cells and solid walls.
+                # A late blocker stops the charge before its newly swept area.
+                blockers = self._boss_snake_bodies() | set(self._vision_blockers)
+                if any(swept_footprint(before, after, boss.size, cell)
+                       and not swept_footprint(before, before, boss.size, cell)
+                       for cell in blockers):
+                    action.last_position = before
+                    self._cancel_boss_charge(now, "lane_blocked")
+                    return True
+                protected = (
+                    self.respawn.active
+                    or now < self.respawn_invincible_until
+                    or now < self.effects.get("invincibility", 0)
+                )
+                hit = []
+                if not protected:
+                    for head, attr in self._player_heads_with_health():
+                        if (attr in action.hit_players
+                                or now < self._boss_contact_ready_at.get(attr, 0)
+                                or not swept_footprint(before, after, boss.size, head)):
+                            continue
+                        action.hit_players.add(attr)
+                        self._boss_contact_ready_at[attr] = max(
+                            self._boss_contact_ready_at.get(attr, 0),
+                            action.ends_at + BOSS_BODY_HIT_INTERVAL,
+                        )
+                        hp_before = getattr(self, attr)
+                        setattr(self, attr, hp_before - BOSS_BODY_DAMAGE)
+                        hit.append(attr)
+                        self.log_combat_event(
+                            "boss_charge_hit", boss=boss.profile_key,
+                            player=attr, damage=BOSS_BODY_DAMAGE,
+                            hp_before=hp_before, hp_after=getattr(self, attr),
+                        )
+                    if hit:
+                        self._dev_capture_vitals("boss_charge_hit")
+                        if SOUNDS.get("damage"):
+                            SOUNDS["damage"].play()
+                        if any(getattr(self, attr) <= 0 for attr in hit):
+                            self._cancel_boss_charge(now, "life_lost")
+                            self.handle_death()  # exactly one shared 2P life
+                            return True
+                # Approximate integer logical position for other existing AI
+                # queries; render and damage use the SAME sub-cell position.
+                x, y = action.position(now)
+                boss.x, boss.y = round(x), round(y)
+            if impact:
+                boss.x, boss.y = action.destination
+                boss._visual_from = boss._visual_to = action.destination
+                boss._visual_step_start = now
+                self.log_combat_event(
+                    "boss_charge_impact", boss=boss.profile_key,
+                    cell=action.destination, players=sorted(action.hit_players),
+                )
+            if finished:
+                boss.x, boss.y = action.destination
+                boss._visual_from = boss._visual_to = action.destination
+                boss._visual_step_start = boss.last_move = now
+                # The old normal-body cooldown cannot land a second blow
+                # immediately when this charge's recovery ends.
+                for _, attr in self._player_heads_with_health():
+                    self._boss_contact_ready_at[attr] = max(
+                        self._boss_contact_ready_at.get(attr, 0),
+                        now + BOSS_BODY_HIT_INTERVAL,
+                    )
+                charge.finish()
+                self.log_combat_event(
+                    "boss_charge_recovered", boss=boss.profile_key,
+                    cell=action.destination,
+                )
+            return True
+
+        reading = boss.eyes.reading
+        if (now - boss.spawn_time < BOSS_SPAWN_PROTECTION
+                or boss.phases.warning_active(now)
+                or boss.teleport.waiting(now) or boss.teleport.scanning()
+                or boss.swipe.active(now) or boss.defense.active(now)
+                or (boss.tactics.volley is not None
+                    and boss.tactics.volley.phase(now) != "done")
+                or reading.kind not in ("VISIBLE", "RELAY")
+                or reading.last_known_cell is None):
+            return False
+        action = charge.begin(
+            (boss.x, boss.y), boss.size, reading.last_known_cell,
+            self._vision_blockers, (GRID_WIDTH, GRID_HEIGHT),
+            self._boss_snake_bodies(), now,
+        )
+        if action is None:
+            return False
+        boss.facing = action.direction
+        boss.last_move = now
+        boss._visual_from = boss._visual_to = action.start
+        boss._visual_step_start = now
+        boss.next_proj = max(boss.next_proj, action.ends_at)
+        boss.next_aoe = max(boss.next_aoe, action.ends_at)
+        boss.tactics.next_cast_at = max(boss.tactics.next_cast_at,
+                                       action.ends_at)
+        self.log_combat_event(
+            "boss_charge_warning", boss=boss.profile_key,
+            target=action.target, destination=action.destination,
+            warning_seconds=action.charge_at - action.began_at,
+            movement_seconds=action.impact_end - action.charge_at,
+        )
+        return True
+
     def _scan_boss_defense(self, now):
         """Sense *player-owned* incoming shots only, never hidden attack data."""
         boss = self.boss
