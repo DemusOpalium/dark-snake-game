@@ -25,7 +25,7 @@ class AdminPanel:
         ("emoji9.png", "Zufallszone", "Erzeugt sofort eine zufällige Schadens-, Heil- oder Slow-Zone.", "spawn_random_zone"),
         (None, "Bildzeiten", "Zeigt Bildzeiten und Eingabereaktion nach dem Schließen im Spiel.", "toggle_metrics"),
         (None, "Frost-Test", "Schaltet Frostzonen für bestätigte Feuerballtreffer ein oder aus.", "toggle_frost"),
-        (None, "KI-Test", "Test: Gegner verfolgen gesehene Ziele und suchen die letzte Position.", "toggle_enemy_ai"),
+        (None, "KI-Test", "Test: Sicht-KI und Boss-Spezialattacken (Medusa Charge A).", "toggle_enemy_ai"),
     )
 
     def __init__(self, game):
@@ -138,7 +138,7 @@ class AdminPanel:
     def toggle_enemy_ai(self):
         self.game.enemy_ai_preview = not self.game.enemy_ai_preview
         state = "aktiviert" if self.game.enemy_ai_preview else "deaktiviert"
-        return f"Vision-KI-Test {state}; nur Bewegung, keine neuen Angriffe."
+        return f"Vision-KI-Test {state}; Boss-Spezialattacken (Medusa Charge A)."
 
     def spawn_bolbu_item(self):
         x, y = self._adjacent_cell()

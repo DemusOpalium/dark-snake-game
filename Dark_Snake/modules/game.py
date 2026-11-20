@@ -54,6 +54,8 @@ from modules.boss_balance import boss_max_health
 from modules.boss_tactics import MedusaTactics
 from modules.boss_defense import IncomingShot, MedusaDefense
 from modules.boss_swipe import MedusaSwipe
+from modules.boss_charge import MedusaCharge, swept_footprint
+from modules.boss_charge_visual import draw_medusa_charge
 from modules.boss_teleport import (
     BossTeleport, choose_destination, destination_is_safe,
     world_scan_target, WORLD_SCAN_SECONDS,
@@ -198,6 +200,7 @@ class Boss:
         self.tactics = MedusaTactics()
         self.defense = MedusaDefense()
         self.swipe = MedusaSwipe()
+        self.charge = MedusaCharge()
         self.teleport = BossTeleport(self.profile_key)
         self._boss_shot_debug = (0, 0)  # shots, genuinely threatening shots
         self.ai_preview = False
@@ -263,6 +266,8 @@ class Boss:
             self.defense.reset()
             self.cancel_swipe(time.time())
             self.swipe.reset()
+            self.cancel_charge(time.time())
+            self.charge.reset()
             self.cancel_teleport(time.time())
             self.teleport.reset()
             self._boss_shot_debug = (0, 0)
@@ -313,6 +318,21 @@ class Boss:
             self._visual_step_start = now
         self.swipe.cancel()
 
+    def cancel_charge(self, now):
+        """Abort a partially travelled dash; settle at its last reached cell."""
+        action = self.charge.cancel(now)
+        if action is None:
+            return None
+        previous = action.last_position
+        # Reverse/forward use the same legal integer grid checkpoints.
+        travelled = int(max(abs(previous[0] - action.start[0]),
+                            abs(previous[1] - action.start[1])) + 1e-8)
+        self.x = action.start[0] + action.direction[0] * travelled
+        self.y = action.start[1] + action.direction[1] * travelled
+        self._visual_from = self._visual_to = (self.x, self.y)
+        self._visual_step_start = self.last_move = now
+        return action
+
     def cancel_teleport(self, now, *, show_abort=False):
         """Abort a mid-transition warp without leaving ghost hitboxes."""
         action = self.teleport.action
@@ -326,6 +346,12 @@ class Boss:
         self.teleport.cancel(now, show_abort=show_abort)
 
     def update(self, current_time):
+        if self.ai_preview and self.charge.action is not None:
+            # A charge owns movement, body contact and attack timing.
+            self.last_move = current_time
+            if self.frames:
+                self.update_animation(current_time)
+            return None
         if self.ai_preview and self.teleport.scanning():
             # The guardian's world search is a full-board *warning*, not an
             # opportunity to cast projectiles, move or strike invisibly.
@@ -413,6 +439,8 @@ class Boss:
 
     def _visual_position(self, current_time):
         """Normal glide is cosmetic; Swipe D uses the same pixels as collision."""
+        if self.ai_preview and self.charge.action is not None:
+            return self.charge.action.position(current_time)
         if self.ai_preview and self.swipe.active(current_time):
             return self.swipe.action.position(current_time)
         start = self._visual_from
@@ -544,6 +572,10 @@ class Boss:
             # No invisible hitbox left at the departure tile, and no
             # surprise hitbox at the arrival tile while emerging.
             return pygame.Rect(0, 0, 0, 0)
+        if self.ai_preview and self.charge.action is not None:
+            cx, cy = self.charge.action.position(now)
+            return pygame.Rect(round(cx * GRID_SIZE), round(cy * GRID_SIZE),
+                               self.size * GRID_SIZE, self.size * GRID_SIZE)
         if self.ai_preview and self.swipe.active(now):
             sx, sy = self.swipe.action.position(now)
             return pygame.Rect(round(sx * GRID_SIZE), round(sy * GRID_SIZE),
@@ -917,6 +949,7 @@ class Game:
             self._tick_respawn()
         self.admin_panel.close()
         if isinstance(self.boss, Boss):
+            self._cancel_boss_charge(time.time(), "editor")
             self.boss.tactics.cancel(time.time())
             self.boss.defense.cancel()
             self.boss.cancel_swipe(time.time())
@@ -1107,6 +1140,7 @@ class Game:
             self.clear_game_state()
         if state == GameState.PAUSE and previous in (GameState.GAME, GameState.BOSS_FIGHT):
             if isinstance(self.boss, Boss):
+                self._cancel_boss_charge(time.time(), "pause")
                 self.boss.tactics.cancel(time.time())
                 self.boss.defense.cancel()
                 self.boss.cancel_swipe(time.time())
@@ -1153,6 +1187,7 @@ class Game:
             self._tick_respawn()
         if not self._menu_suspended:
             if isinstance(self.boss, Boss):
+                self._cancel_boss_charge(time.time(), "admin")
                 self.boss.tactics.cancel(time.time())
                 self.boss.defense.cancel()
                 self.boss.cancel_swipe(time.time())
@@ -1765,6 +1800,8 @@ class Game:
 
     def _announce_boss_phase(self, boss, stage, now):
         """Tell the player before an altered boss can start a new attack."""
+        if boss.charge.action is not None:
+            self._cancel_boss_charge(now, "phase_transition")
         if boss.teleport.action is not None or boss.teleport.scanning():
             boss.cancel_teleport(now)
         boss.tactics.cancel(now)
@@ -2161,6 +2198,8 @@ class Game:
         boss = self.boss
         if not isinstance(boss, Boss) or not boss.ai_preview:
             return False
+        if boss.charge.action is not None:
+            return False
         tele = boss.teleport
         action = tele.action
         if action is not None:
@@ -2268,10 +2307,160 @@ class Game:
         )
         return True
 
+
+    def _boss_snake_bodies(self):
+        """Non-head cells of both snakes are solid during charge motion."""
+        snakes = ((self.snake,) if self.player_count == 1
+                  else (self.snake1, self.snake2))
+        return {cell for snake in snakes for cell in snake[1:]}
+
+    def _cancel_boss_charge(self, now, reason):
+        boss = self.boss
+        if not isinstance(boss, Boss):
+            return False
+        action = boss.cancel_charge(now)
+        if action is None:
+            return False
+        self.log_combat_event(
+            "boss_charge_aborted", boss=boss.profile_key,
+            reason=reason, cell=(boss.x, boss.y),
+        )
+        return True
+
+    def _tick_boss_charge(self, now):
+        """One fixed Medusa charge with continuous 1P/2P contact geometry.
+
+        Called every active render frame (not just on a Snake grid move).
+        Damage equals ordinary boss-body contact, never added to it.
+        """
+        boss = self.boss
+        if (not isinstance(boss, Boss) or not boss.ai_preview
+                or boss.profile_key != "medusa"
+                or self.game_state != GameState.BOSS_FIGHT):
+            return False
+        charge = boss.charge
+        action = charge.action
+        if action is not None:
+            motion_pending = not action.finished_motion
+            before, after, began, impact, finished = charge.tick(now)
+            if began:
+                self.log_combat_event(
+                    "boss_charge_started", boss=boss.profile_key,
+                    destination=action.destination,
+                )
+            if action.started and motion_pending:
+                # Only the actual moving 0.35s sweep deals charge damage.
+                # Recovering players cannot be newly hit during recovery.
+                # Re-check newly occupied non-head body cells and solid walls.
+                # A late blocker stops the charge before its newly swept area.
+                blockers = self._boss_snake_bodies() | set(self._vision_blockers)
+                if any(swept_footprint(before, after, boss.size, cell)
+                       and not swept_footprint(before, before, boss.size, cell)
+                       for cell in blockers):
+                    action.last_position = before
+                    self._cancel_boss_charge(now, "lane_blocked")
+                    return True
+                protected = (
+                    self.respawn.active
+                    or now < self.respawn_invincible_until
+                    or now < self.effects.get("invincibility", 0)
+                )
+                hit = []
+                if not protected:
+                    for head, attr in self._player_heads_with_health():
+                        if (attr in action.hit_players
+                                or now < self._boss_contact_ready_at.get(attr, 0)
+                                or not swept_footprint(before, after, boss.size, head)):
+                            continue
+                        action.hit_players.add(attr)
+                        self._boss_contact_ready_at[attr] = max(
+                            self._boss_contact_ready_at.get(attr, 0),
+                            action.ends_at + BOSS_BODY_HIT_INTERVAL,
+                        )
+                        hp_before = getattr(self, attr)
+                        setattr(self, attr, hp_before - BOSS_BODY_DAMAGE)
+                        hit.append(attr)
+                        self.log_combat_event(
+                            "boss_charge_hit", boss=boss.profile_key,
+                            player=attr, damage=BOSS_BODY_DAMAGE,
+                            hp_before=hp_before, hp_after=getattr(self, attr),
+                        )
+                    if hit:
+                        self._dev_capture_vitals("boss_charge_hit")
+                        if SOUNDS.get("damage"):
+                            SOUNDS["damage"].play()
+                        if any(getattr(self, attr) <= 0 for attr in hit):
+                            self._cancel_boss_charge(now, "life_lost")
+                            self.handle_death()  # exactly one shared 2P life
+                            return True
+                # Approximate integer logical position for other existing AI
+                # queries; render and damage use the SAME sub-cell position.
+                x, y = action.position(now)
+                boss.x, boss.y = round(x), round(y)
+            if impact:
+                boss.x, boss.y = action.destination
+                boss._visual_from = boss._visual_to = action.destination
+                boss._visual_step_start = now
+                self.log_combat_event(
+                    "boss_charge_impact", boss=boss.profile_key,
+                    cell=action.destination, players=sorted(action.hit_players),
+                )
+            if finished:
+                boss.x, boss.y = action.destination
+                boss._visual_from = boss._visual_to = action.destination
+                boss._visual_step_start = boss.last_move = now
+                # The old normal-body cooldown cannot land a second blow
+                # immediately when this charge's recovery ends.
+                for _, attr in self._player_heads_with_health():
+                    self._boss_contact_ready_at[attr] = max(
+                        self._boss_contact_ready_at.get(attr, 0),
+                        now + BOSS_BODY_HIT_INTERVAL,
+                    )
+                charge.finish()
+                self.log_combat_event(
+                    "boss_charge_recovered", boss=boss.profile_key,
+                    cell=action.destination,
+                )
+            return True
+
+        reading = boss.eyes.reading
+        if (now - boss.spawn_time < BOSS_SPAWN_PROTECTION
+                or boss.phases.warning_active(now)
+                or boss.teleport.waiting(now) or boss.teleport.scanning()
+                or boss.swipe.active(now) or boss.defense.active(now)
+                or (boss.tactics.volley is not None
+                    and boss.tactics.volley.phase(now) != "done")
+                or reading.kind not in ("VISIBLE", "RELAY")
+                or reading.last_known_cell is None):
+            return False
+        action = charge.begin(
+            (boss.x, boss.y), boss.size, reading.last_known_cell,
+            self._vision_blockers, (GRID_WIDTH, GRID_HEIGHT),
+            self._boss_snake_bodies(), now,
+        )
+        if action is None:
+            return False
+        boss.facing = action.direction
+        boss.last_move = now
+        boss._visual_from = boss._visual_to = action.start
+        boss._visual_step_start = now
+        boss.next_proj = max(boss.next_proj, action.ends_at)
+        boss.next_aoe = max(boss.next_aoe, action.ends_at)
+        boss.tactics.next_cast_at = max(boss.tactics.next_cast_at,
+                                       action.ends_at)
+        self.log_combat_event(
+            "boss_charge_warning", boss=boss.profile_key,
+            target=action.target, destination=action.destination,
+            warning_seconds=action.charge_at - action.began_at,
+            movement_seconds=action.impact_end - action.charge_at,
+        )
+        return True
+
     def _scan_boss_defense(self, now):
         """Sense *player-owned* incoming shots only, never hidden attack data."""
         boss = self.boss
         if (not isinstance(boss, Boss) or not boss.ai_preview
+                or boss.charge.action is not None
                 or boss.teleport.waiting(now)
                 or boss.teleport.scanning()
                 or boss.phases.warning_active(now)
@@ -2339,6 +2528,7 @@ class Game:
         """
         boss = self.boss
         if (not isinstance(boss, Boss) or not boss.ai_preview
+                or boss.charge.action is not None
                 or boss.teleport.waiting(now)
                 or boss.phases.warning_active(now)
                 or not boss.profile.frost_throw
@@ -2375,7 +2565,8 @@ class Game:
     def _resolve_boss_body_contact(self, now):
         if (self.boss is None or self.game_state == GameState.GAME_OVER
                 or (isinstance(self.boss, Boss)
-                    and (self.boss.teleport.waiting(now)
+                    and (self.boss.charge.action is not None
+                         or self.boss.teleport.waiting(now)
                          or self.boss.teleport.scanning()))
                 or now < self.respawn_invincible_until
                 or now - self.boss.spawn_time < BOSS_SPAWN_PROTECTION):
@@ -2478,6 +2669,7 @@ class Game:
     def update(self):
         if self._tick_respawn():
             if isinstance(self.boss, Boss):
+                self._cancel_boss_charge(time.time(), "respawn")
                 self.boss.tactics.cancel(time.time())
                 self.boss.defense.cancel()
                 self.boss.cancel_swipe(time.time())
@@ -2486,6 +2678,7 @@ class Game:
             return
         if not self._gameplay_active():
             if isinstance(self.boss, Boss):
+                self._cancel_boss_charge(time.time(), "suspended")
                 self.boss.tactics.cancel(time.time())
                 self.boss.defense.cancel()
                 self.boss.cancel_swipe(time.time())
@@ -2564,6 +2757,8 @@ class Game:
         # occlusion map as NormalEnemy, but only while KI-Test is enabled.
         # Neither attacks nor boss step cadence change outside this pilot.
         if isinstance(self.boss, Boss):
+            if self.boss.ai_preview and not self.enemy_ai_preview:
+                self._cancel_boss_charge(current_time, "ai_preview_disabled")
             self.boss.set_ai_preview(self.enemy_ai_preview)
             self._tick_boss_phases(current_time)
             self.boss.navigation_blockers = self._vision_blockers
@@ -2577,6 +2772,9 @@ class Game:
                 )
             self._tick_boss_teleport(current_time)
         self._scan_boss_defense(current_time)
+        self._tick_boss_charge(current_time)
+        if self.respawn.active or self.game_state == GameState.GAME_OVER:
+            return
         if self._tick_medusa_volley(current_time):
             return
 
@@ -3067,6 +3265,7 @@ class Game:
         now = time.time()
         self.respawn.begin(now)
         if isinstance(self.boss, Boss):
+            self._cancel_boss_charge(now, "respawn")
             self.boss.tactics.cancel(now)
             self.boss.defense.cancel()
             self.boss.cancel_swipe(now)
@@ -3808,6 +4007,11 @@ class Game:
                 self.screen, self.boss.tactics.volley,
                 time.time(), GRID_SIZE,
             )
+            if self.boss.profile_key == "medusa":
+                draw_medusa_charge(
+                    self.screen, self.boss.charge.action,
+                    time.time(), GRID_SIZE, self.boss.size,
+                )
         for zone in self.aoe_zones:
             zone.draw(self.screen)
         if self.boss:
