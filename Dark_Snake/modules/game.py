@@ -1528,20 +1528,25 @@ class Game:
         if self._menu_suspended:
             return
         requested = not self.dev_recorder.enabled
-        if self.dev_recorder.configure(requested):
-            if requested:
+        if requested:
+            if self.dev_recorder.configure(True):
                 self.dev_session.start()
                 self._dev_settings_previous = dict(self.settings)
-            else:
-                self.dev_session.end("disabled")
-            self._dev_badge_until = time.monotonic() + 2.0
+        else:
+            if self.dev_session.active and not self.dev_session.end("disabled"):
+                self._dev_save_success = False
+                self._dev_save_notice_until = time.monotonic() + 3.0
+                return  # Save failure: remain enabled, show red status.
+            self.dev_recorder.configure(False)
+        self._dev_badge_until = time.monotonic() + 2.0
 
     def _dev_save_session(self):
         if not self.dev_session.active:
             return False
-        if self.dev_recorder.active:
-            self.dev_recorder.checkpoint("manual")
-        saved = self.dev_session.checkpoint("manual")
+        round_ok = (self.dev_recorder.checkpoint("manual")
+                    if self.dev_recorder.active else True)
+        session_ok = self.dev_session.checkpoint("manual")
+        saved = round_ok and session_ok
         self._dev_save_success = saved
         self._dev_save_notice_until = time.monotonic() + 3.0
         return saved
@@ -1657,7 +1662,10 @@ class Game:
                     self.screen.get_width() - 175, 50, 160, 31,
                 )
                 status = (
-                    "SPEICHERFEHLER" if self.dev_session.error else
+                    "SPEICHERFEHLER" if (self.dev_session.error or
+                        self.dev_recorder.error and self.dev_recorder.active or
+                        time.monotonic() < self._dev_save_notice_until
+                        and not self._dev_save_success) else
                     "GESPEICHERT" if time.monotonic() < self._dev_save_notice_until
                                    and self._dev_save_success else
                     "SPEICHERN" if self.dev_session.dirty else "GESPEICHERT"
@@ -1666,7 +1674,8 @@ class Game:
                     status == "GESPEICHERT"
                 )
                 color = (32, 88, 70) if good else (
-                    (100, 35, 45) if self.dev_session.error else (49, 62, 91)
+                    (100, 35, 45) if status == "SPEICHERFEHLER"
+                    else (49, 62, 91)
                 )
                 pygame.draw.rect(self.screen, color, self._dev_save_rect,
                                  border_radius=6)
