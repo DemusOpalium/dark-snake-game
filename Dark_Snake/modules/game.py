@@ -3149,8 +3149,29 @@ class Game:
         )
         report_ok = self.dev_recorder.finish(reason)
         self._dev_last_round_id = token["round_id"]
+        boss_names = [
+            event.get("data", {}).get("boss")
+            for event in self.dev_recorder.events
+            if event.get("type") == "boss_spawn"
+        ]
+        final_hp = (
+            {"1": round(self.player_health, 2)}
+            if self.player_count == 1 else
+            {"1": round(self.player_health_p1, 2),
+             "2": round(self.player_health_p2, 2)}
+        )
         self.dev_session.round_end(
-            token, reason, report_saved=report_ok,
+            token, reason, report_saved=report_ok, summary={
+                "score": self.score,
+                "level": self.level,
+                "enemies_defeated": self.round_enemies_defeated,
+                "bosses_defeated": self.round_bosses_defeated,
+                "items_collected": self.round_items_collected,
+                "lives_lost": self.round_death_count,
+                "lives_remaining": self.lives,
+                "end_hp": final_hp,
+                "bosses_seen": boss_names[-8:],
+            },
         )
         self._dev_end_pending = was_recording and not self.headless
         try:
@@ -3291,11 +3312,13 @@ class Game:
                     event, self.dev_recorder, self.screen.get_size(),
                 )
                 if dismissed and self.dev_session.active:
-                    after = len(self.dev_recorder.report.get("feedback", [])) if self.dev_recorder.report else 0
-                    self.dev_session.event(
-                        "feedback_dismissed", subject=subject, saved=after > before,
+                    feedback = self.dev_recorder.report.get("feedback", []) if self.dev_recorder.report else []
+                    saved = len(feedback) > before
+                    answer = feedback[-1] if saved else {}
+                    self.dev_session.feedback(
+                        subject, rating=answer.get("rating"), saved=saved,
+                        item_verdict=answer.get("item_verdict"),
                     )
-                    self.dev_session.checkpoint("feedback")
                 if not self.dev_feedback.active:
                     self._dev_feedback_resume()
                 continue
