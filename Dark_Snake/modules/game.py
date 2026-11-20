@@ -2696,7 +2696,16 @@ class Game:
             for zone in self.aoe_zones:
                 zone.update()
                 if zone.is_inside(player_obj.pos) and not invincible:
+                    previous_hp = player_obj.health
                     zone.apply_effect(player_obj)
+                    if self.dev_recorder.active and player_obj.health != previous_hp:
+                        self.dev_recorder.event(
+                            "aoe_hp_effect", player=1,
+                            kind=getattr(zone, "effect_type", "unknown"),
+                            hp_before=round(previous_hp, 3),
+                            hp_after=round(player_obj.health, 3),
+                            source_code="Dark_Snake/modules/game.py::Game.update",
+                        )
                     if not hasattr(zone, "debug_triggered"):
                         print(f"DEBUG: AoE-Effekt '{zone.effect_type}' auf Singleplayer angewendet.")
                         zone.debug_triggered = True
@@ -2713,7 +2722,16 @@ class Game:
             for zone in self.aoe_zones:
                 zone.update()
                 if zone.is_inside(p1_obj.pos) and not invincible:
+                    previous_hp = p1_obj.health
                     zone.apply_effect(p1_obj)
+                    if self.dev_recorder.active and p1_obj.health != previous_hp:
+                        self.dev_recorder.event(
+                            "aoe_hp_effect", player=1,
+                            kind=getattr(zone, "effect_type", "unknown"),
+                            hp_before=round(previous_hp, 3),
+                            hp_after=round(p1_obj.health, 3),
+                            source_code="Dark_Snake/modules/game.py::Game.update",
+                        )
                     if not hasattr(zone, "debug_triggered_p1"):
                         print(f"DEBUG: AoE-Effekt '{zone.effect_type}' auf Spieler 1 angewendet.")
                         zone.debug_triggered_p1 = True
@@ -2729,7 +2747,16 @@ class Game:
             for zone in self.aoe_zones:
                 zone.update()
                 if zone.is_inside(p2_obj.pos) and not invincible:
+                    previous_hp = p2_obj.health
                     zone.apply_effect(p2_obj)
+                    if self.dev_recorder.active and p2_obj.health != previous_hp:
+                        self.dev_recorder.event(
+                            "aoe_hp_effect", player=2,
+                            kind=getattr(zone, "effect_type", "unknown"),
+                            hp_before=round(previous_hp, 3),
+                            hp_after=round(p2_obj.health, 3),
+                            source_code="Dark_Snake/modules/game.py::Game.update",
+                        )
                     if not hasattr(zone, "debug_triggered_p2"):
                         print(f"DEBUG: AoE-Effekt '{zone.effect_type}' auf Spieler 2 angewendet.")
                         zone.debug_triggered_p2 = True
