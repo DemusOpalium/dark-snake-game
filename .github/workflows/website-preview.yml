@@ -1,0 +1,34 @@
+name: Website Preview
+
+on:
+  pull_request:
+    paths:
+      - "site/**"
+      - "tests/test_site_presentation.py"
+      - ".github/workflows/website-preview.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preview:
+    name: Validate and package Pages preview
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout PR content
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Validate static website and image originals
+        run: |
+          python -c "import runpy; p=runpy.run_path('tests/test_site_presentation.py'); p['test_pages_contract_and_links'](); p['test_all_web_media_are_tracked_and_pngs']()"
+      - name: Upload offline HTML preview
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: dark-snake-website-preview
+          path: site/
+          retention-days: 7
+          compression-level: 6
+          if-no-files-found: error
