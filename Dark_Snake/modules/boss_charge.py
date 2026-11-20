@@ -11,11 +11,14 @@ from dataclasses import dataclass, field
 
 Cell = tuple[int, int]
 Point = tuple[float, float]
-WARNING_SECONDS = .85
-CHARGE_SECONDS = .35
-RECOVERY_SECONDS = .80
-COOLDOWN_SECONDS = 8.0
-MAX_CELLS = 4
+# B tuning from Demus' 20 Nov Windows playtest:
+# Double peak reach, a quicker but still visible tell, then longer downtime.
+WARNING_SECONDS = .65
+CHARGE_SECONDS = .22
+RECOVERY_SECONDS = 1.35
+COOLDOWN_SECONDS = 7.0
+MAX_CELLS = 8
+PREFERRED_MIN_CELLS = 4
 
 
 def swept_footprint(a: Point, b: Point, size: int, cell: Cell) -> bool:
@@ -37,7 +40,7 @@ def _footprint_clear(position: Cell, size: int, blocked: set[Cell],
 
 def choose_charge(start: Cell, size: int, observed_target: Cell,
                   walls, grid: Cell, bodies=()) -> Cell | None:
-    """Pick a cardinal 2–4 cell lane from a *previously observed* head.
+    """Pick a cardinal 4–8 cell lane (2–3 if constrained) from observed aim.
 
     Check every intermediate FULL boss footprint against authored walls and
     both snakes' non-head bodies. Heads are hit targets, not path blockers.
@@ -59,7 +62,7 @@ def choose_charge(start: Cell, size: int, observed_target: Cell,
     # A charge is not an omnidirectional lunge across the board.
     if along < size / 2 + 1.0 or side > size / 2 + 1.0:
         return None
-    stride = min(MAX_CELLS, max(2, round(along - size / 2)))
+    stride = min(MAX_CELLS, max(PREFERRED_MIN_CELLS, round(along - size / 2)))
     for distance in range(stride, 1, -1):
         if all(_footprint_clear(
             (start[0] + step * direction[0],
@@ -154,7 +157,7 @@ class MedusaCharge:
     def tick(self, now: float) -> tuple[Point, Point, bool, bool, bool] | None:
         """Return swept interval and one-shot phase transitions.
 
-        Even if the update jumps across the entire 350 ms motion,
+        Even if the update jumps across the entire short charge motion,
         its full sweep is returned once, including its endpoint.
         """
         a = self.action
