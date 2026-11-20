@@ -40,3 +40,12 @@ def test_item_verdict_and_reset():
     ui.enqueue("zone", "Zone?")
     ui.clear()
     assert not ui.active
+
+
+def test_zero_rating_is_explicit_feedback_not_a_skip():
+    ui, spy = DeveloperFeedbackUI(), RecorderSpy()
+    ui.enqueue("zone", "Was kaputt?")
+    ui.choose_rating(0)
+    assert ui.submit(spy)
+    assert spy.feedback[0]["rating"] == 0
+    assert spy.skips == []

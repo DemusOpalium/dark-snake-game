@@ -13,6 +13,29 @@
 - **This repository and its PRs are public.** Do not add secrets, confidential transcripts, private personal details, credentials or security exploits to the board. Truly private notes belong in an access-controlled private repository.
 - Offer new blackboard notes in small documentation PRs or existing issue/PR comments; respect the owner's review/merge authority. Ideas are **not** authorization to make gameplay changes. Existing code, tests and current PR/issue state take precedence over dated notes.
 
+## Irians Auge / Developer Mode Plus (opt-in, local)
+
+- Read [IRIANS_AUGE.md](IRIANS_AUGE.md) before touching the developer
+  recorder, feedback dialogs, item effects, boss events or visualization.
+  Source: `Dark_Snake/modules/dev_recorder.py` (bounded JSON and
+  checkpoints), `dev_feedback_ui.py` (optional player opinions),
+  `dev_analysis.py` (read-only timelines/heatmap), integration in
+  `Dark_Snake/modules/game.py`, offline CLI
+  `scripts/analyze_dev_report.py`.
+- DEV+ is **OFF by default**; diagnostics belong only to local
+  `Entwicklerberichte/IriansAuge/`, not the public website, repository,
+  cloud or user profile progression. Never commit private user-generated
+  reports, round IDs, ratings, free text or screenshots without explicit
+  informed approval; redact them in public PR discussions.
+- New item mechanics: check `modules.enums.ItemType`,
+  `Game.handle_item_pickup` and before/after `item_applied` events.
+  New boss moves: log meaningful warnings, hits and interruptions
+  without creating a second collision system or disk IO per frame.
+- This is three **stacked draft PRs** A #248 → B #249 → C #250.
+  **No merged functionality may be claimed until each PR is
+  actually merged and manually accepted.** Keep the opt-in,
+  1P/2P, pause and error-isolation regressions green.
+
 ## Official Pages website / DE–EN public presentation
 
 - `site/` is the **public GitHub Pages project website**, not game code

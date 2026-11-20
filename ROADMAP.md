@@ -47,11 +47,14 @@
 
 ## 👁️ Irians Auge – freiwilliger Developer Mode Plus (20.11.2026)
 
-- **Priorität vor Boss Roll/Charge A:** Drei getrennte Draft-PRs:
-  **A** lokale Boss-/Runden-Telemetrie (Ereignisse, 250-ms-Wege,
-  Checkpoints, Datei-Limit), **B** DEV+-Menüschalter und freiwilliges
-  Feedback nach wichtigen Zonen-/Boss-Ereignissen und zu Items,
-  **C** strukturierte Berichte, Heatmap/Bewegungskarte und Soll/Ist-Vergleich.
+- **Priorität vor Boss Roll/Charge A:** Drei getrennte **Draft-PRs**
+  existieren auf GitHub: **A #248** lokale Boss-/Runden-Telemetrie
+  (Ereignisse, 250-ms-Wege, Checkpoints, Datei-Limit), **B #249**
+  DEV+-Menüschalter und freiwilliges Feedback nach wichtigen Zonen-/
+  Boss-Ereignissen und zu Items, **C #250** strukturierte Berichte,
+  Offline-SVG-Heatmap/Bewegungskarte und begrenzte Frame-Messwerte.
+  Die PRs bauen aufeinander auf und sind **noch nicht gemergt**;
+  Windows-Sichtabnahme für das Gesamtsystem steht aus.
 - **Spielerschutz:** Standardmäßig **AUS**, nur lokal, kein Tracking und kein
   Upload; normaler Classic-Modus, Karriere und Spielstände bleiben unabhängig.
   Entwicklerberichte werden nur bei aktivem Modus erzeugt.

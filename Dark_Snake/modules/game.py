@@ -2209,6 +2209,11 @@ class Game:
         for health_attr in targets:
             self._boss_contact_ready_at[health_attr] = now + BOSS_BODY_HIT_INTERVAL
             setattr(self, health_attr, getattr(self, health_attr) - BOSS_BODY_DAMAGE)
+        self.dev_recorder.event(
+            "boss_body_contact", player_health_fields=targets,
+            damage_each=BOSS_BODY_DAMAGE,
+            after_hp={attr: getattr(self, attr) for attr in targets},
+        )
         if SOUNDS.get("damage"):
             SOUNDS["damage"].play()
         # Both players take their hit before the shared life can reset their health.
@@ -2357,6 +2362,10 @@ class Game:
             enemy = NormalEnemy()
             enemy.spawn_time = current_time
             self.enemies.append(enemy)
+            self.dev_recorder.event(
+                "enemy_spawn", kind="NormalEnemy", cell=[enemy.x, enemy.y],
+                level=self.level,
+            )
 
         # Head cells are current player positions only, including both
         # players in 2P. An opt-in admin switch can now feed these real
@@ -2949,6 +2958,13 @@ class Game:
                 or self._round_recorded or self.game_state != GameState.GAME_OVER):
             return False
         was_recording = self.dev_recorder.active
+        self.dev_recorder.event(
+            "round_summary", reason=reason, score=self.score, level=self.level,
+            enemies_defeated=self.round_enemies_defeated,
+            bosses_defeated=self.round_bosses_defeated,
+            items_collected=self.round_items_collected,
+            lives_lost=self.round_death_count,
+        )
         self.dev_recorder.finish(reason)
         self._dev_end_pending = was_recording and not self.headless
         try:
@@ -3279,6 +3295,10 @@ class Game:
             self.metrics.draw(self.screen)
         before_present = self.metrics.stamp()
         pygame.display.update()
+        self.dev_recorder.frame_mark(
+            game_active=(not self.dev_feedback.active and self.game_state
+                         in (GameState.GAME, GameState.BOSS_FIGHT)),
+        )
         presented = self.metrics.stamp()
         self.metrics.record_phase("draw", start, before_present)
         self.metrics.record_phase("present", before_present, presented)

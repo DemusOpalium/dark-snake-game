@@ -71,3 +71,18 @@ def test_recorder_toggle_refused_during_active_round(tmp_path):
     assert recorder.enabled
     recorder.finish()
     assert recorder.configure(False)
+
+
+def test_frame_intervals_only_count_active_gameplay(tmp_path):
+    recorder = DeveloperRecorder(directory=tmp_path)
+    recorder.configure(True)
+    recorder.begin_round(_token(), context={})
+    recorder.frame_mark(game_active=True, now_ns=0)
+    recorder.frame_mark(game_active=True, now_ns=16_000_000)
+    recorder.frame_mark(game_active=False, now_ns=36_000_000)
+    recorder.frame_mark(game_active=True, now_ns=56_000_000)
+    recorder.frame_mark(game_active=True, now_ns=101_000_000)
+    stats = recorder.frame_stats()
+    assert stats["observed_intervals_total"] == 2
+    assert stats["slow_intervals_over_33ms"] == 1
+    assert stats["p95_ms"] == 45.0
