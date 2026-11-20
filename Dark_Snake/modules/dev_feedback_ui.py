@@ -123,7 +123,7 @@ class DeveloperFeedbackUI:
             elif self.note_focused:
                 if event.key == pygame.K_BACKSPACE:
                     self.note = self.note[:-1]
-                elif event.unicode and event.unicode.isprintable() and len(self.note) < 180:
+                elif event.unicode and event.unicode.isprintable() and len(self.note) < 500:
                     self.note += event.unicode
             elif pygame.K_0 <= event.key <= pygame.K_5:
                 self.choose_rating(event.key - pygame.K_0)
@@ -219,7 +219,8 @@ class DeveloperFeedbackUI:
         pygame.draw.rect(screen, (9, 13, 26), r["note"], border_radius=6)
         pygame.draw.rect(screen, (137, 226, 215) if self.note_focused
                          else (92, 122, 148), r["note"], 2, border_radius=6)
-        self._line(screen, self.note or "Kommentar optional (klicken oder TAB)",
+        self._line(screen, ("..." + self.note[-75:] if len(self.note) > 75 else self.note)
+                   or "Kommentar optional (klicken oder TAB)",
                    small, (235, 239, 249) if self.note else (157, 171, 188),
                    r["note"].x + 8, r["note"].y + 8, r["note"].w - 16)
         for text, key, color in (("Speichern", "save", (47, 105, 88)),

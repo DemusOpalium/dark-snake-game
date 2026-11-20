@@ -190,7 +190,7 @@ class DeveloperRecorder:
             "subject": str(subject)[:80],
             "prompt": str(prompt)[:200],
             "rating": rating,
-            "note": str(note)[:300],
+            "note": str(note)[:500],
             "item_verdict": _safe(item_verdict),
         }
         if len(self.report["feedback"]) >= 40:

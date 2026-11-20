@@ -76,3 +76,49 @@ def test_feedback_post_gameover_persists_and_refreshes_map(tmp_path):
     assert data["feedback"][0]["rating"] == 4
     assert data["analysis"]["feedback"][0]["note"] == "Hilfreich"
     assert "Hilfreich" in html_file.read_text(encoding="utf-8")
+
+
+def test_active_boss_time_subtracts_feedback_pause():
+    report = _record()
+    report["events"] = [
+        {"ms": 1000, "type": "boss_spawn", "data": {"boss": "hunter", "hp": 70}},
+        {"ms": 61000, "type": "feedback_pause_end", "data": {"seconds": 40}},
+        {"ms": 71000, "type": "boss_defeated", "data": {"boss": "hunter"}},
+        {"ms": 80000, "type": "round_finished", "data": {}},
+    ]
+    battle = analyze_report(report)["fights"][0]
+    assert battle["duration_wall_ms"] == 70000
+    assert battle["duration_ms"] == 30000
+
+
+def test_unfinished_boss_ends_at_round_finish_not_later_feedback():
+    report = _record()
+    report["events"] = [
+        {"ms": 100000, "type": "boss_spawn", "data": {"boss": "medusa"}},
+        {"ms": 105610, "type": "round_finished", "data": {}},
+        {"ms": 180000, "type": "player_feedback", "data": {"rating": 3}},
+    ]
+    battle = analyze_report(report)["fights"][0]
+    assert battle["duration_ms"] == 5610
+    assert battle["ended_ms"] == 105610
+
+
+def test_boss_entry_health_and_lives_are_explicit_not_guessed():
+    report = _record()
+    report["events"] = [
+        {"ms": 0, "type": "vitals_snapshot", "data": {"boundary": "round_start",
+            "state": {"players": {"1": {"hp": 100}}, "lives_remaining": 3}}},
+        {"ms": 1500, "type": "vitals_change",
+         "data": {"source": "aoe_damage", "hp_changes": [
+             {"player": 1, "hp_before": 100, "hp_after": 45, "delta_hp": -55}],
+             "lives_before": 3, "lives_after": 3, "lives_delta": 0}},
+        {"ms": 2000, "type": "boss_spawn", "data": {"boss": "medusa", "hp": 82}},
+        {"ms": 2001, "type": "vitals_snapshot", "data": {"boundary": "boss_entry",
+            "state": {"players": {"1": {"hp": 45}}, "lives_remaining": 1}}},
+        {"ms": 2500, "type": "round_finished", "data": {}},
+    ]
+    result = analyze_report(report)
+    assert result["fights"][0]["player_entry"]["players"]["1"]["hp"] == 45
+    assert result["fights"][0]["player_entry"]["lives_remaining"] == 1
+    assert result["health_summary"]["hp_lost"] == 55
+    assert result["health_summary"]["lives_lost"] == 0  # no fabricated loss

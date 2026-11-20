@@ -6,6 +6,7 @@ describe experience. Positions sampled every 250 ms are not hitbox evidence.
 from __future__ import annotations
 
 from collections import Counter
+from copy import deepcopy
 from html import escape
 from math import log1p
 
@@ -19,7 +20,7 @@ RELEVANT_EVENTS = {
     "boss_shield_raised", "boss_shield_blocked",
     "medusa_frost_warning", "medusa_frost_hit",
     "portal_activated", "item_pickup", "item_applied", "boss_body_contact",
-    "enemy_spawn", "player_feedback",
+    "enemy_spawn", "player_feedback", "vitals_snapshot", "vitals_change",
 }
 
 
@@ -29,6 +30,48 @@ def _point(cell, width, height):
     except (ValueError, TypeError, IndexError, KeyError):
         return None
     return (x, y) if 0 <= x < width and 0 <= y < height else None
+
+
+def _active_elapsed_ms(start, end, pauses):
+    """Subtract overlap with explicit feedback UI pauses from a fight interval."""
+    gross = max(0, int(end - start))
+    excluded = 0
+    for a, b in pauses:
+        excluded += max(0, min(end, b) - max(start, a))
+    return max(0, int(gross - excluded))
+
+
+def _vitals_summary(events):
+    """Only observed HP changes; never reconstruct missing historical damage."""
+    by_source = {}
+    hp_lost, hp_gained, lives_lost = 0, 0, 0
+    observed = False
+    for item in events:
+        if not isinstance(item, dict) or item.get("type") != "vitals_change":
+            continue
+        observed = True
+        data = item.get("data") or {}
+        source = str(data.get("source", "unattributed"))[:70]
+        stats = by_source.setdefault(source, {"hp_lost": 0, "hp_gained": 0})
+        for change in data.get("hp_changes", []):
+            delta = change.get("delta_hp", 0)
+            if isinstance(delta, (int, float)):
+                if delta < 0:
+                    stats["hp_lost"] += round(-delta, 3)
+                    hp_lost += -delta
+                else:
+                    stats["hp_gained"] += round(delta, 3)
+                    hp_gained += delta
+        delta_lives = data.get("lives_delta", 0)
+        if isinstance(delta_lives, (int, float)) and delta_lives < 0:
+            lives_lost += -delta_lives
+    return {
+        "observed": observed,
+        "hp_lost": round(hp_lost, 3) if observed else None,
+        "hp_gained": round(hp_gained, 3) if observed else None,
+        "lives_lost": int(lives_lost) if observed else None,
+        "by_source": by_source,
+    }
 
 
 def analyze_report(report: dict):
@@ -62,8 +105,25 @@ def analyze_report(report: dict):
         world = sample.get("world")
         if world:
             zones[str(world)[:80]] += 1
+    # A timestamp belongs to the full session clock, not always active gameplay.
+    pauses = []
+    round_finished_ms = None
+    for event in events:
+        if not isinstance(event, dict):
+            continue
+        ms = event.get("ms")
+        if not isinstance(ms, (float, int)):
+            continue
+        if event.get("type") == "round_finished":
+            round_finished_ms = ms
+        if event.get("type") != "feedback_pause_end":
+            continue
+        seconds = (event.get("data") or {}).get("seconds", 0)
+        if isinstance(seconds, (int, float)) and seconds > 0:
+            pauses.append((ms - seconds * 1000, ms))
     fights = []
     active = None
+    player_vitals = None
     for event in events:
         if not isinstance(event, dict):
             continue
@@ -74,9 +134,23 @@ def analyze_report(report: dict):
         ms = event.get("ms", 0)
         if not isinstance(ms, (int, float)):
             continue
+        if kind == "vitals_snapshot":
+            state = data.get("state")
+            if isinstance(state, dict):
+                player_vitals = deepcopy(state)
+        elif kind == "vitals_change" and isinstance(player_vitals, dict):
+            if isinstance(data.get("lives_after"), int):
+                player_vitals["lives_remaining"] = data["lives_after"]
+            for change in data.get("hp_changes", []):
+                key = str(change.get("player"))
+                if key in player_vitals.get("players", {}):
+                    player_vitals["players"][key]["hp"] = change.get("hp_after")
         if kind == "boss_spawn":
             if active:
                 active["outcome"] = "unvollständig (neuer Boss)"
+                active["ended_ms"] = ms
+                active["duration_wall_ms"] = max(0, int(ms - active["started_ms"]))
+                active["duration_ms"] = _active_elapsed_ms(active["started_ms"], ms, pauses)
                 fights.append(active)
             active = {
                 "boss": data.get("boss", "unbekannt"),
@@ -84,6 +158,9 @@ def analyze_report(report: dict):
                 "started_ms": ms,
                 "ended_ms": None,
                 "duration_ms": None,
+                "duration_wall_ms": None,
+                "player_entry": deepcopy(player_vitals),
+                "player_exit": None,
                 "outcome": "nicht abgeschlossen",
                 "hp_start": data.get("hp"),
                 "phase_events": [],
@@ -97,6 +174,8 @@ def analyze_report(report: dict):
             continue
         if active is None:
             continue
+        if kind == "vitals_snapshot" and data.get("boundary") == "boss_entry":
+            active["player_entry"] = deepcopy(data.get("state"))
         if kind in ("boss_phase_warning", "boss_phase_active"):
             active["phase_events"].append({
                 "ms": ms, "type": kind, "phase": data.get("phase"),
@@ -117,15 +196,24 @@ def analyze_report(report: dict):
         elif kind == "boss_defeated":
             active["outcome"] = "besiegt"
             active["ended_ms"] = ms
-            active["duration_ms"] = max(0, int(ms - active["started_ms"]))
+            active["duration_wall_ms"] = max(0, int(ms - active["started_ms"]))
+            active["duration_ms"] = _active_elapsed_ms(active["started_ms"], ms, pauses)
+            active["player_exit"] = deepcopy(player_vitals)
             fights.append(active)
             active = None
     if active:
         active["outcome"] = "offen / Runde beendet"
-        if events:
-            end_ms = events[-1].get("ms", active["started_ms"])
-            if isinstance(end_ms, (int, float)):
-                active["duration_ms"] = max(0, int(end_ms - active["started_ms"]))
+        # Do not include post-GameOver ratings as additional fight time.
+        end_ms = round_finished_ms
+        if end_ms is None:
+            end_ms = next((
+                e.get("ms") for e in reversed(events)
+                if isinstance(e, dict) and isinstance(e.get("ms"), (int, float))
+            ), active["started_ms"])
+        active["ended_ms"] = end_ms
+        active["duration_wall_ms"] = max(0, int(end_ms - active["started_ms"]))
+        active["duration_ms"] = _active_elapsed_ms(active["started_ms"], end_ms, pauses)
+        active["player_exit"] = deepcopy(player_vitals)
         fights.append(active)
     items = {}
     for event in events:
@@ -158,6 +246,7 @@ def analyze_report(report: dict):
         "fights": fights,
         "zones_sampled": dict(sorted(zones.items())),
         "items": items,
+        "health_summary": _vitals_summary(events),
         "round_summary": next((
             e.get("data", {}) for e in reversed(events)
             if isinstance(e, dict) and e.get("type") == "round_summary"
@@ -220,9 +309,20 @@ def render_html(report, analysis=None):
         ) or "keine Phasenaktivierung im Log"
         duration = (f'{fight["duration_ms"] / 1000:.2f}s'
                     if fight["duration_ms"] is not None else "unbekannt")
+        entry = fight.get("player_entry") or {}
+        entry_players = entry.get("players") or {}
+        first_hp = entry_players.get("1", {}).get("hp")
+        second_hp = entry_players.get("2", {}).get("hp")
+        entry_desc = (
+            f'Bossbeginn: P1 {first_hp if first_hp is not None else "nicht erfasst"} HP'
+            + (f', P2 {second_hp if second_hp is not None else "nicht erfasst"} HP'
+               if second_hp is not None else "")
+            + f', gemeinsame Leben {entry.get("lives_remaining", "nicht erfasst")}'
+        )
         fight_html.append(
             "<section class='card'><h3>" + _html(f'Boss {i}: {fight["boss"]}')
             + "</h3><p>" + _html(f'Level {fight["level"]} · {fight["outcome"]} · {duration}')
+            + "</p><p>" + _html(entry_desc)
             + "</p><p>Phasen: " + _html(phases)
             + "</p><p>" + _html(
                 f'Teleport: {fight["teleport_arrivals"]}/{fight["teleport_warnings"]} Ankünfte/Warnungen; '
@@ -231,6 +331,7 @@ def render_html(report, analysis=None):
                                     f'Gesamtschaden: {fight["damage_to_boss"]}') + "</p></section>"
         )
     perf = analysis.get("performance") or {}
+    vitals = analysis.get("health_summary") or {}
     round_totals = analysis.get("round_summary") or {}
     feedback_html = []
     for item in analysis["feedback"]:
@@ -287,7 +388,13 @@ def render_html(report, analysis=None):
                 f'Spitze={perf.get("max_ms", "–")} ms, '
                 f'>33,3 ms: {perf.get("slow_intervals_over_33ms", "–")}')
             + " – nur lokale Pygame-Bildübergaben, kein Display-/Inputlag.</p>"
-            + "</section><h2>Bosskämpfe</h2>"
+            + "</section><h2>Lebensbilanz (aus beobachteten Änderungen)</h2><p>"
+            + _html(
+                f'HP verloren: {vitals.get("hp_lost") if vitals.get("observed") else "nicht erfasst"}, '
+                f'HP gewonnen/Respawn: {vitals.get("hp_gained") if vitals.get("observed") else "nicht erfasst"}, '
+                f'Verlorene Leben: {vitals.get("lives_lost") if vitals.get("observed") else "nicht erfasst"}'
+            )
+            + "</p><h2>Bosskämpfe</h2>"
             + "".join(fight_html or ["<p>Keine Boss-Spawn-Ereignisse im Bericht.</p>"])
             + "<h2>Bewegungskarte / Aufenthaltsproben</h2><p class='legend'>"
             "<span style='color:#72e4ac'>■ Spieler 1</span>"
