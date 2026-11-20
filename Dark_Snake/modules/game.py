@@ -82,6 +82,7 @@ from modules.death_fog import AbyssFogVisual, FINAL_DEATH_SECONDS
 from modules.dice_visual import FrostDiceResultVisual
 from modules.round_progress import RoundJournal, begin_round, completed_round
 from modules.dev_recorder import DeveloperRecorder
+from modules.dev_session import DeveloperSession
 from modules.dev_vitals import VitalObserver
 from modules.dev_feedback_ui import DeveloperFeedbackUI
 from modules.career_ranks import CareerLedger, xp_for_round
@@ -726,9 +727,15 @@ class Game:
         # Headless development simulations do not affect real player history.
         self._round_journal = RoundJournal()
         self.dev_recorder = DeveloperRecorder()
+        self.dev_session = DeveloperSession()
         self._dev_vitals = VitalObserver()
         self.dev_feedback = DeveloperFeedbackUI()
         self._dev_button_rect = pygame.Rect(0, 0, 0, 0)
+        self._dev_save_rect = pygame.Rect(0, 0, 0, 0)
+        self._dev_save_notice_until = 0.0
+        self._dev_save_success = False
+        self._dev_settings_previous = {}
+        self._dev_last_round_id = None
         self._dev_ui_font = pygame.font.SysFont("Segoe UI", 14, bold=True)
         self._dev_feedback_opened_at = None
         self._dev_badge_until = 0.0
@@ -902,7 +909,7 @@ class Game:
             "level_studio": self._open_level_editor,
             "controls": lambda: self.set_state(GameState.CONTROLS),
             "developer": lambda: self.set_state(GameState.SIMULATION),
-            "quit": lambda: sys.exit(),
+            "quit": self._dev_quit,
         }, can_continue=self.can_continue, background=load_frostage_background(TITLE_IMG))
 
     def _open_level_editor(self):
@@ -916,6 +923,9 @@ class Game:
             self.boss.cancel_teleport(time.time())
             self.boss.phases.cancel_warning()
         self.level_editor.toggle()
+        if self.dev_session.active:
+            self.dev_session.event("studio_toggle", active=self.level_editor.active)
+            self.dev_session.checkpoint("studio_toggle")
 
     def _set_editor_window(self, entering):
         if self.headless:
@@ -1029,6 +1039,13 @@ class Game:
                     record_event(f"Temporäre Einstellungsdatei konnte nicht entfernt werden: {exc}")
         set_music_volume(self.settings['bg_music_volume'])
         set_sound_volume(self.settings['sfx_volume'])
+        if self.dev_session.active:
+            changed = sorted(k for k, v in self.settings.items()
+                             if self._dev_settings_previous.get(k) != v)
+            self.dev_session.event("settings_saved", changed_keys=changed, success=saved)
+            if saved:
+                self._dev_settings_previous = dict(self.settings)
+            self.dev_session.checkpoint("settings_saved")
         return saved
 
     def start_game(self, players):
@@ -1049,6 +1066,7 @@ class Game:
         self._round_token = begin_round(players)
         self.dev_recorder.begin_round(self._round_token, context={
             "players": players,
+            "session_id": self.dev_session.session_id if self.dev_session.active else None,
             "initial_speed": self.settings["initial_speed"],
             "difficulty": self.settings["difficulty"],
             "boss_health_multiplier": self.settings["boss_health_multiplier"],
@@ -1059,6 +1077,7 @@ class Game:
             "vision_blockers": sorted(self._vision_blockers),
         })
         self._dev_capture_vitals("round_start", checkpoint=True)
+        self.dev_session.round_start(self._round_token)
         self.set_state(GameState.GAME)
 
     def choose_classic_background(self, name, level_map, *, roof_objects=None,
@@ -1094,6 +1113,11 @@ class Game:
             self._paused_state = previous
             self.metrics.cancel_pending()
         self.game_state = state
+        if (self.dev_session.active and previous is not None and
+                previous != state):
+            self.dev_session.event(
+                "navigation", source=previous.name, destination=state.name,
+            )
         playing = self._gameplay_active()
         if playing and not was_playing:
             self._stall_clock_sample = time.monotonic()
@@ -1502,12 +1526,72 @@ class Game:
         record_event(event_type + (f": {details}" if details else ""))
 
     def _toggle_dev_recorder(self):
-        """Explicit main-menu opt-in, never a hidden gameplay keybinding."""
+        """One opt-in session covers menu visits and any number of rounds."""
         if self._menu_suspended:
-            return  # A suspended round cannot change recording halfway through.
+            return
         requested = not self.dev_recorder.enabled
-        if self.dev_recorder.configure(requested):
-            self._dev_badge_until = time.monotonic() + 2.0
+        if requested:
+            if self.dev_recorder.configure(True):
+                self.dev_session.start()
+                self._dev_settings_previous = dict(self.settings)
+        else:
+            if self.dev_session.active and not self.dev_session.end("disabled"):
+                self._dev_save_success = False
+                self._dev_save_notice_until = time.monotonic() + 3.0
+                return  # Save failure: remain enabled, show red status.
+            self.dev_recorder.configure(False)
+        self._dev_badge_until = time.monotonic() + 2.0
+
+    def _dev_save_session(self):
+        if not self.dev_session.active:
+            return False
+        round_ok = (self.dev_recorder.checkpoint("manual")
+                    if self.dev_recorder.active else True)
+        session_ok = self.dev_session.checkpoint("manual")
+        saved = round_ok and session_ok
+        self._dev_save_success = saved
+        self._dev_save_notice_until = time.monotonic() + 3.0
+        return saved
+
+    def _dev_mark_issue(self):
+        if not self.dev_session.active:
+            return
+        self.dev_session.event(
+            "tester_marker",
+            screen=self.game_state.name,
+            level=self.level,
+            boss=getattr(self.boss, "profile_key", None),
+            round_id=self._round_token.get("round_id") if self._round_token else None,
+        )
+        self.dev_session.checkpoint("tester_marker")
+        self._dev_badge_until = time.monotonic() + 3
+
+    def _dev_mark_test_intent(self):
+        """Optional F10 after a completed round. Does not alter technical end."""
+        if (not self.dev_session.active or not self.dev_session.rounds
+                or not self.dev_session.rounds[-1].get("finished_at")):
+            return False
+        latest = self.dev_session.rounds[-1]
+        if latest.get("tester_intent") == "intentional_test_end":
+            return True
+        report_ok = True
+        if self.dev_recorder.round_id == latest["round_id"]:
+            report_ok = self.dev_recorder.mark_tester_intent("intentional_test_end")
+        session_ok = self.dev_session.mark_round_intent("intentional_test_end")
+        self._dev_save_success = report_ok and session_ok
+        self._dev_save_notice_until = time.monotonic() + 3.0
+        return self._dev_save_success
+
+    def _dev_shutdown(self):
+        """Best-effort close, no effect on career files or gameplay results."""
+        if self.dev_recorder.active:
+            self.dev_recorder.checkpoint("quit")
+        if self.dev_session.active:
+            self.dev_session.end("quit")
+
+    def _dev_quit(self):
+        self._dev_shutdown()
+        sys.exit()
 
     def _dev_capture_vitals(self, source, *, checkpoint=False):
         """Telemetry only: never modify HP, lives, RNG or movement."""
@@ -1590,6 +1674,48 @@ class Game:
             label = "DEV+  AN  [F8]" if enabled else "DEV+  AUS  [F8]"
             text = self._dev_ui_font.render(label, True, (222, 245, 248))
             self.screen.blit(text, text.get_rect(center=self._dev_button_rect.center))
+            # Visible manual checkpoint, only once the session contains data.
+            if self.dev_session.active and self.dev_session.has_data:
+                self._dev_save_rect = pygame.Rect(
+                    self.screen.get_width() - 175, 50, 160, 31,
+                )
+                status = (
+                    "SPEICHERFEHLER" if (self.dev_session.error or
+                        self.dev_recorder.error and self.dev_recorder.active or
+                        time.monotonic() < self._dev_save_notice_until
+                        and not self._dev_save_success) else
+                    "GESPEICHERT" if time.monotonic() < self._dev_save_notice_until
+                                   and self._dev_save_success else
+                    "SPEICHERN" if self.dev_session.dirty else "GESPEICHERT"
+                )
+                good = not self.dev_session.error and (
+                    status == "GESPEICHERT"
+                )
+                color = (32, 88, 70) if good else (
+                    (100, 35, 45) if status == "SPEICHERFEHLER"
+                    else (49, 62, 91)
+                )
+                pygame.draw.rect(self.screen, color, self._dev_save_rect,
+                                 border_radius=6)
+                pygame.draw.rect(self.screen, (134, 213, 179) if good
+                                 else (119, 150, 171), self._dev_save_rect,
+                                 1, border_radius=6)
+                caption = self._dev_ui_font.render(status, True, (231, 245, 244))
+                self.screen.blit(
+                    caption, caption.get_rect(center=self._dev_save_rect.center),
+                )
+            else:
+                self._dev_save_rect = pygame.Rect(0, 0, 0, 0)
+            if (self.dev_session.active and self.dev_session.rounds and
+                    self.dev_session.rounds[-1].get("finished_at")):
+                hint = ("F10: TESTENDE MARKIERT" if
+                        self.dev_session.rounds[-1].get("tester_intent")
+                        == "intentional_test_end" else
+                        "F10: TEST ABSICHTLICH")
+                label = self._dev_ui_font.render(hint, True, (179, 207, 210))
+                self.screen.blit(label, label.get_rect(
+                    topcenter=(self.screen.get_width() - 95, 87),
+                ))
         elif (self.dev_recorder.enabled and self.game_state
               in (GameState.GAME, GameState.BOSS_FIGHT, GameState.PAUSE)):
             show_full = time.monotonic() < self._dev_badge_until
@@ -2992,7 +3118,11 @@ class Game:
             items_collected=self.round_items_collected,
             lives_lost=self.round_death_count,
         )
-        self.dev_recorder.finish(reason)
+        report_ok = self.dev_recorder.finish(reason)
+        self._dev_last_round_id = token["round_id"]
+        self.dev_session.round_end(
+            token, reason, report_saved=report_ok,
+        )
         self._dev_end_pending = was_recording and not self.headless
         try:
             snapshot = completed_round(
@@ -3119,17 +3249,39 @@ class Game:
         for event in events:
             if event.type == pygame.QUIT:
                 if not self._handle_level_editor_event(event):
-                    sys.exit()
+                    self._dev_quit()
                 continue
             # A feedback modal owns all input. No controls leak into gameplay.
             if self.dev_feedback.active:
-                self.dev_feedback.handle_event(
+                subject = self.dev_feedback.current[0]
+                before = len(self.dev_recorder.report.get("feedback", [])) if self.dev_recorder.report else 0
+                dismissed = self.dev_feedback.handle_event(
                     event, self.dev_recorder, self.screen.get_size(),
                 )
+                if dismissed and self.dev_session.active:
+                    after = len(self.dev_recorder.report.get("feedback", [])) if self.dev_recorder.report else 0
+                    self.dev_session.event(
+                        "feedback_dismissed", subject=subject, saved=after > before,
+                    )
+                    self.dev_session.checkpoint("feedback")
                 if not self.dev_feedback.active:
                     self._dev_feedback_resume()
                 continue
+            if (self.dev_session.active and event.type == pygame.KEYDOWN
+                    and event.key == pygame.K_F9 and not self.level_editor.active):
+                self._dev_mark_issue()
+                continue
+            if (self.dev_session.active and event.type == pygame.KEYDOWN
+                    and event.key == pygame.K_F10 and
+                    self.game_state in (GameState.INTRO, GameState.GAME_OVER)
+                    and not self.level_editor.active):
+                self._dev_mark_test_intent()
+                continue
             if self.game_state == GameState.INTRO and not self.level_editor.active:
+                if (event.type == pygame.MOUSEBUTTONDOWN and event.button == 1
+                        and self._dev_save_rect.collidepoint(event.pos)):
+                    self._dev_save_session()
+                    continue
                 if (event.type == pygame.MOUSEBUTTONDOWN and event.button == 1
                         and self._dev_button_rect.collidepoint(event.pos)):
                     self._toggle_dev_recorder()
@@ -3842,11 +3994,16 @@ class Game:
         self.metrics.record_phase("events", start, after_events)
         self.metrics.record_phase("update", after_events, after_update)
         self.draw()
+        self.dev_session.maybe_autosave()
 
     def run(self):
-        while True:
-            self.run_frame()
-            self.clock.tick(FPS)
+        try:
+            while True:
+                self.run_frame()
+                self.clock.tick(FPS)
+        finally:
+            # Also covers editor-specific SystemExit paths.
+            self._dev_shutdown()
 
     # [KS_TAG: LEVEL_EDITOR_BACKGROUND]
     def _build_default_background(self):
