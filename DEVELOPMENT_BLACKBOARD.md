@@ -107,6 +107,23 @@ Diese Leitlinien ergänzen [AGENTS.md](AGENTS.md), die technische [Roadmap](ROAD
 - **Nachweis:** [Spieltest- und Balancebericht 18.11.](PLAYTEST_BALANCE_2026-11-18.md)
 - **Status:** Auswertung dokumentiert, funktionale Folgearbeiten offen.
 
+### 20.11.2026 · Demus + Irian · FrostAge-Shader und bessere VFX
+- **Art:** Externe Anregung / IDEE / Machbarkeitsfrage, keine
+  neue Implementierungsfreigabe.
+- **Wunsch:** Das vorhandene Python-/Pygame-Spiel langfristig grafisch
+  schöner gestalten (Glow, Bloom, Trails, Frost-Licht/Nebel) und dem
+  Mensch-/Codex-/Irian-Team besser konfigurierbare Designwerkzeuge geben.
+- **Nachgeschaut:** Pygame 2.6.1 und `effect_manager.py` unterstützen
+  bereits JSON-Animationen, Layer, Alpha und additives Blending.
+- **Risiken:** Ein OpenGL-Fenster ist **kein einfacher Drop-in-Tausch**
+  für die Pygame-Surface-Anzeige. GPU-Texturkopie und Windows-PyInstaller
+  müssen separat geprüft werden; keine unbelegten FPS-Versprechen.
+- **Nächste Entscheidung:** Nach Bossarbeiten zuerst Pygame-VFX-
+  Prototyp samt Profiling, **nur bei messbarem Nutzen** separater
+  ModernGL-Test. World Studio und Gameplay unverändert lassen.
+- **Studie:** [Grafik-/Shader-Machbarkeit](docs/graphics/GRAFIK_SHADER_MACHBARKEIT_2026-11-20.md).
+- **Status:** **OFFEN ALS IDEE**, kein zusätzlicher Boss-/Engine-PR.
+
 ### Agenten-Freifläche
 Noch keine weiteren Beiträge. **Keine erfundenen „Agenten-Rückmeldungen“ eintragen.** Wenn ein Agent bei seiner tatsächlichen Arbeit eine brauchbare Idee findet, darf er hier eine neue Notiz per separatem PR vorschlagen oder im passenden Issue/PR kommentieren.
 
