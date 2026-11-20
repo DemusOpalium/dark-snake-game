@@ -52,3 +52,27 @@ def test_missing_partial_data_handled():
     result = analyze_report({"events": [], "positions": [], "context": {}})
     assert result["fights"] == []
     assert result["sample_count"] == 0
+
+
+def test_feedback_post_gameover_persists_and_refreshes_map(tmp_path):
+    import json
+    from modules.dev_recorder import DeveloperRecorder
+
+    recorder = DeveloperRecorder(directory=tmp_path)
+    recorder.configure(True)
+    recorder.begin_round({
+        "round_id": "b" * 32, "mode": "classic",
+        "players": 2, "started_at": "2026-11-20T00:00:00+00:00",
+    }, context={"grid": [45, 31], "players": 2})
+    assert recorder.finish("life_depleted")
+    assert recorder.add_feedback(
+        subject="item:PROJECTILE_SHOOT", prompt="War das Item gut?",
+        rating=4, note="Hilfreich", item_verdict=["Hilft"],
+    )
+    report_file = next(tmp_path.glob("dev-round-*.json"))
+    html_file = report_file.with_suffix(".html")
+    data = json.loads(report_file.read_text(encoding="utf-8"))
+    assert data["finish_reason"] == "life_depleted"
+    assert data["feedback"][0]["rating"] == 4
+    assert data["analysis"]["feedback"][0]["note"] == "Hilfreich"
+    assert "Hilfreich" in html_file.read_text(encoding="utf-8")
