@@ -216,7 +216,10 @@ def test_interruptions_remove_live_dash_without_ghost_hitbox(monkeypatch, interr
     assert boss.charge.action is None
     assert boss.get_hitbox().size == (boss.size * GRID_SIZE,) * 2
     assert 5 <= boss.x <= 9
-    assert boss.charge.next_ready_at > clock.now
+    if interruption == "disable":
+        assert boss.charge.next_ready_at == float("-inf")  # full reset on opt-out
+    else:
+        assert boss.charge.next_ready_at > clock.now
 
 
 def test_hidden_target_other_bosses_and_swipe_never_charge(monkeypatch):
