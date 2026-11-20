@@ -269,3 +269,21 @@ def test_invulnerability_and_contact_cooldown_prevent_double_dipping(monkeypatch
     assert game.player_health == 100
     assert boss.charge.action is None
     assert not boss.charge.ready(clock.now)
+
+
+def test_real_update_loop_triggers_charge_after_valid_sensor_reaction(monkeypatch):
+    """The actual Game.update() path must run the new attack, not only test helpers."""
+    game, boss, clock = fight(monkeypatch)
+    game.snake = [(14, 6)]  # far enough for four tiles, inside Medusa's LOS
+    game.settings["enemy_spawn_rate"] = 0
+    game.speed = 1
+    game.last_update_time = clock.now
+    for dt in (0, .11, .22):
+        clock.now = 100 + dt
+        game.update()
+        if boss.charge.action:
+            break
+    assert boss.charge.action is not None
+    assert boss.charge.action.target == (14, 6)
+    assert any(e["type"] == "boss_charge_warning" for e in game.combat_events)
+    assert boss.tactics.volley is None
