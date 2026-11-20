@@ -2193,6 +2193,8 @@ class Game:
         boss = self.boss
         if not isinstance(boss, Boss) or not boss.ai_preview:
             return False
+        if boss.charge.action is not None:
+            return False
         tele = boss.teleport
         action = tele.action
         if action is not None:
@@ -2304,6 +2306,7 @@ class Game:
         """Sense *player-owned* incoming shots only, never hidden attack data."""
         boss = self.boss
         if (not isinstance(boss, Boss) or not boss.ai_preview
+                or boss.charge.action is not None
                 or boss.teleport.waiting(now)
                 or boss.teleport.scanning()
                 or boss.phases.warning_active(now)
@@ -2371,6 +2374,7 @@ class Game:
         """
         boss = self.boss
         if (not isinstance(boss, Boss) or not boss.ai_preview
+                or boss.charge.action is not None
                 or boss.teleport.waiting(now)
                 or boss.phases.warning_active(now)
                 or not boss.profile.frost_throw
@@ -2407,7 +2411,8 @@ class Game:
     def _resolve_boss_body_contact(self, now):
         if (self.boss is None or self.game_state == GameState.GAME_OVER
                 or (isinstance(self.boss, Boss)
-                    and (self.boss.teleport.waiting(now)
+                    and (self.boss.charge.action is not None
+                         or self.boss.teleport.waiting(now)
                          or self.boss.teleport.scanning()))
                 or now < self.respawn_invincible_until
                 or now - self.boss.spawn_time < BOSS_SPAWN_PROTECTION):
@@ -2609,6 +2614,9 @@ class Game:
                 )
             self._tick_boss_teleport(current_time)
         self._scan_boss_defense(current_time)
+        self._tick_boss_charge(current_time)
+        if self.respawn.active or self.game_state == GameState.GAME_OVER:
+            return
         if self._tick_medusa_volley(current_time):
             return
 
@@ -3840,6 +3848,11 @@ class Game:
                 self.screen, self.boss.tactics.volley,
                 time.time(), GRID_SIZE,
             )
+            if self.boss.profile_key == "medusa":
+                draw_medusa_charge(
+                    self.screen, self.boss.charge.action,
+                    time.time(), GRID_SIZE, self.boss.size,
+                )
         for zone in self.aoe_zones:
             zone.draw(self.screen)
         if self.boss:
