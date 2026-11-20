@@ -106,9 +106,13 @@ vergleichbare Windows-Benchmarks nach `QUALITY_PERFORMANCE_PLAN.md`.
   `intentional_test_end`. Der technische Endgrund (`life_depleted`,
   `self_stall`) bleibt unverändert. Im Hauptmenü ist die Funktion
   nach dem ersten abgeschlossenen Run sichtbar.
-- Die Sitzungsdatei speichert nur Verweise auf die
-  `dev-round-<round_id>.json/.html`-Einzelberichte und eine kleine
-  zeitliche Liste von Navigation, Einstellungen (nur geänderte
+- Die Sitzungsdatei speichert Verweise auf die
+  `dev-round-<round_id>.json/.html`-Einzelberichte, **pro Runde auch
+  einen kompakten Überblick** (Punkte, Level, Gegner, Bosse, Items,
+  Leben/HP am Ende und Bewertungen ohne Freitexte). So reicht **eine
+  Session-JSON für den Rundenvergleich**; detaillierte Bossereignisse
+  und Bewegungsdaten bleiben in den Einzelberichten.
+  Dazu eine kleine zeitliche Liste von Navigation, Einstellungen (nur geänderte
   **Schlüsselnamen**, keine rohen Eingaben), Editor-Status und Markern.
   **Keine Datei wird hochgeladen.** Die einzelnen Boss-/HP-Daten
   bleiben in den pro-Runde-Dateien; 20 Sitzungen und 20 Rundenberichte
