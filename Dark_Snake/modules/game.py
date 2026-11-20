@@ -1751,7 +1751,7 @@ class Game:
                         "F10: TEST BEWUSST")
                 label = self._dev_ui_font.render(hint, True, (179, 207, 210))
                 self.screen.blit(label, label.get_rect(
-                    topcenter=(self.screen.get_width() - 95, 87),
+                    midtop=(self.screen.get_width() - 95, 87),
                 ))
         elif (self.dev_recorder.enabled and self.game_state
               in (GameState.GAME, GameState.BOSS_FIGHT, GameState.PAUSE)):

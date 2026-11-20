@@ -144,8 +144,13 @@ def analyze_report(report: dict):
                 player_vitals["lives_remaining"] = data["lives_after"]
             for change in data.get("hp_changes", []):
                 key = str(change.get("player"))
-                if key in player_vitals.get("players", {}):
-                    player_vitals["players"][key]["hp"] = change.get("hp_after")
+                # Old snapshots may contain "dict" instead of nested HP.
+                # Never infer a missing boss-entry HP from a later hit.
+                players = player_vitals.get("players")
+                if isinstance(players, dict):
+                    player = players.get(key)
+                    if isinstance(player, dict):
+                        player["hp"] = change.get("hp_after")
         if kind == "boss_spawn":
             if active:
                 active["outcome"] = "unvollständig (neuer Boss)"
@@ -312,8 +317,12 @@ def render_html(report, analysis=None):
                     if fight["duration_ms"] is not None else "unbekannt")
         entry = fight.get("player_entry") or {}
         entry_players = entry.get("players") or {}
-        first_hp = entry_players.get("1", {}).get("hp")
-        second_hp = entry_players.get("2", {}).get("hp")
+        if not isinstance(entry_players, dict):
+            entry_players = {}
+        p1 = entry_players.get("1")
+        p2 = entry_players.get("2")
+        first_hp = p1.get("hp") if isinstance(p1, dict) else None
+        second_hp = p2.get("hp") if isinstance(p2, dict) else None
         entry_desc = (
             f'Bossbeginn: P1 {first_hp if first_hp is not None else "nicht erfasst"} HP'
             + (f', P2 {second_hp if second_hp is not None else "nicht erfasst"} HP'

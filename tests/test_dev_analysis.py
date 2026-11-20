@@ -122,3 +122,27 @@ def test_boss_entry_health_and_lives_are_explicit_not_guessed():
     assert result["fights"][0]["player_entry"]["lives_remaining"] == 1
     assert result["health_summary"]["hp_lost"] == 55
     assert result["health_summary"]["lives_lost"] == 0  # no fabricated loss
+
+
+def test_older_player_snapshots_with_dict_placeholders_do_not_break_analysis():
+    """Recover existing reports without inventing unknown boss-entry HP."""
+    report = _record()
+    report["events"] = [
+        {"ms": 1000, "type": "boss_spawn",
+         "data": {"boss": "guardian", "level": 3, "hp": 84}},
+        {"ms": 1000, "type": "vitals_snapshot",
+         "data": {"boundary": "boss_entry", "state": {
+             "players": {"1": "dict", "2": "dict"},
+             "lives_remaining": 1, "boss": {"key": "guardian", "hp": 84}}}},
+        {"ms": 2000, "type": "vitals_change",
+         "data": {"source": "boss_body_contact", "hp_changes": [
+             {"player": 1, "hp_before": 30, "hp_after": 20, "delta_hp": -10}],
+             "lives_before": 1, "lives_after": 1, "lives_delta": 0}},
+        {"ms": 4000, "type": "boss_defeated", "data": {"boss": "guardian"}},
+    ]
+    result = analyze_report(report)
+    assert result["fights"][0]["player_entry"]["lives_remaining"] == 1
+    assert result["health_summary"]["hp_lost"] == 10
+    html = render_html(report)
+    assert "nicht erfasst" in html
+    assert "guardian" in html
