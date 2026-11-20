@@ -61,12 +61,21 @@ def test_pages_contract_and_links():
     assert len(html.encode("utf-8")) < 27000
     assert (SITE / "main.js").stat().st_size < 3500
     ET.parse(SITE / "favicon.svg")
+    assert 'https://github.com/DemusOpalium/dark-snake-game/releases/tag/' in html
 
 
 def test_all_web_media_are_tracked_and_pngs():
     manifest = json.loads((SITE / "asset-manifest.json").read_text(encoding="utf-8"))
     assert manifest["schema"] == 1
     assert len(manifest["media"]) >= 10
+    first_view_images = [
+        entry for entry in manifest["media"] if entry["loading"].startswith("eager")
+    ]
+    assert sum(image["bytes"] for image in first_view_images) < 120_000
+    assert all(
+        image["loading"].startswith("lazy")
+        for image in manifest["media"] if image["bytes"] > 120_000
+    )
     for media in manifest["media"]:
         p = SITE / media["website"]
         assert p.is_file()
