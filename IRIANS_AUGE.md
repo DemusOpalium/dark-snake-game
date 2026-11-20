@@ -1,7 +1,20 @@
 # Irians Auge – Developer Mode Plus
 
-## Status (20.11.2026)
-**PR A – technisch implementierter Recorder, opt-in; UI/Feedback und Auswertung folgen getrennt in PR B/C.**
+## Status und Praxisbeobachtungen (20.11.2026)
+**Irians Auge A–E einschließlich opt-in Recorder, UI/Feedback,
+statischer Analyse, Vital- und Session-Tracking ist im
+Entwicklungsstand auf `main` enthalten.** Den ersten
+Game-Over-Menücrash und zwei Daten-/Analysefehler beseitigte
+[PR #256](https://github.com/DemusOpalium/dark-snake-game/pull/256).
+Nach dem Fix meldet der Tester einen erfolgreichen 1P-Highscore-Rückweg;
+der volle 2P-Windows-Nachtest ist noch offen.
+
+**Dokumentierter Testverlauf & priorisierte Erkenntnisse:**
+[Playtest-Protokoll 20.11.2026](docs/playtests/IRIANS_AUGE_PLAYTEST_2026-11-20.md),
+[Boss-/Balancing-Ideen #257](https://github.com/DemusOpalium/dark-snake-game/issues/257),
+[DEV+-Techniknachtest #258](https://github.com/DemusOpalium/dark-snake-game/issues/258).
+Die folgenden PR-A/B/C-/D/E-Abschnitte sind **Implementierungshistorie**
+und keine Liste aktuell offener Drafts.
 Nichts wird ohne ausdrückliche Aktivierung aufgezeichnet. Kein Upload, kein Tracking.
 Der normale Classic-Rundenfortschritt und Karriere-Speicher bleiben unverändert.
 
