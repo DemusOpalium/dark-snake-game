@@ -31,6 +31,11 @@ def simulation_report_directories() -> tuple[Path, ...]:
     return (fallback,)
 
 
+def developer_report_directories() -> tuple[Path, ...]:
+    """Local-only reports: portable Windows folder, then user-profile fallback."""
+    return tuple(directory / "IriansAuge" for directory in simulation_report_directories())
+
+
 def is_temporary_bundle_path(path: Path) -> bool:
     """Identify paths inside PyInstaller's temporary resource directory."""
     bundle = getattr(sys, "_MEIPASS", None)
