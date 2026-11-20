@@ -50,3 +50,15 @@ def test_only_known_events_and_no_frame_disk_churn(tmp_path):
     assert not session.event("raw_keystroke", password="PRIVATE")
     assert not session.maybe_autosave()
     assert len(list(tmp_path.glob("dev-session-*.json"))) == 1
+
+
+def test_round_test_intent_is_optional_not_technical_outcome(tmp_path):
+    session = DeveloperSession(directory=tmp_path)
+    session.start()
+    token = {"round_id": "f" * 32, "players": 1, "started_at": "2026-11-20"}
+    session.round_start(token)
+    session.round_end(token, "life_depleted", report_saved=True)
+    assert session.mark_round_intent("intentional_test_end")
+    assert session.rounds[-1]["finish_reason"] == "life_depleted"
+    assert session.rounds[-1]["tester_intent"] == "intentional_test_end"
+    assert not session.mark_round_intent("strange_value")
