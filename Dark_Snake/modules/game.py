@@ -2433,8 +2433,12 @@ class Game:
                 or reading.kind not in ("VISIBLE", "RELAY")
                 or reading.last_known_cell is None):
             return False
+        # Reuse Medusa Eyes' bounded lead of two *observed* cells. It never
+        # chases a live head during the warning/motion and cannot see through
+        # walls: the chosen aim is locked at the start of the telegraph.
+        aim = reading.predicted_cell or reading.last_known_cell
         action = charge.begin(
-            (boss.x, boss.y), boss.size, reading.last_known_cell,
+            (boss.x, boss.y), boss.size, aim,
             self._vision_blockers, (GRID_WIDTH, GRID_HEIGHT),
             self._boss_snake_bodies(), now,
         )
@@ -2451,6 +2455,10 @@ class Game:
         self.log_combat_event(
             "boss_charge_warning", boss=boss.profile_key,
             target=action.target, destination=action.destination,
+            observation_source=reading.source,
+            aim_was_predicted=(aim != reading.last_known_cell),
+            distance_cells=(abs(action.start[0] - action.destination[0])
+                            + abs(action.start[1] - action.destination[1])),
             warning_seconds=action.charge_at - action.began_at,
             movement_seconds=action.impact_end - action.charge_at,
         )
