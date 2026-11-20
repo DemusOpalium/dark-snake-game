@@ -81,6 +81,7 @@ from modules.death_soul import DeathSoulEvent, DeathSoulVisual, SOUL_SECONDS
 from modules.death_fog import AbyssFogVisual, FINAL_DEATH_SECONDS
 from modules.dice_visual import FrostDiceResultVisual
 from modules.round_progress import RoundJournal, begin_round, completed_round
+from modules.dev_recorder import DeveloperRecorder
 from modules.career_ranks import CareerLedger, xp_for_round
 from modules.career_ceremony import career_ceremony_for_round
 from modules.skin_inventory import SkinInventory, skin_registry
@@ -722,6 +723,7 @@ class Game:
         # Progress persists at confirmed final Game Over, not during frames.
         # Headless development simulations do not affect real player history.
         self._round_journal = RoundJournal()
+        self.dev_recorder = DeveloperRecorder()
         self._career_ledger = CareerLedger()
         self._skin_inventory = SkinInventory()
         self._record_completed_rounds = not headless
@@ -1037,6 +1039,17 @@ class Game:
         self._roof_visibility = self._classic_roof_visibility
         self.background = self.build_background_from_map()
         self._round_token = begin_round(players)
+        self.dev_recorder.begin_round(self._round_token, context={
+            "players": players,
+            "initial_speed": self.settings["initial_speed"],
+            "difficulty": self.settings["difficulty"],
+            "boss_health_multiplier": self.settings["boss_health_multiplier"],
+            "projectile_speed_factor": self.settings["projectile_speed_factor"],
+            "auto_shoot_interval": self.settings["auto_shoot_interval"],
+            "world": self.classic_level_name,
+            "grid": [GRID_WIDTH, GRID_HEIGHT],
+            "vision_blockers": sorted(self._vision_blockers),
+        })
         self.set_state(GameState.GAME)
 
     def choose_classic_background(self, name, level_map, *, roof_objects=None,
@@ -1113,6 +1126,7 @@ class Game:
             self.admin_panel.toggle()
 
     def reset_game(self):
+        self.dev_recorder.finish("reset")
         self.respawn.clear()
         self._respawn_recent = False
         self._menu_suspended = False
@@ -1204,6 +1218,7 @@ class Game:
 
     def clear_game_state(self):
         """Drop every object belonging to a round before showing a menu."""
+        self.dev_recorder.finish("menu_exit")
         self.respawn.clear()
         self._respawn_recent = False
         self._menu_suspended = False
@@ -1408,6 +1423,7 @@ class Game:
 
     def level_up(self):
         self.level += 1
+        self.dev_recorder.event("level_up", level=self.level)
         self.experience -= self.exp_to_next_level
         self.exp_to_next_level = int(self.exp_to_next_level * 1.5)
         self.speed = min(MAX_SPEED, self.speed + 0.5)
@@ -1434,6 +1450,12 @@ class Game:
         self.game_state = GameState.BOSS_FIGHT
         self.background = self.level_background_surface
         self.boss_fight_active = True
+        self.dev_recorder.event(
+            "boss_spawn", boss=self.boss.profile_key, level=self.level,
+            hp=self.boss.health, max_hp=self.boss.max_health,
+            cell=[self.boss.x, self.boss.y], size=self.boss.size,
+        )
+        self.dev_recorder.checkpoint("boss_spawn")
         boss_center = ((self.boss.x + self.boss.size / 2) * GRID_SIZE,
                        (self.boss.y + self.boss.size / 2) * GRID_SIZE)
         self.boss.aura_effect = self.effect_manager.spawn(
@@ -1448,6 +1470,9 @@ class Game:
     def log_combat_event(self, event_type, **details):
         event = {"type": event_type, "time": time.time(), **details}
         self.combat_events.append(event)
+        self.dev_recorder.event(event_type, **details)
+        if event_type == "boss_defeated":
+            self.dev_recorder.checkpoint("boss_defeated")
         record_event(event_type + (f": {details}" if details else ""))
 
     def _announce_boss_phase(self, boss, stage, now):
@@ -2156,6 +2181,23 @@ class Game:
             self._stall_clock_sample = None
             return
         current_time = time.time()
+        if self.dev_recorder.active:
+            heads = ({"1": list(self.snake[0])} if self.player_count == 1 and self.snake
+                     else {str(i): list(snake[0]) for i, snake in
+                           ((1, self.snake1), (2, self.snake2)) if snake})
+            boss_snapshot = (
+                {"type": self.boss.profile_key,
+                 "cell": [self.boss.x, self.boss.y],
+                 "hp": self.boss.health,
+                 "phase": self.boss.phases.stage}
+                if isinstance(self.boss, Boss) else None
+            )
+            self.dev_recorder.sample(
+                level=self.level, player_heads=heads, boss=boss_snapshot,
+                enemies=len(self.enemies), items=len(self.items),
+                portal=self.portal_effect_type if self.portal_effect_active else None,
+                world=self.classic_level_name,
+            )
         effect_now = time.monotonic()
         self._advance_stall_clock(effect_now)
         self.effect_manager.update(effect_now - self._effect_update_time)
@@ -2508,8 +2550,12 @@ class Game:
         print(f"[ADMIN] Item {item_type.name} gespawnt an ({grid_x},{grid_y})")
 
         # Ende Update
-    def handle_item_pickup(self, item):
+    def handle_item_pickup(self, item, *, source="field"):
         current_time = time.time()
+        self.dev_recorder.event(
+            "item_pickup", item=item.type.name, source=source,
+            cell=[item.x, item.y], level=self.level,
+        )
         if SOUNDS.get("eat"):
             SOUNDS["eat"].play()
         if item.type == ItemType.FOOD:
@@ -2538,7 +2584,7 @@ class Game:
                 SOUNDS["powerup"].play()
             rewards = [kind for kind in ItemType
                        if kind not in (ItemType.LOOT_BOX, ItemType.SPAWN_BOLBU)]
-            self.handle_item_pickup(Item(random.choice(rewards)))
+            self.handle_item_pickup(Item(random.choice(rewards)), source="loot_box")
             self.score += 20
             self.experience += 20
         elif item.type == ItemType.LENGTH_SHORTENER:
@@ -2766,6 +2812,7 @@ class Game:
         if (not self._record_completed_rounds or token is None
                 or self._round_recorded or self.game_state != GameState.GAME_OVER):
             return False
+        self.dev_recorder.finish(reason)
         try:
             snapshot = completed_round(
                 token, reason=reason, score=self.score, level=self.level,

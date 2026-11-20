@@ -45,6 +45,25 @@
 ---
 
 
+## 👁️ Irians Auge – freiwilliger Developer Mode Plus (20.11.2026)
+
+- **Priorität vor Boss Roll/Charge A:** Drei getrennte Draft-PRs:
+  **A** lokale Boss-/Runden-Telemetrie (Ereignisse, 250-ms-Wege,
+  Checkpoints, Datei-Limit), **B** DEV+-Menüschalter und freiwilliges
+  Feedback nach wichtigen Zonen-/Boss-Ereignissen und zu Items,
+  **C** strukturierte Berichte, Heatmap/Bewegungskarte und Soll/Ist-Vergleich.
+- **Spielerschutz:** Standardmäßig **AUS**, nur lokal, kein Tracking und kein
+  Upload; normaler Classic-Modus, Karriere und Spielstände bleiben unabhängig.
+  Entwicklerberichte werden nur bei aktivem Modus erzeugt.
+- **Bewertungen:** Nicht jeden Bossphasenwechsel unterbrechen; Schwerpunkt
+  vor/nach Boss, Portale/Zonen, besondere Gegner, Items. 0–5
+  Snake-Head-Symbole plus optionale Kurznotiz und sachliche Item-Verdikte.
+  Gameplay darf durch Pop-ups, Datei-IO oder Rekorderfehler nicht kippen.
+- Technisches Konzept/Quellzuordnung: [IRIANS_AUGE.md](IRIANS_AUGE.md).
+  **PR A = Recorder; Feedback-Bedienung folgt in B, Auswertung in C.**
+
+---
+
 ## 🧭 Aktuelle Entwicklungsschiene – BOSSE (von Demus entschieden)
 
 - **Priorität:** Bestehende Boss-Sprites und Fähigkeiten vervollständigen;
