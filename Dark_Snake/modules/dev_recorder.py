@@ -11,6 +11,7 @@ import json
 import os
 from pathlib import Path
 from tempfile import NamedTemporaryFile
+from statistics import median
 import time
 
 from modules.resources import developer_report_directories
@@ -70,6 +71,11 @@ class DeveloperRecorder:
         self.positions = deque(maxlen=MAX_SAMPLES)
         self._event_count = 0
         self._sample_count = 0
+        self._frame_intervals_ns = deque(maxlen=6000)
+        self._frame_previous_ns = None
+        self._frame_previous_active = False
+        self._frame_total = 0
+        self._frame_slow = 0
 
     def configure(self, enabled: bool):
         """Only the main-menu UI should toggle this between new rounds."""
@@ -138,9 +144,44 @@ class DeveloperRecorder:
             "world": _safe(world),
         })
 
+    def frame_mark(self, *, game_active=True, now_ns=None):
+        """Only frame-submit spacing, never hardware input/display latency."""
+        if not self.active:
+            return
+        if now_ns is None:
+            now_ns = time.perf_counter_ns()
+        if (game_active and self._frame_previous_active
+                and self._frame_previous_ns is not None):
+            interval = max(0, now_ns - self._frame_previous_ns)
+            self._frame_intervals_ns.append(interval)
+            self._frame_total += 1
+            if interval > 33_300_000:
+                self._frame_slow += 1
+        self._frame_previous_ns = now_ns
+        self._frame_previous_active = bool(game_active)
+
+    def frame_stats(self):
+        """p50/p95 describe the latest bounded intervals; slow count is total."""
+        samples = sorted(self._frame_intervals_ns)
+        if not samples:
+            return {"interval_samples": 0, "observed_intervals_total": 0,
+                    "slow_intervals_over_33ms": 0, "p50_ms": None,
+                    "p95_ms": None, "max_ms": None}
+        import math
+        n = len(samples)
+        return {
+            "interval_samples": n,
+            "observed_intervals_total": self._frame_total,
+            "slow_intervals_over_33ms": self._frame_slow,
+            "p50_ms": round(median(samples) / 1_000_000, 3),
+            "p95_ms": round(samples[math.ceil(.95 * n) - 1] / 1_000_000, 3),
+            "max_ms": round(samples[-1] / 1_000_000, 3),
+            "definition": "Abstand lokaler Pygame-Bildübergaben; keine Monitor- oder Inputlatenz.",
+        }
+
     def add_feedback(self, *, subject, prompt, rating, note="", item_verdict=None):
         """PR B uses this; do not infer sentiment from combat counters."""
-        if not self.active:
+        if self.report is None or not self.enabled:
             return False
         if rating is not None and (type(rating) is not int or not 0 <= rating <= 5):
             return False
@@ -155,7 +196,16 @@ class DeveloperRecorder:
         if len(self.report["feedback"]) >= 40:
             return False
         self.report["feedback"].append(entry)
-        self.event("player_feedback", subject=subject, rating=rating)
+        if self.active:
+            self.event("player_feedback", subject=subject, rating=rating)
+        else:
+            # Game Over review happens after the round has been sealed.
+            # Keep the final round result immutable; update only this report.
+            self._event_count += 1
+            self.events.append({
+                "ms": self.elapsed_ms(), "type": "player_feedback",
+                "data": {"subject": subject, "rating": rating},
+            })
         return self.checkpoint("player_feedback")
 
     def _snapshot(self, checkpoint):
@@ -165,8 +215,16 @@ class DeveloperRecorder:
         result["positions"] = list(self.positions)
         result["dropped_events"] = max(0, self._event_count - len(self.events))
         result["dropped_samples"] = max(0, self._sample_count - len(self.positions))
-        # Bound the final JSON, not only in-memory buffers.
+        result["performance"] = self.frame_stats()
+        # Analyze only at milestones, not in the rendering/update loop.
+        # Recompute after any size trimming so summary matches retained events.
         while True:
+            if checkpoint in ("boss_defeated", "round_end", "player_feedback"):
+                try:
+                    from modules.dev_analysis import analyze_report
+                    result["analysis"] = analyze_report(result)
+                except (ValueError, TypeError, KeyError) as exc:
+                    result["analysis_error"] = str(exc)[:180]
             payload = json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False)
             if len(payload.encode("utf-8")) <= MAX_REPORT_BYTES:
                 return payload
@@ -183,7 +241,7 @@ class DeveloperRecorder:
 
     def checkpoint(self, reason="checkpoint"):
         """Atomic file replace; IO only on boss/round events or user feedback."""
-        if not self.active:
+        if self.report is None or not self.enabled:
             return False
         directories = ((self._directory,) if self._directory is not None
                        else developer_report_directories())
@@ -207,6 +265,9 @@ class DeveloperRecorder:
                     temp = None
                     self.last_report = target
                     self.error = None
+                    if reason in ("boss_defeated", "round_end", "player_feedback"):
+                        # HTML is a convenience only. JSON remains authoritative.
+                        self._write_html(directory, payload, target.stem)
                     self._prune(directory)
                     return True
                 except OSError as exc:
@@ -221,6 +282,32 @@ class DeveloperRecorder:
             self.error = str(exc)[:200]
         return False
 
+    def _write_html(self, directory, json_payload, name):
+        """Build a self-contained local map only during a checkpoint."""
+        temp = None
+        try:
+            from modules.dev_analysis import analyze_report, render_html
+            data = json.loads(json_payload)
+            report_html = render_html(data, data.get("analysis") or analyze_report(data))
+            with NamedTemporaryFile("w", encoding="utf-8", dir=directory,
+                                    prefix=".dev-map-", suffix=".tmp",
+                                    delete=False) as handle:
+                temp = Path(handle.name)
+                handle.write(report_html)
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.replace(temp, directory / (name + ".html"))
+            temp = None
+        except (OSError, ValueError, TypeError, KeyError) as exc:
+            # A pretty map must never stop saving the source JSON.
+            self.error = "HTML report: " + str(exc)[:160]
+        finally:
+            if temp is not None:
+                try:
+                    temp.unlink(missing_ok=True)
+                except OSError:
+                    pass
+
     def _prune(self, directory):
         """Never touch game saves, only this tool's own report filenames."""
         try:
@@ -228,6 +315,7 @@ class DeveloperRecorder:
                              key=lambda path: path.stat().st_mtime, reverse=True)
             for old in reports[MAX_REPORTS:]:
                 old.unlink(missing_ok=True)
+                old.with_suffix(".html").unlink(missing_ok=True)
         except OSError:
             pass
 
