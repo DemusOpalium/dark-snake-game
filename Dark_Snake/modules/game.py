@@ -54,6 +54,8 @@ from modules.boss_balance import boss_max_health
 from modules.boss_tactics import MedusaTactics
 from modules.boss_defense import IncomingShot, MedusaDefense
 from modules.boss_swipe import MedusaSwipe
+from modules.boss_charge import MedusaCharge, swept_footprint
+from modules.boss_charge_visual import draw_medusa_charge
 from modules.boss_teleport import (
     BossTeleport, choose_destination, destination_is_safe,
     world_scan_target, WORLD_SCAN_SECONDS,
@@ -198,6 +200,7 @@ class Boss:
         self.tactics = MedusaTactics()
         self.defense = MedusaDefense()
         self.swipe = MedusaSwipe()
+        self.charge = MedusaCharge()
         self.teleport = BossTeleport(self.profile_key)
         self._boss_shot_debug = (0, 0)  # shots, genuinely threatening shots
         self.ai_preview = False
@@ -263,6 +266,8 @@ class Boss:
             self.defense.reset()
             self.cancel_swipe(time.time())
             self.swipe.reset()
+            self.cancel_charge(time.time())
+            self.charge.reset()
             self.cancel_teleport(time.time())
             self.teleport.reset()
             self._boss_shot_debug = (0, 0)
@@ -313,6 +318,21 @@ class Boss:
             self._visual_step_start = now
         self.swipe.cancel()
 
+    def cancel_charge(self, now):
+        """Abort a partially travelled dash; settle at its last reached cell."""
+        action = self.charge.cancel(now)
+        if action is None:
+            return None
+        previous = action.last_position
+        # Reverse/forward use the same legal integer grid checkpoints.
+        travelled = int(max(abs(previous[0] - action.start[0]),
+                            abs(previous[1] - action.start[1])) + 1e-8)
+        self.x = action.start[0] + action.direction[0] * travelled
+        self.y = action.start[1] + action.direction[1] * travelled
+        self._visual_from = self._visual_to = (self.x, self.y)
+        self._visual_step_start = self.last_move = now
+        return action
+
     def cancel_teleport(self, now, *, show_abort=False):
         """Abort a mid-transition warp without leaving ghost hitboxes."""
         action = self.teleport.action
@@ -326,6 +346,12 @@ class Boss:
         self.teleport.cancel(now, show_abort=show_abort)
 
     def update(self, current_time):
+        if self.ai_preview and self.charge.action is not None:
+            # A charge owns movement, body contact and attack timing.
+            self.last_move = current_time
+            if self.frames:
+                self.update_animation(current_time)
+            return None
         if self.ai_preview and self.teleport.scanning():
             # The guardian's world search is a full-board *warning*, not an
             # opportunity to cast projectiles, move or strike invisibly.
@@ -413,6 +439,8 @@ class Boss:
 
     def _visual_position(self, current_time):
         """Normal glide is cosmetic; Swipe D uses the same pixels as collision."""
+        if self.ai_preview and self.charge.action is not None:
+            return self.charge.action.position(current_time)
         if self.ai_preview and self.swipe.active(current_time):
             return self.swipe.action.position(current_time)
         start = self._visual_from
@@ -544,6 +572,10 @@ class Boss:
             # No invisible hitbox left at the departure tile, and no
             # surprise hitbox at the arrival tile while emerging.
             return pygame.Rect(0, 0, 0, 0)
+        if self.ai_preview and self.charge.action is not None:
+            cx, cy = self.charge.action.position(now)
+            return pygame.Rect(round(cx * GRID_SIZE), round(cy * GRID_SIZE),
+                               self.size * GRID_SIZE, self.size * GRID_SIZE)
         if self.ai_preview and self.swipe.active(now):
             sx, sy = self.swipe.action.position(now)
             return pygame.Rect(round(sx * GRID_SIZE), round(sy * GRID_SIZE),
