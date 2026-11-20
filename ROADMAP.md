@@ -58,6 +58,14 @@
 - **Spielerschutz:** Standardmäßig **AUS**, nur lokal, kein Tracking und kein
   Upload; normaler Classic-Modus, Karriere und Spielstände bleiben unabhängig.
   Entwicklerberichte werden nur bei aktivem Modus erzeugt.
+- **Erweiterung vor Boss Roll/Charge:** PR D (Boss-Start-HP, getrennte
+  gemeinsame Leben/Spieler-HP, Quelle der Schäden/Heilungen,
+  Feedback-Pause aus Kampfzeit herausrechnen) und PR E (globale
+  DEV+-Sitzung, sichtbarer Button SPEICHERN/GESPEICHERT/FEHLER,
+  Menü/Optionen/Steuerung/Editor-Navigation, F9-Marker,
+  F10 freiwillige Testende-Kennzeichnung). Beide **nur Draft**,
+  nicht ohne Test/Review mergen. Forschungsnotizen:
+  [DEV+ Research](docs/IRIANS_AUGE_RESEARCH_2026-11-20.md).
 - **Bewertungen:** Nicht jeden Bossphasenwechsel unterbrechen; Schwerpunkt
   vor/nach Boss, Portale/Zonen, besondere Gegner, Items. 0–5
   Snake-Head-Symbole plus optionale Kurznotiz und sachliche Item-Verdikte.
