@@ -145,3 +145,22 @@ def test_quit_flushes_both_json_files_without_changing_career(tmp_path):
     assert not session["active"]
     assert session["rounds"][0]["finish_reason"] == "quit"
     assert not game.dev_recorder.active
+
+
+def test_dev_menu_drawing_after_completed_2p_round_does_not_crash(tmp_path):
+    """Actual regression: after highscore entry the menu draws F10 hint."""
+    game = Game(headless=True)
+    game.dev_session.directory = tmp_path
+    game.dev_recorder._directory = tmp_path
+    game._toggle_dev_recorder()
+    game.start_game(2)
+    token = game._round_token
+    assert game.dev_recorder.finish("life_depleted")
+    game.dev_session.round_end(token, "life_depleted", report_saved=True)
+    game.reset_game()  # highscore flow returns to INTRO after entering the name
+    assert game.game_state == GameState.INTRO
+    assert game.dev_session.rounds[-1]["finished_at"]
+    game._draw_dev_indicator()  # before fix: pygame.Rect rejects topcenter
+    assert game._dev_save_rect.width == 160
+    assert game._dev_mark_test_intent()
+    game._draw_dev_indicator()  # test both F10 hint labels
