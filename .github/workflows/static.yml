@@ -38,6 +38,9 @@ jobs:
         run: |
           test -f site/index.html || { echo "::error::Missing site/index.html"; exit 1; }
           echo "Publishing site/, not the entire game repository."
+      - name: Validate website markup, media and links
+        run: |
+          python -c "import runpy; p=runpy.run_path('tests/test_site_presentation.py'); p['test_pages_contract_and_links'](); p['test_all_web_media_are_tracked_and_pngs']()"
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:

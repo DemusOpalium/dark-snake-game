@@ -1,5 +1,7 @@
 # 📷 DARK SNAKE — Current screenshots / Aktuelle Bilder
 
+🌐 **[DARK-SNAKE-Spielwebseite mit DE/EN-Galerie](https://demusopalium.github.io/dark-snake-game/)** · **[DARK SNAKE website and DE/EN gallery](https://demusopalium.github.io/dark-snake-game/)**
+
 These are real captures from the game and its editor, except for the clearly marked FrostAge concept image. / Die Screenshots stammen aus dem Spiel beziehungsweise Editor. Das FrostAge-Titelbild ist ausdrücklich eine Konzeptgrafik.
 
 ## ❄️ FrostAge title illustration / Titelillustration

@@ -13,6 +13,35 @@
 - **This repository and its PRs are public.** Do not add secrets, confidential transcripts, private personal details, credentials or security exploits to the board. Truly private notes belong in an access-controlled private repository.
 - Offer new blackboard notes in small documentation PRs or existing issue/PR comments; respect the owner's review/merge authority. Ideas are **not** authorization to make gameplay changes. Existing code, tests and current PR/issue state take precedence over dated notes.
 
+## Official Pages website / DE–EN public presentation
+
+- `site/` is the **public GitHub Pages project website**, not game code
+  and not a web-playable version. The original minimal HTML came from
+  PR #241 to stop uploading the entire ~310 MB game to Pages.
+- The site now presents real project screenshots, bosses, World Studio,
+  FrostAge tiles and a **free Windows alpha release link**. Before any
+  game update or release, inspect the date and the actual status of
+  content shown on the site. Keep **released alpha**, **merged main**
+  and **only planned** features distinct; do not market planned bosses
+  or FrostAge enemies as playable.
+- Follow [site/README.md](site/README.md) for language, accessibility,
+  performance, asset-source and deployment contracts, and
+  [site/asset-manifest.json](site/asset-manifest.json) for image provenance.
+  Update **German and English together**. Respect alt texts, keyboard
+  focus, 320px/mobile behavior, reduced motion, no tracking/CDNs and
+  below-fold lazy images. Prefer smaller optimized versions to heavy PNGs.
+- Never publish private GPT Project / chat / account content merely
+  because it is available. Only explicitly project-public, appropriate
+  assets and facts should be on the website.
+- Website changes belong in a **draft PR** with
+  `tests/test_site_presentation.py` and CI. The Pages workflow
+  publishes only `site/` on a push to `main`. The GitHub
+  **About → Website** field is a separate repo setting, not set by
+  changing HTML. Manual browser/phone acceptance belongs to Demus.
+- Keep this public website discoverable via `README.md` and
+  `README.de.md`. Site updates should not be mixed into boss-gameplay
+  changes without an explicit reason.
+
 ## Asset lifecycle and agent context
 
 - Start at [ASSET_GUIDE.md](ASSET_GUIDE.md) before using newly uploaded artwork, buttons, snake heads or bodies; it distinguishes source artwork from bundled runtime assets and from planned functionality.

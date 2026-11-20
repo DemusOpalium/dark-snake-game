@@ -5,6 +5,8 @@
 <h1 align="center">🐍 DARK SNAKE</h1>
 <p align="center"><strong>Arcade Snake with roguelite ambitions, boss battles, elemental chaos and a growing world editor.</strong></p>
 <p align="center"><strong>English</strong> · <a href="README.de.md">Deutsch 🇩🇪</a> · <a href="https://github.com/DemusOpalium/dark-snake-game/discussions">Join the discussion</a> · <a href="ROADMAP.md">Roadmap</a></p>
+<p align="center"><a href="https://demusopalium.github.io/dark-snake-game/"><strong>🌐 Official DARK SNAKE Website · Gallery · Free Windows Alpha</strong></a></p>
+
 
 > 🚧 **Playable, actively developed alpha.** This is a hobby game made by DemusOpalium, developed and playtested personally with help from Irian and AI-assisted coding. The picture above is **FrostAge concept artwork**, not gameplay footage.
 

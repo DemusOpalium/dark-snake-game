@@ -1,0 +1,103 @@
+{
+  "schema": 1,
+  "updated": "2026-11-20",
+  "description": "Read-only website copies of existing, verified Git objects. Sources remain untouched. Screenshots are dated and do not imply the corresponding feature is in the November 13 alpha.",
+  "media": [
+    {
+      "website": "media/boss-fight.png",
+      "source": "GamePICs/boss fight game.png",
+      "sha": "0b9e9d762e3134e86a4137d63ac049cf149b874a",
+      "bytes": 78704,
+      "description": "earlier real gameplay screenshot",
+      "loading": "eager hero"
+    },
+    {
+      "website": "media/menu-title.png",
+      "source": "GamePICs/DarkSnake Titel Screen.png",
+      "sha": "71d7367f43d0980b941f882808c12a4af124f402",
+      "bytes": 2001243,
+      "description": "real menu screenshot 14 Nov 2026",
+      "loading": "lazy (large)"
+    },
+    {
+      "website": "media/world-studio.png",
+      "source": "GamePICs/World Studio DarkSnake.png",
+      "sha": "5f17eea78c4a307c1edf83e4a91ae3b3f48fd475",
+      "bytes": 385874,
+      "description": "real World Studio screenshot 14 Nov 2026",
+      "loading": "lazy"
+    },
+    {
+      "website": "media/boss-game-over.png",
+      "source": "GamePICs/Boss-Game-Over.png",
+      "sha": "1ab19dcd49f3a58477bead4e81e179244b06dab0",
+      "bytes": 72237,
+      "description": "archival screenshot",
+      "loading": "lazy"
+    },
+    {
+      "website": "media/aoe-zones.png",
+      "source": "GamePICs/AOE-Zonen.png",
+      "sha": "db8930b5302d690d531209a5dcf52963b99924af",
+      "bytes": 31251,
+      "description": "archival effects capture",
+      "loading": "lazy"
+    },
+    {
+      "website": "media/boss-medusa.png",
+      "source": "Dark_Snake/assets/graphics/Boss-RingG60.png",
+      "sha": "86deb62a3e29346e0d647b09f7839e10d3d88f6c",
+      "bytes": 7895,
+      "description": "Medusa actual profile sprite",
+      "loading": "eager, small"
+    },
+    {
+      "website": "media/boss-hunter.png",
+      "source": "Dark_Snake/assets/graphics/Boss-AlexG60.png",
+      "sha": "ad7ec512a999614f3ecb71a37a342d9bfb644386",
+      "bytes": 6076,
+      "description": "Hunter actual profile sprite",
+      "loading": "eager, small"
+    },
+    {
+      "website": "media/boss-guardian.png",
+      "source": "Dark_Snake/assets/graphics/Boss-SkullPurPurG60.png",
+      "sha": "6fa60fa4fa0b4c395f0e868054f6c3d84da32d2b",
+      "bytes": 7314,
+      "description": "Guardian actual profile sprite",
+      "loading": "eager, small"
+    },
+    {
+      "website": "media/tile-1x1.png",
+      "source": "Dark_Snake/assets/graphics/frostage/frostage_1x1_015.png",
+      "sha": "812f52e2b4e57e169d8518fa2fe9b3d4e1be702b",
+      "bytes": 94666,
+      "description": "runtime FrostAge tile 1x1",
+      "loading": "lazy"
+    },
+    {
+      "website": "media/tile-2x1.png",
+      "source": "Dark_Snake/assets/graphics/frostage/frostage_2x1_001.png",
+      "sha": "e3bee9c89f1cb672556e578dc3af106fdc59328e",
+      "bytes": 181986,
+      "description": "runtime FrostAge tile 2x1",
+      "loading": "lazy"
+    },
+    {
+      "website": "media/tile-10x1.png",
+      "source": "Dark_Snake/assets/graphics/frostage/frostage_10x1_001.png",
+      "sha": "7c7f04c220aab3bed08596690f42e215bca723d9",
+      "bytes": 364516,
+      "description": "runtime FrostAge tile 10x1",
+      "loading": "lazy"
+    },
+    {
+      "website": "media/tile-1x10.png",
+      "source": "Dark_Snake/assets/graphics/frostage/frostage_1x10_001.png",
+      "sha": "516d912ff2f9e963ffb0b7473959355f9bbeaa00",
+      "bytes": 601940,
+      "description": "runtime FrostAge tile 1x10",
+      "loading": "lazy"
+    }
+  ]
+}

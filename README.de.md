@@ -5,6 +5,8 @@
 <h1 align="center">🐍 DARK SNAKE</h1>
 <p align="center"><strong>Arcade-Snake mit Roguelite-Ideen, Bosskämpfen, Elementareffekten und einer wachsenden Level-Werkstatt.</strong></p>
 <p align="center"><a href="README.md">English 🇬🇧</a> · <strong>Deutsch</strong> · <a href="https://github.com/DemusOpalium/dark-snake-game/discussions">Mitdiskutieren</a> · <a href="ROADMAP.md">Roadmap</a></p>
+<p align="center"><a href="https://demusopalium.github.io/dark-snake-game/"><strong>🌐 Offizielle DARK-SNAKE-Webseite · Galerie · Kostenlose Windows-Alpha</strong></a></p>
+
 
 > 🚧 **Spielbare Alpha in aktiver Entwicklung.** DARK SNAKE ist das Hobbyprojekt von DemusOpalium, persönlich gespielt und getestet, gemeinsam mit Irian und KI-gestützter Entwicklung umgesetzt. Das große FrostAge-Bild oben ist eine **Konzeptgrafik**, kein Spiel-Screenshot.
 
