@@ -42,9 +42,9 @@ def _safe(value, depth=0):
         return value
     if isinstance(value, str):
         return value[:240]
-    if depth < 3 and isinstance(value, (tuple, list)):
+    if depth < 4 and isinstance(value, (tuple, list)):
         return [_safe(entry, depth + 1) for entry in value[:40]]
-    if depth < 3 and isinstance(value, dict):
+    if depth < 4 and isinstance(value, dict):
         return {str(key)[:64]: _safe(entry, depth + 1)
                 for key, entry in list(value.items())[:30]}
     return str(type(value).__name__)
