@@ -24,3 +24,28 @@ einer neuen Spielphysik. Individuelle Item-Metadaten und spielerische
 Bewertungen sind Gegenstand des nächsten PRs; Auswertungen folgen im PR C.
 Vor Freigabe: 1P/2P-Windows-Build, harte Vorwarnungen/Phasen,
 Boss-Teleport, Berichtspfad und Game Over prüfen.
+
+## PR B – Freiwilliges Spielerfeedback (DEV+)
+- Oben rechts im **Hauptmenü** DEV+ AUS/AN oder F8. Standardmäßig
+  **AUS**, pro Prozess nicht automatisch gespeichert. Gesperrt bei
+  pausierter/suspendierter Runde; kein stilles Opt-in durch bestehende Settings.
+- Einmal vor dem **ersten Boss**: Zonen-Spielgefühl. Danach maximal drei
+  Boss-Nachbewertungen pro Runde. **Nie bei einzelnen Phasenwechseln.**
+- Nach dem Game Over (erst nach der bestehenden Todesanimation): wenn
+  relevant, Portal-/Bolbu-/Item-Fragen. Nur tatsächlich erhaltene Items
+  auswählen, 0–5 Snake-Heads, Freitext und anklickbare Item-Verdikte
+  (hilfreich, nicht hilfreich, zu schwach/stark, inkompatibel, neue Funktion).
+  Jede Frage ist überspringbar. Subjektive Daten werden ausdrücklich
+  getrennt von technischen Ereignissen gespeichert.
+- Bestätigte Bewertungen werden in die **gleiche lokale Runden-JSON**
+  atomar geschrieben. Der Recorder kann danach Game-Over-Feedback
+  ergänzen, ohne Runden-/Karrieredaten zu verändern.
+- Für Items zeichnet DEV+ `item_pickup` sowie `item_applied`
+  mit tatsächlichen Vorher/Nachher-Werten (Punkte, XP, Tempo,
+  aktive Effekte, Boss-HP) auf. Quellort:
+  `Game.handle_item_pickup` + `modules.enums.ItemType`.
+- Beim Popup pausieren Updates, Eingaben und Countdown; beim Schließen
+  werden die maßgeblichen Spielwelt-Timer um die Unterbrechung
+  verschoben. Für diese Freeze-/Resume-Integration ist ein **echter
+  Windows-Spieltest erforderlich**, insbesondere 1P/2P, erster
+  Boss, Teleport und Game Over.
