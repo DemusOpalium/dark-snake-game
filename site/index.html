@@ -1,34 +1,169 @@
 <!doctype html>
 <html lang="de">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="color-scheme" content="dark">
-<meta name="description" content="DARK SNAKE – Independent Windows game, development progress and releases.">
-<title>DARK SNAKE · Projekt & Downloads</title>
-<style>
-:root {font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif;color-scheme:dark;background:#0b1017;color:#e9f4f1}
-body {margin:0;min-height:100vh;display:grid;place-items:center;padding:1.5rem;box-sizing:border-box}
-main {max-width:700px;width:100%;background:#141d27;border:1px solid #344653;border-radius:20px;padding:clamp(1.5rem,5vw,3rem)}
-h1{font-size:clamp(2.5rem,8vw,4.5rem);margin:0 0 .6rem;letter-spacing:.07em}
-p{line-height:1.7;color:#bcd0d7}
-small{color:#8198a7}
-a{color:#98f2c6;font-weight:650} a:focus-visible{outline:3px solid #a6e8fd;outline-offset:4px}
-nav{display:flex;gap:1.25rem;flex-wrap:wrap;margin:2rem 0}
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#090d17">
+  <meta name="description" content="DARK SNAKE: kostenloses Windows-Arcade-Snake mit Bosskämpfen, W20-Ereignissen, zwei Spielern und World Studio. Ein Indieprojekt von DemusOpalium mit Irian.">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="DARK SNAKE · FrostAge & Beyond">
+  <meta property="og:description" content="Arcade-Snake, Bosskämpfe, eigene Welten. Kostenlose Windows-Alpha und Einblicke in die Entwicklung.">
+  <meta property="og:image" content="https://demusopalium.github.io/dark-snake-game/media/boss-fight.png">
+  <meta property="og:url" content="https://demusopalium.github.io/dark-snake-game/">
+  <link rel="canonical" href="https://demusopalium.github.io/dark-snake-game/">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+  <script src="main.js" defer></script>
+  <title>DARK SNAKE – Kostenloses Indie-Arcade-Spiel</title>
 </head>
 <body>
-<main>
-<small>Independent Game · Windows · Python / Pygame</small>
-<h1>DARK SNAKE</h1>
-<p>Ein Arcade-Snake-Spiel mit Bosskämpfen, FrostAge-Experimenten,
-anpassbaren Grafiken und laufender Entwicklung.</p>
-<nav aria-label="Projektlinks">
-<a href="https://github.com/DemusOpalium/dark-snake-game">Quellcode & README</a>
-<a href="https://github.com/DemusOpalium/dark-snake-game/releases">Windows-Versionen</a>
-<a href="https://github.com/DemusOpalium/dark-snake-game/blob/main/ROADMAP.md">Entwicklungs-Roadmap</a>
-</nav>
-<small>Projektseite – keine Spielinstallation im Browser erforderlich.</small>
-</main>
+  <a class="skip" href="#main"><span class="de" lang="de">Zum Inhalt springen</span><span class="en" lang="en">Skip to content</span></a>
+  <div class="site-shell">
+    <header class="topbar" id="top">
+      <a class="brand" href="#top" aria-label="DARK SNAKE – Start">
+        <span class="brand-mark" aria-hidden="true">S</span>
+        <span><strong>DARK<span class="mint">SNAKE</span></strong><small>FROSTAGE <span aria-hidden="true">✦</span> BEYOND</small></span>
+      </a>
+      <nav class="primary-nav" aria-label="Main navigation / Hauptnavigation">
+        <a href="#game"><span class="de" lang="de">Spiel</span><span class="en" lang="en">Game</span></a>
+        <a href="#gallery"><span class="de" lang="de">Galerie</span><span class="en" lang="en">Gallery</span></a>
+        <a href="#worlds">World Studio</a>
+        <a href="#download"><span class="de" lang="de">Download</span><span class="en" lang="en">Download</span></a>
+      </nav>
+      <div class="lang-switch" role="group" aria-label="Language / Sprache">
+        <button type="button" data-language="de" aria-pressed="true">DE</button>
+        <span aria-hidden="true">/</span>
+        <button type="button" data-language="en" aria-pressed="false">EN</button>
+      </div>
+    </header>
+
+    <main id="main">
+      <section class="hero frame" aria-labelledby="hero-heading">
+        <div class="rune rune-one" aria-hidden="true">✧</div><div class="rune rune-two" aria-hidden="true">✦</div>
+        <div class="hero-copy">
+          <div class="eyebrow"><span class="pulse-dot" aria-hidden="true"></span><span class="de" lang="de">KOSTENLOSE WINDOWS-ALPHA · AKTIV IN ENTWICKLUNG</span><span class="en" lang="en">FREE WINDOWS ALPHA · IN ACTIVE DEVELOPMENT</span></div>
+          <p class="chapter">✦ <span class="de" lang="de">WILLKOMMEN IM ABGRUND</span><span class="en" lang="en">WELCOME TO THE ABYSS</span> ✦</p>
+          <h1 id="hero-heading">DARK <em>SNAKE</em></h1>
+          <p class="hero-lead"><span class="de" lang="de">Ein Klassiker. Neue Zähne.</span><span class="en" lang="en">A classic. With new teeth.</span></p>
+          <p class="hero-description">
+            <span class="de" lang="de">Steuere die Schlange, überlebe Bosskämpfe, würfle mit dem Schicksal und baue deine eigenen Welten. Klassisches Arcade-Snake trifft auf Frost, Magie und jede Menge selbstgemachte Ideen.</span>
+            <span class="en" lang="en">Guide your snake, survive boss fights, roll the dice with fate and build your own worlds. Classic arcade Snake meets frost, magic and a growing collection of handmade ideas.</span>
+          </p>
+          <div class="actions">
+            <a class="btn btn-primary" href="https://github.com/DemusOpalium/dark-snake-game/releases/tag/frostage-alpha-2026-11-13" rel="noopener noreferrer"><span aria-hidden="true">↓</span> <span class="de" lang="de">KOSTENLOS DOWNLOADEN</span><span class="en" lang="en">FREE DOWNLOAD</span></a>
+            <a class="btn btn-outline" href="#gallery"><span aria-hidden="true">◈</span> <span class="de" lang="de">BILDER ANSEHEN</span><span class="en" lang="en">VIEW GALLERY</span></a>
+          </div>
+          <p class="subtle small"><span class="de" lang="de">Windows · lokal 1–2 Spieler · Alpha vom 13.11.2026 · kostenlos</span><span class="en" lang="en">Windows · local 1–2 players · alpha from 13 Nov 2026 · free</span></p>
+        </div>
+        <div class="hero-art">
+          <div class="art-heading"><span class="de" lang="de">EINBLICK INS SPIEL</span><span class="en" lang="en">A LOOK AT THE GAME</span> <span aria-hidden="true">↗</span></div>
+          <figure class="hero-shot">
+            <img src="media/boss-fight.png" width="960" height="540" fetchpriority="high" decoding="async"
+              alt="DARK SNAKE: echter Screenshot eines Arcade-Bosskampfs"
+              data-alt-de="DARK SNAKE: echter Screenshot eines Arcade-Bosskampfs"
+              data-alt-en="DARK SNAKE: real screenshot of an arcade boss fight">
+            <figcaption><span class="de" lang="de">Echter Spiel-Screenshot · früherer Entwicklungsstand</span><span class="en" lang="en">Real gameplay screenshot · earlier development build</span></figcaption>
+          </figure>
+          <div class="boss-strip" aria-label="Boss artwork / Bossgrafiken">
+            <div><img src="media/boss-medusa.png" width="80" height="80" decoding="async" alt="" aria-hidden="true"><span>MEDUSA</span></div>
+            <div><img src="media/boss-hunter.png" width="80" height="80" decoding="async" alt="" aria-hidden="true"><span class="de" lang="de">JÄGER</span><span class="en" lang="en">HUNTER</span></div>
+            <div><img src="media/boss-guardian.png" width="80" height="80" decoding="async" alt="" aria-hidden="true"><span class="de" lang="de">WÄCHTER</span><span class="en" lang="en">GUARDIAN</span></div>
+          </div>
+          <p class="art-footnote"><span class="de" lang="de">Boss-Porträts aus echten Spielassets · Fähigkeiten werden weiterentwickelt.</span><span class="en" lang="en">Boss portraits from actual game assets · abilities are still evolving.</span></p>
+        </div>
+      </section>
+
+      <div class="ribbon" aria-label="Game highlights / Spielfunktionen">
+        <span>✧ <strong>1–2</strong> <span class="de" lang="de">SPIELER</span><span class="en" lang="en">PLAYERS</span></span>
+        <span>✧ <strong>W20</strong> <span class="de" lang="de">EREIGNISSE</span><span class="en" lang="en">EVENTS</span></span>
+        <span>✧ <strong>3</strong> <span class="de" lang="de">BOSS-PERSÖNLICHKEITEN</span><span class="en" lang="en">BOSS PERSONALITIES</span></span>
+        <span>✧ <strong>F2</strong> WORLD STUDIO</span>
+      </div>
+
+      <section class="section" id="game" aria-labelledby="game-heading">
+        <div class="section-heading"><span class="chapter">I. THE GAME</span><h2 id="game-heading"><span class="de" lang="de">KLEINE SCHLANGE. GROSSES CHAOS.</span><span class="en" lang="en">SMALL SNAKE. BIG CHAOS.</span></h2>
+          <p><span class="de" lang="de">Schnell gestartet, schwer wieder wegzulegen. Eine Arcade-Runde, die jedes Mal anders laufen kann.</span><span class="en" lang="en">Quick to start, hard to put down. Arcade runs that can unfold in surprising ways.</span></p></div>
+        <div class="feature-grid">
+          <article class="feature-card"><span class="feature-icon" aria-hidden="true">◉</span><h3><span class="de" lang="de">ARCADE & TEAMPLAY</span><span class="en" lang="en">ARCADE & TEAMPLAY</span></h3><p><span class="de" lang="de">Solo oder zu zweit am selben Rechner. Sammle Items, halte deinen Körper in Bewegung und überlebe mit gemeinsamen Team-Leben.</span><span class="en" lang="en">Play solo or locally with a friend. Collect items, keep moving and survive with a shared team life pool.</span></p></article>
+          <article class="feature-card"><span class="feature-icon" aria-hidden="true">⚔</span><h3><span class="de" lang="de">BOSSE MIT CHARAKTER</span><span class="en" lang="en">BOSSES WITH CHARACTER</span></h3><p><span class="de" lang="de">Medusa, Jäger und Wächter haben feste Identitäten. Im aktuellen Entwicklungszweig kommen Phasen, Portale, Sprünge und dunkle Tunnel dazu.</span><span class="en" lang="en">Medusa, Hunter and Guardian have distinct identities. The current development branch adds phases, portals, leaps and shadow tunnels.</span></p></article>
+          <article class="feature-card"><span class="feature-icon" aria-hidden="true">⚄</span><h3><span class="de" lang="de">WÜRFEL & ÜBERRASCHUNGEN</span><span class="en" lang="en">DICE & SURPRISES</span></h3><p><span class="de" lang="de">Ein W20-Ereignissystem, Power-ups, Schüsse, Portale und wechselnde Situationen geben dem Klassiker neue Wendungen.</span><span class="en" lang="en">D20 events, power-ups, projectiles, portals and shifting encounters add surprises to the classic formula.</span></p></article>
+          <article class="feature-card"><span class="feature-icon" aria-hidden="true">✦</span><h3><span class="de" lang="de">DEINE SCHLANGE</span><span class="en" lang="en">YOUR SNAKE</span></h3><p><span class="de" lang="de">Eigene Köpfe, Körper, Musik und freischaltbare Skins. Die Karriere- und Belohnungssysteme wachsen mit dem Spiel.</span><span class="en" lang="en">Custom heads, bodies, music and unlockable skins. Progress and rewards keep growing alongside the game.</span></p></article>
+        </div>
+      </section>
+
+      <section class="section" id="gallery" aria-labelledby="gallery-heading">
+        <div class="section-heading"><span class="chapter">II. VISUAL ARCHIVE</span><h2 id="gallery-heading"><span class="de" lang="de">BLICK INS DUNKLE HERZ</span><span class="en" lang="en">A LOOK INTO THE DARK HEART</span></h2>
+          <p><span class="de" lang="de">Echte Bilder aus DARK SNAKE – keine erfundenen Spielscreenshots. Die Aufnahmen stammen aus unterschiedlichen Entwicklungsständen.</span><span class="en" lang="en">Real DARK SNAKE images – no fabricated gameplay screenshots. Captures come from different development builds.</span></p></div>
+        <div class="gallery-grid">
+          <figure class="media-card media-wide"><img src="media/menu-title.png" loading="lazy" decoding="async" alt="FrostAge-Hauptmenü von DARK SNAKE, aufgenommen am 14. November 2026" data-alt-de="FrostAge-Hauptmenü von DARK SNAKE, aufgenommen am 14. November 2026" data-alt-en="DARK SNAKE FrostAge main menu captured on 14 November 2026"><figcaption><strong><span class="de" lang="de">DAS HAUPTMENÜ</span><span class="en" lang="en">THE MAIN MENU</span></strong><span>14.11.2026 · <span class="de" lang="de">Entwicklungsaufnahme</span><span class="en" lang="en">development capture</span></span></figcaption></figure>
+          <figure class="media-card"><img src="media/boss-game-over.png" loading="lazy" decoding="async" alt="Älterer DARK-SNAKE-Screenshot eines Boss- und Game-Over-Moments" data-alt-de="Älterer DARK-SNAKE-Screenshot eines Boss- und Game-Over-Moments" data-alt-en="Earlier DARK SNAKE screenshot showing a boss and game-over scene"><figcaption><strong><span class="de" lang="de">SPIELMOMENTE</span><span class="en" lang="en">GAME MOMENTS</span></strong><span><span class="de" lang="de">Archivaufnahme</span><span class="en" lang="en">archival capture</span></span></figcaption></figure>
+          <figure class="media-card"><img src="media/aoe-zones.png" loading="lazy" decoding="async" alt="Screenshot aus DARK SNAKE mit Flächeneffekten" data-alt-de="Screenshot aus DARK SNAKE mit Flächeneffekten" data-alt-en="DARK SNAKE screenshot featuring area effects"><figcaption><strong><span class="de" lang="de">MAGIE & EFFEKTE</span><span class="en" lang="en">MAGIC & EFFECTS</span></strong><span><span class="de" lang="de">Archivaufnahme</span><span class="en" lang="en">archival capture</span></span></figcaption></figure>
+        </div>
+      </section>
+
+      <section class="section studio-section" id="worlds" aria-labelledby="worlds-heading">
+        <div class="studio-layout">
+          <div class="studio-copy">
+            <span class="chapter">III. WORLD STUDIO</span>
+            <h2 id="worlds-heading"><span class="de" lang="de">BAU DEINEN EIGENEN ABGRUND.</span><span class="en" lang="en">BUILD YOUR OWN ABYSS.</span></h2>
+            <p><span class="de" lang="de">Mit F2 öffnet sich unser World Studio. Gestalte Spielflächen, Ebenen, Wände, Effekte und Dachbereiche; teste Level lokal mit einem oder zwei Spielern.</span><span class="en" lang="en">Press F2 to open World Studio. Design arenas, layers, walls, effects and roof areas; test levels locally with one or two players.</span></p>
+            <div class="studio-facts">
+              <span><strong>495</strong><small>CLASSIC TILES</small></span>
+              <span><strong>175</strong><small>FROSTAGE ASSETS</small></span>
+              <span><strong>1P / 2P</strong><small>LEVEL TESTS</small></span>
+            </div>
+            <a class="text-link" href="https://github.com/DemusOpalium/dark-snake-game/blob/main/ASSET_GUIDE.md"><span class="de" lang="de">GRAFIKKATALOG ENTDECKEN</span><span class="en" lang="en">EXPLORE THE ASSET CATALOGUE</span><span aria-hidden="true"> ↗</span></a>
+          </div>
+          <figure class="studio-shot media-card"><img src="media/world-studio.png" loading="lazy" decoding="async" alt="Echter Screenshot des DARK SNAKE World Studio vom 14. November 2026" data-alt-de="Echter Screenshot des DARK SNAKE World Studio vom 14. November 2026" data-alt-en="Real DARK SNAKE World Studio screenshot from 14 November 2026"><figcaption><strong>WORLD STUDIO</strong><span><span class="de" lang="de">Editor-Aufnahme · 14.11.2026</span><span class="en" lang="en">editor capture · 14 Nov 2026</span></span></figcaption></figure>
+        </div>
+        <div class="tiles-heading"><h3><span class="de" lang="de">EIN PAAR FROSTAGE-BAUSTEINE</span><span class="en" lang="en">A FEW FROSTAGE BUILDING BLOCKS</span></h3><p><span class="de" lang="de">Echte PNGs aus unserer Tile-Bibliothek – verschiedene Rastergrößen, keine künstlichen Mock-ups.</span><span class="en" lang="en">Real PNGs from our tile library – multiple grid sizes, not fabricated mock-ups.</span></p></div>
+        <div class="tile-gallery" aria-label="FrostAge asset samples">
+          <figure><span>1 × 1</span><img src="media/tile-1x1.png" loading="lazy" decoding="async" alt="FrostAge-Grafikkachel im 1-mal-1-Raster" data-alt-de="FrostAge-Grafikkachel im 1-mal-1-Raster" data-alt-en="FrostAge graphic tile in a 1-by-1 grid"></figure>
+          <figure><span>2 × 1</span><img src="media/tile-2x1.png" loading="lazy" decoding="async" alt="FrostAge-Grafikkachel im 2-mal-1-Raster" data-alt-de="FrostAge-Grafikkachel im 2-mal-1-Raster" data-alt-en="FrostAge graphic tile in a 2-by-1 grid"></figure>
+          <figure><span>10 × 1</span><img src="media/tile-10x1.png" loading="lazy" decoding="async" alt="FrostAge-Grafik mit zehn Rasterzellen Breite" data-alt-de="FrostAge-Grafik mit zehn Rasterzellen Breite" data-alt-en="FrostAge graphic ten grid cells wide"></figure>
+          <figure><span>1 × 10</span><img src="media/tile-1x10.png" loading="lazy" decoding="async" alt="FrostAge-Grafik mit zehn Rasterzellen Höhe" data-alt-de="FrostAge-Grafik mit zehn Rasterzellen Höhe" data-alt-en="FrostAge graphic ten grid cells tall"></figure>
+        </div>
+      </section>
+
+      <section class="section progress-section" id="development" aria-labelledby="development-heading">
+        <div class="section-heading"><span class="chapter">IV. THE JOURNEY</span><h2 id="development-heading"><span class="de" lang="de">EIN SPIEL, DAS WEITERWÄCHST.</span><span class="en" lang="en">A GAME THAT KEEPS GROWING.</span></h2></div>
+        <div class="progress-grid">
+          <div class="progress-card"><span class="status ready"><span class="de" lang="de">IN DER ALPHA SPIELBAR</span><span class="en" lang="en">PLAYABLE IN THE ALPHA</span></span><h3><span class="de" lang="de">DAS FUNDAMENT</span><span class="en" lang="en">THE FOUNDATION</span></h3><p><span class="de" lang="de">Arcade-Runden, lokales Spielen zu zweit, Items, Bossbegegnungen und der Level-Editor. Die verlinkte Download-Version ist die Alpha vom 13. November 2026.</span><span class="en" lang="en">Arcade runs, local two-player action, items, boss encounters and the level editor. The linked download is the alpha released on 13 November 2026.</span></p></div>
+          <div class="progress-card"><span class="status latest"><span class="de" lang="de">NEUERER ENTWICKLUNGSSTAND</span><span class="en" lang="en">NEWER DEVELOPMENT BUILD</span></span><h3><span class="de" lang="de">DIE BOSSE LERNEN</span><span class="en" lang="en">THE BOSSES EVOLVE</span></h3><p><span class="de" lang="de">Phasen, KI-Test, sichere Teleportation und der Wächter-Rift sind bereits im Code auf main. Der nächste Entwurf ist eine echte Roll-/Rammattacke – noch kein fertiges Feature.</span><span class="en" lang="en">Phases, optional AI tests, safe teleports and the Guardian Rift are already on main. A proper roll/charge attack is next on the drawing board – not implemented yet.</span></p></div>
+          <div class="progress-card"><span class="status future"><span class="de" lang="de">NOCH IN PLANUNG</span><span class="en" lang="en">PLANNED FOR LATER</span></span><h3><span class="de" lang="de">DIE NÄCHSTEN WELTEN</span><span class="en" lang="en">WORLDS TO COME</span></h3><p><span class="de" lang="de">Mehr FrostAge-Gegner, neue Animationen und weitere Abenteuerideen bleiben bewusst Zukunftsmusik. Grafiken und Prototypen bedeuten noch nicht, dass sie spielbar sind.</span><span class="en" lang="en">More FrostAge enemies, animations and adventure ideas remain future plans. Artwork and prototypes do not mean those features are playable yet.</span></p></div>
+        </div>
+        <a class="text-link" href="https://github.com/DemusOpalium/dark-snake-game/blob/main/ROADMAP.md"><span class="de" lang="de">ENTWICKLUNGSFAHRPLAN LESEN</span><span class="en" lang="en">READ THE DEVELOPMENT ROADMAP</span><span aria-hidden="true"> ↗</span></a>
+      </section>
+
+      <section class="section download-section frame" id="download" aria-labelledby="download-heading">
+        <div class="download-orbit" aria-hidden="true">✦</div>
+        <span class="chapter">V. ENTER THE FROST</span>
+        <h2 id="download-heading"><span class="de" lang="de">DEINE RUNDE WARTET.</span><span class="en" lang="en">YOUR RUN AWAITS.</span></h2>
+        <p class="download-lead"><span class="de" lang="de">Kostenlose Windows-Alpha. Keine Registrierung auf einer fremden Downloadseite – du landest direkt bei unserem offiziellen GitHub-Release.</span><span class="en" lang="en">Free Windows alpha. No third-party download service – the button leads straight to our official GitHub release.</span></p>
+        <div class="actions center">
+          <a class="btn btn-primary btn-big" href="https://github.com/DemusOpalium/dark-snake-game/releases/tag/frostage-alpha-2026-11-13"><span aria-hidden="true">↓</span> <span class="de" lang="de">WINDOWS-ALPHA KOSTENLOS</span><span class="en" lang="en">GET THE FREE WINDOWS ALPHA</span></a>
+          <a class="btn btn-outline" href="https://github.com/DemusOpalium/dark-snake-game/actions/workflows/python-app.yml"><span class="de" lang="de">NEUERE TEST-BUILDS</span><span class="en" lang="en">NEWER TEST BUILDS</span><span aria-hidden="true"> ↗</span></a>
+        </div>
+        <div class="download-details">
+          <p><strong>13.11.2026 · FROSTAGE ALPHA</strong><br><span class="de" lang="de">ZIP vollständig entpacken, dann DARK-Snake.exe starten. ZIP-Prüfsumme (.sha256) steht beim Download bereit.</span><span class="en" lang="en">Extract the ZIP completely, then launch DARK-Snake.exe. A .sha256 checksum is supplied with the download.</span></p>
+          <p><strong><span class="de" lang="de">TRANSPARENZ</span><span class="en" lang="en">TRANSPARENCY</span></strong><br><span class="de" lang="de">Die EXE ist derzeit nicht digital signiert; Browser oder Windows können warnen. Die aktuelle Entwicklung auf main enthält bereits neuere Funktionen als dieses Release.</span><span class="en" lang="en">The EXE is currently unsigned; browsers or Windows may show warnings. The current main branch contains features newer than this release.</span></p>
+        </div>
+      </section>
+
+      <section class="section community-section" id="community" aria-labelledby="community-heading">
+        <div class="community-emblem" aria-hidden="true">◈</div>
+        <div><span class="chapter">VI. BUILT WITH HEART</span><h2 id="community-heading"><span class="de" lang="de">AUS IDEEN WIRD EIN SPIEL.</span><span class="en" lang="en">IDEAS BECOME A GAME.</span></h2>
+          <p><span class="de" lang="de">DARK SNAKE ist ein unabhängiges Hobbyprojekt von <strong>DemusOpalium</strong> – mit viel Ausprobieren, eigenen Grafiken, echten Windows-Spieltests und der Zusammenarbeit mit <strong>Irian</strong> in einer KI-gestützten Entwicklung. Kein Großstudio. Einfach Freude am Bauen, Spielen und Weiterlernen.</span><span class="en" lang="en">DARK SNAKE is an independent hobby project by <strong>DemusOpalium</strong> – built through experimentation, original artwork, real Windows playtests and collaboration with <strong>Irian</strong> as part of an AI-assisted workflow. No big studio. Just the joy of building, playing and learning.</span></p>
+          <p><span class="de" lang="de">Ideen, Fragen oder Bugs? Wir freuen uns über faire Rückmeldungen auf GitHub.</span><span class="en" lang="en">Ideas, questions or bugs? Thoughtful feedback is welcome on GitHub.</span></p>
+          <div class="community-links"><a href="https://github.com/DemusOpalium/dark-snake-game/discussions">DIS​​CUSSIONS ↗</a><a href="https://github.com/DemusOpalium/dark-snake-game/issues">ISSUES ↗</a><a href="https://github.com/DemusOpalium/dark-snake-game">SOURCE CODE ↗</a></div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer"><div class="footer-brand"><span class="brand-mark small-mark" aria-hidden="true">S</span><span><strong>DARK SNAKE</strong><small>© 2026 DemusOpalium · MIT source license</small></span></div>
+      <p><span class="de" lang="de">Mit Neugier gebaut. Mit Respekt getestet. Stück für Stück verbessert.</span><span class="en" lang="en">Built with curiosity. Tested with care. Improved one step at a time.</span></p>
+      <a href="#top" class="back-to-top"><span class="de" lang="de">NACH OBEN ↑</span><span class="en" lang="en">BACK TO TOP ↑</span></a>
+    </footer>
+  </div>
 </body>
 </html>
