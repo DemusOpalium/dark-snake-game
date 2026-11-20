@@ -107,7 +107,12 @@ class ChargeAction:
         return "recovery"
 
     def position(self, now: float) -> Point:
-        p = max(0.0, min(1.0, (now - self.charge_at) / CHARGE_SECONDS))
+        # Return exact grid endpoints, not 8.999999999999936 from rounding.
+        if now <= self.charge_at:
+            return self.start
+        if now >= self.impact_end:
+            return self.destination
+        p = (now - self.charge_at) / CHARGE_SECONDS
         return (self.start[0] + (self.destination[0] - self.start[0]) * p,
                 self.start[1] + (self.destination[1] - self.start[1]) * p)
 
