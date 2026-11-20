@@ -1,5 +1,93 @@
 # 🛣️ ROADMAP.md – Entwicklungsfahrplan
 
+## ✅ Statusabgleich / abgeschlossene Arbeit – 20.11.2026 (nach Medusa Charge B)
+
+**Aktuelle Wahrheit vor älteren Planungsnotizen:** Dieser Block ist der
+**Abhak-Stand**. Spätere Abschnitte in dieser großen Roadmap enthalten
+bewusst historische Entwürfe und überholte „Draft/offen“-Formulierungen.
+Abgehakt bedeutet *implementiert oder durch reale Tests bestätigt*, nicht
+„alle erdenklichen Varianten endgültig perfektioniert“.
+
+### Fertig / für jetzt akzeptiert
+- [x] **Boss-Persönlichkeiten und Basis-Kampfphasen**: feste Boss-Identitäten
+      (#236), Phasen bei 70/35 % HP (#238), Boss-Balance/Auto-Shoot (#240).
+      Details/weitere Balance bleiben bei neuen Befunden offen.
+- [x] **Teleport A + Wächter Rift Search B**: Sprung, Portal, Tunnel,
+      Warnung, sichere Landung (#242/#243); von Demus unter Windows
+      spielerisch akzeptiert. Kein weiterer Ausbau ohne konkreten Befund.
+- [x] **Medusa Charge A – technischer Prototyp** (#262): opt-in KI-Test,
+      echte Sichtdaten, fixierte Warnrichtung, gleitende/swept Hitbox,
+      maximal ein Treffer je Kopf und Charge, sichere Unterbrechungen;
+      Headless/CI + erster sichtbarer Windows-Praxistest.
+- [x] **Medusa Charge B – Spielgefühl verbessert** (#263, **auf main**):
+      maximal 8 Zellen statt 4, 0,65 s Vorwarnung, 0,22 s Charge,
+      1,35 s Recovery und verbesserte Bewegungsspuren. Windows-CI und
+      CodeQL grün. **Demus bestätigt sichtbare Funktion und ist mit
+      dem aktuellen Dash vorerst zufrieden.** Längere Reichweite bleibt
+      **eine optionale spätere Balance-Idee**, kein unmittelbar
+      freigegebener neuer PR.
+- [x] **Irians Auge DEV+ A–E**: lokale Rundendaten, Feedback,
+      Auswertung, HP-/Leben-Historie, manuelles Speichern, Sessions
+      und Entwickler-UI (#252/#253/#255). **Game-Over-Menü-Crash
+      sowie alte HP-Snapshot-/Analyseprobleme** in #256 korrigiert;
+      nachfolgender Windows-Test ohne den ursprünglichen Crash.
+- [x] **Progression/Karriere/Skins – aktueller Dateiabgleich**:
+      eine lokale Kontrollprobe umfasst **19** eindeutige Runden,
+      konsistente Summen (33.527 Punkte, 504 Gegner, 30 Bosse,
+      586 Items), **17.318 XP / Rang 8**, übereinstimmende
+      Runden-IDs über Progression, XP-Awards und Skin-Register.
+      **Nur Dateikonsistenz geprüft**, kein allgemeiner Beweis gegen
+      künftige Speicherfehler.
+- [x] **World-Studio-Funktionen angetestet, nicht „fertig gebaut“**:
+      Level-Laden/Speichern und Weltbibliothek wurden ausgeübt.
+      Ein Level war **absichtlich leer**; ein zweites enthält
+      bereits Tile-Grafiken, 34 Barrieren und 4 Roof-Objekte.
+      Keine belastbare Aussage über vollständige Editor-Abnahme;
+      Codex beendet seinen eigenen Editorauftrag **separat**.
+- [x] **Webseite 1.0** (#246) bereits von Demus abgenommen.
+      **GitHub-Pages-Fix #264** ist gemergt; nachfolgender
+      `main`-Run **Pages, Windows Alpha 2 und CodeQL grün**.
+      Der frühere rote Pages-Lauf bleibt historisch sichtbar.
+- [x] **Grafik-/Shader-Machbarkeitsstudie dokumentiert** (#261):
+      Pygame vorerst beibehalten; Glow/Partikel zuerst, optional
+      später ein isolierter ModernGL-Test. **Keine Shader im Spiel
+      implementiert** – nur die *Dokumentation* ist abgeschlossen.
+
+### Bewusst weiterhin offen
+- [ ] **Kombinierter 1P/2P-Nachtest mit echten DEV+-Detail-JSONs** zu
+      Charge B (Trefferanzahl, Charge-Distanz, Warnzeit, HP bei Bossstart,
+      2P gemeinsame Leben, FPS und Feedback) und zu Speicherung/F10;
+      subjektives Spielgefühl ersetzt diese Messung nicht.
+- [ ] **Boss-Feinschliff**: Warn-/Phasenanimationen, charakteristische
+      Auren, Boss-Arenas, kontrollierte Minions und ggf. spätere
+      Reichweiten-/2P-Balance. **Nicht automatisch jetzt umsetzen.**
+- [ ] **EffectManager 2.0 / VFX-Studie** nach der Bossarbeit;
+      **Shader** nur als gesonderter rückbaubarer Prototyp.
+- [ ] **Codex Editorauftrag zuerst abschließen**; erst danach
+      **Code-/Asset-Inventur** (unbenutzte Schleifen, Bilder, Links,
+      Duplikate): Vorkommen/Referenzen/Tests prüfen, vor Löschung
+      nachweisen, separate kleine PRs; nicht ungeprüft massenlöschen.
+- [ ] **FrostAge-Normalgegner, World-Studio-Vollausbau, Level-Design**
+      und Adventure bleiben zurückgestellt.
+
+**Beleggrenzen:** Das zuletzt eingesehene `round_progress`-Journal
+endet mit einer Testrunde um **15:38 UTC (20.11.)**, also **vor**
+dem Merge von Charge B um **15:50 UTC**. Es beweist daher nicht,
+dass der lokale Test mit der nachher auf `main` gemergten Version
+gespielt wurde; dies könnte bereits ein PR-Testbuild gewesen sein.
+**Kein neuer `dev-round-*.json` oder `dev-session-*.json`** für
+diesen Dash-B-Test liegt zur Auswertung vor. Demus' direktes
+Spielerfeedback ist als **qualitative Abnahme**, nicht als
+technischer Telemetrie-Nachweis dokumentiert. Keine privaten
+Spielstände oder Freitextkommentare ins öffentliche Repository
+hochladen.
+
+**Priorität ab jetzt:** Keine neue Engine. Bestehende Bosse im Spiel
+weiter beobachten; zunächst erledigte Aufgaben sauber dokumentieren.
+Den nächsten Gameplay-PR nur für einen klar abgegrenzten Befund beginnen.
+
+---
+
 ## 🌐 Offizielle DARK-SNAKE-Webseite · GitHub Pages (20.11.2026)
 
 - **Warum überhaupt HTML?** GitHub Pages versuchte zuvor, den gesamten
@@ -22,7 +110,8 @@
 - **Wahrheits- und Release-Regel:** Veröffentlichtes Windows-Alpha
   vom **13.11.2026** und neuerer Entwicklungsstand auf `main` immer
   auseinanderhalten. Boss-Teleport/Rift sind neuer als das Release;
-  Rollattacke und FrostAge-Normalgegner sind weiterhin **geplant**.
+  **Roll/Charge ist inzwischen über #262/#263 auf main**;
+  FrostAge-Normalgegner sind weiterhin geplant.
 - **Pflege durch Agents:** Bei relevanten Releases/Spielbildern die
   Website **mitdenken, aber nie ungefragt mit neuen privaten Dateien
   füllen**. Jeder Website-Update-PR prüft Aktualität der Behauptungen,
@@ -47,31 +136,27 @@
 
 ## 👁️ Irians Auge – freiwilliger Developer Mode Plus (20.11.2026)
 
-- **Priorität vor Boss Roll/Charge A:** Drei getrennte **Draft-PRs**
-  existieren auf GitHub: **A #248** lokale Boss-/Runden-Telemetrie
-  (Ereignisse, 250-ms-Wege, Checkpoints, Datei-Limit), **B #249**
-  DEV+-Menüschalter und freiwilliges Feedback nach wichtigen Zonen-/
-  Boss-Ereignissen und zu Items, **C #250** strukturierte Berichte,
-  Offline-SVG-Heatmap/Bewegungskarte und begrenzte Frame-Messwerte.
-  Die PRs bauen aufeinander auf und sind **noch nicht gemergt**;
-  Windows-Sichtabnahme für das Gesamtsystem steht aus.
+- **Status aktualisiert:** Die historische A/B/C-Aufteilung
+  (#248–#250, zusammengeführt über #252) ist implementiert und
+  gemergt. Opt-in Rundendaten, lokale Heatmap und Feedback liegen
+  im vorhandenen DEV+ vor; Windows-Praxistests haben echte
+  Verbesserungen und einen behobenen UI-Absturz nachgewiesen.
 - **Spielerschutz:** Standardmäßig **AUS**, nur lokal, kein Tracking und kein
   Upload; normaler Classic-Modus, Karriere und Spielstände bleiben unabhängig.
   Entwicklerberichte werden nur bei aktivem Modus erzeugt.
-- **Erweiterung vor Boss Roll/Charge:** PR D (Boss-Start-HP, getrennte
-  gemeinsame Leben/Spieler-HP, Quelle der Schäden/Heilungen,
-  Feedback-Pause aus Kampfzeit herausrechnen) und PR E (globale
-  DEV+-Sitzung, sichtbarer Button SPEICHERN/GESPEICHERT/FEHLER,
-  Menü/Optionen/Steuerung/Editor-Navigation, F9-Marker,
-  F10 freiwillige Testende-Kennzeichnung). Beide **nur Draft**,
-  nicht ohne Test/Review mergen. Forschungsnotizen:
+- **D/E inzwischen integriert** (#253/#255): Boss-Start-HP, getrennte
+  Spieler-HP/gemeinsame Leben, Ereignisursachen, Pausenzeiten,
+  Sitzungen, manueller SPEICHERN-Status und F9/F10.
+  Speicher-/Analyse-Hotfix #256 ebenfalls gemergt. Noch zu prüfen:
+  vollständiger Nachtest mit neuen echten DEV+-Detaildaten.
+  Forschungsnotizen:
   [DEV+ Research](docs/IRIANS_AUGE_RESEARCH_2026-11-20.md).
 - **Bewertungen:** Nicht jeden Bossphasenwechsel unterbrechen; Schwerpunkt
   vor/nach Boss, Portale/Zonen, besondere Gegner, Items. 0–5
   Snake-Head-Symbole plus optionale Kurznotiz und sachliche Item-Verdikte.
   Gameplay darf durch Pop-ups, Datei-IO oder Rekorderfehler nicht kippen.
 - Technisches Konzept/Quellzuordnung: [IRIANS_AUGE.md](IRIANS_AUGE.md).
-  **PR A = Recorder; Feedback-Bedienung folgt in B, Auswertung in C.**
+  **Recorder, Feedback und Auswertung sind bereits integriert.**
 
 ---
 
@@ -79,10 +164,10 @@
 
 - **Priorität:** Bestehende Boss-Sprites und Fähigkeiten vervollständigen;
   normale Gegner und FrostAge-Vollausbau bleiben vorerst zurückgestellt.
-- **Nächster Design-Kandidat:** `Boss Roll/Charge A`, eine kurze
-  vorgewarnte Stoß-/Rollbewegung zum **wirklich beobachteten** Spieler
-  oder bestätigten Einschlagort; danach Erholung. Erst ein einziger
-  Boss-Prototyp, keine globale neue Kampfregel.
+- **Charge A/B erledigt:** Medusa Roll/Charge A (#262) und die
+  schnellere/längere Variante B (#263) sind auf `main` integriert.
+  Der Spieler bestätigt die Funktion und möchte das Balancing
+  **vorerst belassen**. Weitere Reichweite optional später.
 - **Optionale spätere Stufe:** Knockback der Snake. Derzeit
   rastergebundene Snake-Bewegung, keine separate Physik-Engine:
   zunächst nur visuellen Rückstoß prüfen; echte Körperverschiebung
@@ -91,14 +176,14 @@
   Teleport, Swipe, Schutzschild, Phase-Change und Frostwurf nicht
   unbemerkt überlappen. Geplanter Summon nur mit vorhandenem
   NormalEnemy und Spawn-Obergrenze.
-- **Status:** PR **#245** am 20.11.2026 gemergt; **nur Design und Roadmap**.
-  Roll/Charge, visueller oder echter Knockback und Summon sind
-  **noch nicht implementiert**. Technische Referenz:
+- **Status:** PR #245 war zunächst der Designschritt; inzwischen
+  sind **A #262 und B #263 gemergt**. Technische Referenz:
   `BOSS_ROLL_CHARGE_CONCEPT_2026-11-19.md`.
-- **Nächster isolierter Code-PR:** Medusa-Ring als ein Roll/Charge-A-
-  Prototyp mit Sicht-Trigger, fester Vorwarnrichtung, 2–4 Zellen
-  gleitender Bewegung, synchroner Hitbox, maximal einem Treffer
-  pro Spieler/Charge, sauberer Recovery und Cooldown.
+  **Knockback und Summon weiterhin nicht implementiert.**
+- **Abgenommener Prototyp:** Sicht-Trigger, feste Warnrichtung,
+  4–8 Zellen (wenn frei), schnell gleitende Bewegung, synchron
+  mitbewegte/swept Hitbox, maximal ein Treffer pro Spieler/Charge,
+  Recovery und Cooldown. Mehr Reichweite ist nur noch eine Idee.
 - **Freigaberegel:** 1P/2P-Regression, 30/60/120-FPS-Kollisionsprüfung,
   sichere Unterbrechungen durch Swipe/Teleport/Phasen/Pause/Respawn,
   Windows Alpha 2, CodeQL und echter Demus-Windows-Spieltest.
@@ -314,7 +399,7 @@
   Medusa = `Boss-RingG60.png` (animiert), Jäger =
   `Boss-AlexG60.png`, Wächter = `Boss-SkullPurPurG60.png`.
   Feste Level-Rotation, KI-Test-Persönlichkeiten getrennt vom Classic.
-- 🔧 **Boss Phases A (eigener Draft-PR; Windows-Test offen)** –
+- ✅ **Boss Phases A (#238, in main; spätere Boss-Windows-Tests erfolgt)** –
   pro Persönlichkeit **Phase I (>70% HP), II (≤70%), III (≤35%)**
   mit echten max-HP-Werten. Pro Wechsel 1,2 s gut erkennbare
   Vorwarnung am Boss, keine neu ausgelösten Angriffe währenddessen
@@ -565,7 +650,8 @@ Dies ist ein **Vorschlag**, kein verifizierter Leistungsnachweis.
 - ⬜ Jeder Boss erhält ein oder zwei charakteristische AoE-Effekte.
 - ⬜ Boss-Angriffe klarer und nachvollziehbarer gestalten.
 - ⬜ Unnötige Effektüberlagerungen verhindern.
-- ⬜ Grafiken und Fähigkeiten fest mit einem Bosstyp verbinden.
+- ✅ Grafiken und Fähigkeiten mit festem Bosstyp verknüpfen
+      (Boss Personality A #236; weitere Visuals separat offen).
 - ⬜ Doppelte beziehungsweise unnötige Boss-Grafikauswahl prüfen.
 - ⬜ Bossgrafiken und Animationen effizient laden.
 - ⬜ Vorhandene Bossbilder möglichst weiterverwenden.
@@ -598,7 +684,8 @@ Dies ist ein **Vorschlag**, kein verifizierter Leistungsnachweis.
 ### Boss-Phasen
 
 - ⬜ Bosse erhalten feste Angriffsmuster.
-- ⬜ Unterschiedliche Kampfphasen abhängig von Lebenspunkten.
+- ✅ Unterschiedliche Kampfphasen abhängig von Lebenspunkten
+      (Boss Phases A #238, 70/35 %).
 - ⬜ Phase 1: Grundangriffe.
 - ⬜ Phase 2: zusätzliche Fähigkeiten.
 - ⬜ Phase 3: gefährlichere Spezialangriffe.
@@ -608,7 +695,8 @@ Dies ist ein **Vorschlag**, kein verifizierter Leistungsnachweis.
 - ⬜ Während eines Bosskampfs normale Zufallsgegner standardmäßig pausieren oder begrenzen; nur ausdrücklich definierte Boss-Minions erlauben. Danach normales Spawnverhalten wiederherstellen.
 - ⬜ Schwierigkeit/HP/Schaden über Kapitel, verfügbare Items und Spielertempo balancieren; herausfordernd, aber ohne zufällige, praktisch unbesiegbare Ressourcen-Falle.
 - ⬜ Ein Boss zuerst als vollständig spielbarer Vertical Slice (Einführung, 2–3 Phasen, Minions, Sieg, 1P/2P-Tests, Performance), danach Profile wiederverwenden.
-- ⬜ Tunnel-, Loch- und Teleportmechaniken ermöglichen.
+- ✅ Tunnel-, Loch- und Teleportmechaniken als Basis implementiert
+      (#242/#243; spätere Varianten weiterhin möglich).
 - ⬜ Schwierigkeit mit fortschreitendem Spiel erhöhen.
 - ⬜ Bosse im Classic-Modus zufällig auswählen.
 - ⬜ Bosse im Adventure-Modus gezielt einem Level zuordnen.
