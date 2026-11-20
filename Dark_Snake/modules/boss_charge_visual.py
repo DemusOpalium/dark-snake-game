@@ -21,8 +21,8 @@ def draw_medusa_charge(surface, action, now, grid_size, boss_size):
     if phase == "warning":
         progress = max(0.0, min(1.0, (now - action.began_at) / WARNING_SECONDS))
         overlay = pygame.Surface(rect.size, pygame.SRCALPHA)
-        overlay.fill((122, 78, 199, 25 + int(35 * progress)))
-        pygame.draw.rect(overlay, (215, 177, 255, 205),
+        overlay.fill((122, 78, 199, 46 + int(34 * progress)))
+        pygame.draw.rect(overlay, (236, 192, 255, 230),
                          overlay.get_rect(), 2)
         surface.blit(overlay, rect.topleft)
         direction = action.direction
@@ -42,7 +42,21 @@ def draw_medusa_charge(surface, action, now, grid_size, boss_size):
                             round(pos[1] * grid_size) - 3,
                             boss_size * grid_size + 6,
                             boss_size * grid_size + 6)
-        pygame.draw.ellipse(surface, (196, 139, 250), ghost, 2)
+        pygame.draw.ellipse(surface, (208, 152, 255), ghost, 3)
+        # Three restrained motion trails emphasize the faster dash without
+        # flashes, screen shake or an extra sprite/particle dependency.
+        direction = action.direction
+        lateral = (-direction[1], direction[0])
+        center_x = round((pos[0] + boss_size / 2) * grid_size)
+        center_y = round((pos[1] + boss_size / 2) * grid_size)
+        for lane in (-.30, 0, .30):
+            side = round(lane * boss_size * grid_size)
+            anchor = (center_x + lateral[0] * side,
+                      center_y + lateral[1] * side)
+            tail = round(grid_size * (1.0 if lane else 1.45))
+            end = (anchor[0] - direction[0] * tail,
+                   anchor[1] - direction[1] * tail)
+            pygame.draw.line(surface, (164, 119, 225), anchor, end, 2)
     else:
         # Quiet cooldown cue; no flashing or camera shake.
         pos = action.destination
