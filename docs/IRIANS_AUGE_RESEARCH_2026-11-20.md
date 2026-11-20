@@ -1,7 +1,7 @@
 # Irians Auge – Forschungsnotizen und technische Wissensbasis
 **Stand: 20.11.2026.** Quelle: offizielles Fachmaterial, ergänzt durch
 tatsächliche Dark-Snake-Codepfade und den ersten DEV+-Praxistest
-`dev-round-fcd40ff2d84947a9a7fd87e6d2b21156.json`.
+einem lokal geprüften DEV+-Rundenbericht (nicht im Repository).
 Dieses Dokument beschreibt Anforderungen und Grenzen, keine Abnahme.
 
 ## Was die Recherche für uns bedeutet
