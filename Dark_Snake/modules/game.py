@@ -1161,7 +1161,15 @@ class Game:
             self.admin_panel.toggle()
 
     def reset_game(self):
-        self.dev_recorder.finish("reset")
+        was_recording = self.dev_recorder.active
+        if was_recording:
+            self._dev_capture_vitals("reset_end", checkpoint=True)
+        report_saved = self.dev_recorder.finish("reset")
+        if was_recording:
+            self.dev_session.round_end(
+                getattr(self, "_round_token", None), "reset",
+                report_saved=report_saved,
+            )
         self._dev_vitals.reset()
         self.dev_feedback.clear()
         self._dev_preboss_asked = False
@@ -1261,7 +1269,15 @@ class Game:
 
     def clear_game_state(self):
         """Drop every object belonging to a round before showing a menu."""
-        self.dev_recorder.finish("menu_exit")
+        was_recording = self.dev_recorder.active
+        if was_recording:
+            self._dev_capture_vitals("menu_exit", checkpoint=True)
+        report_saved = self.dev_recorder.finish("menu_exit")
+        if was_recording:
+            self.dev_session.round_end(
+                getattr(self, "_round_token", None), "menu_exit",
+                report_saved=report_saved,
+            )
         self.dev_feedback.clear()
         self._dev_end_pending = False
         self.respawn.clear()
@@ -1587,7 +1603,12 @@ class Game:
     def _dev_shutdown(self):
         """Best-effort close, no effect on career files or gameplay results."""
         if self.dev_recorder.active:
-            self.dev_recorder.checkpoint("quit")
+            self._dev_capture_vitals("quit", checkpoint=True)
+            report_saved = self.dev_recorder.finish("quit")
+            self.dev_session.round_end(
+                getattr(self, "_round_token", None), "quit",
+                report_saved=report_saved,
+            )
         if self.dev_session.active:
             self.dev_session.end("quit")
 
