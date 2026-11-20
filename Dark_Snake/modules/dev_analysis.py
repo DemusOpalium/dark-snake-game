@@ -11,14 +11,14 @@ from math import log1p
 
 
 RELEVANT_EVENTS = {
-    "round_start", "round_finished", "level_up",
+    "round_start", "round_finished", "round_summary", "level_up",
     "boss_spawn", "boss_damage", "boss_defeated",
     "boss_phase_warning", "boss_phase_active",
     "boss_world_scan_warning", "boss_world_scan_complete",
     "boss_teleport_warning", "boss_teleport_arrived", "boss_teleport_aborted",
     "boss_shield_raised", "boss_shield_blocked",
     "medusa_frost_warning", "medusa_frost_hit",
-    "portal_activated", "item_pickup", "item_applied",
+    "portal_activated", "item_pickup", "item_applied", "boss_body_contact",
     "enemy_spawn", "player_feedback",
 }
 
@@ -158,6 +158,11 @@ def analyze_report(report: dict):
         "fights": fights,
         "zones_sampled": dict(sorted(zones.items())),
         "items": items,
+        "round_summary": next((
+            e.get("data", {}) for e in reversed(events)
+            if isinstance(e, dict) and e.get("type") == "round_summary"
+        ), None),
+        "performance": report.get("performance", {}),
         "heatmap": heatmap,
         "feedback": report.get("feedback", []),
         "warnings": [
@@ -225,6 +230,8 @@ def render_html(report, analysis=None):
             ) + "</p><p>" + _html(f'Boss-Schadensereignisse: {fight["damage_events"]}, '
                                     f'Gesamtschaden: {fight["damage_to_boss"]}') + "</p></section>"
         )
+    perf = analysis.get("performance") or {}
+    round_totals = analysis.get("round_summary") or {}
     feedback_html = []
     for item in analysis["feedback"]:
         if not isinstance(item, dict):
@@ -269,7 +276,18 @@ def render_html(report, analysis=None):
             _html(f'Classic · {context.get("players", "?")} Spieler · '
                   f'Welt {context.get("world") or "Standard"} · '
                   f'{analysis["event_count"]} Events · {analysis["sample_count"]} Positionsproben')
-            + "</p></section><h2>Bosskämpfe</h2>"
+            + "</p><p>Endstand: " + _html(
+                f'Level {round_totals.get("level", "?")}, Score {round_totals.get("score", "?")}, '
+                f'Gegner {round_totals.get("enemies_defeated", "?")}, '
+                f'Bosse {round_totals.get("bosses_defeated", "?")}, '
+                f'Items {round_totals.get("items_collected", "?")}')
+            + "</p><p>Bildabstand (beobachtet): " + _html(
+                f'p50={perf.get("p50_ms", "–")} ms, '
+                f'p95={perf.get("p95_ms", "–")} ms, '
+                f'Spitze={perf.get("max_ms", "–")} ms, '
+                f'>33,3 ms: {perf.get("slow_intervals_over_33ms", "–")}')
+            + " – nur lokale Pygame-Bildübergaben, kein Display-/Inputlag.</p>"
+            + "</section><h2>Bosskämpfe</h2>"
             + "".join(fight_html or ["<p>Keine Boss-Spawn-Ereignisse im Bericht.</p>"])
             + "<h2>Bewegungskarte / Aufenthaltsproben</h2><p class='legend'>"
             "<span style='color:#72e4ac'>■ Spieler 1</span>"
