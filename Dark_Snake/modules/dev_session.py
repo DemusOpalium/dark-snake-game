@@ -27,7 +27,8 @@ AUTO_SAVE_SECONDS = 90
 # Fixed public taxonomy: do not inadvertently serialize menu text or keys.
 EVENTS = {
     "session_started", "session_finished", "navigation", "studio_toggle",
-    "settings_saved", "round_started", "round_finished", "feedback_dismissed",
+    "settings_saved", "round_started", "round_finished", "boss_checkpoint",
+    "feedback_dismissed",
     "tester_marker", "session_warning", "tester_intent",
 }
 
