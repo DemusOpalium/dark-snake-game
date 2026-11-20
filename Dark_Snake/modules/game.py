@@ -949,6 +949,7 @@ class Game:
             self._tick_respawn()
         self.admin_panel.close()
         if isinstance(self.boss, Boss):
+            self._cancel_boss_charge(time.time(), "editor")
             self.boss.tactics.cancel(time.time())
             self.boss.defense.cancel()
             self.boss.cancel_swipe(time.time())
@@ -1139,6 +1140,7 @@ class Game:
             self.clear_game_state()
         if state == GameState.PAUSE and previous in (GameState.GAME, GameState.BOSS_FIGHT):
             if isinstance(self.boss, Boss):
+                self._cancel_boss_charge(time.time(), "pause")
                 self.boss.tactics.cancel(time.time())
                 self.boss.defense.cancel()
                 self.boss.cancel_swipe(time.time())
@@ -1185,6 +1187,7 @@ class Game:
             self._tick_respawn()
         if not self._menu_suspended:
             if isinstance(self.boss, Boss):
+                self._cancel_boss_charge(time.time(), "admin")
                 self.boss.tactics.cancel(time.time())
                 self.boss.defense.cancel()
                 self.boss.cancel_swipe(time.time())
@@ -1797,6 +1800,8 @@ class Game:
 
     def _announce_boss_phase(self, boss, stage, now):
         """Tell the player before an altered boss can start a new attack."""
+        if boss.charge.action is not None:
+            self._cancel_boss_charge(now, "phase_transition")
         if boss.teleport.action is not None or boss.teleport.scanning():
             boss.cancel_teleport(now)
         boss.tactics.cancel(now)
@@ -2661,6 +2666,7 @@ class Game:
     def update(self):
         if self._tick_respawn():
             if isinstance(self.boss, Boss):
+                self._cancel_boss_charge(time.time(), "respawn")
                 self.boss.tactics.cancel(time.time())
                 self.boss.defense.cancel()
                 self.boss.cancel_swipe(time.time())
@@ -2669,6 +2675,7 @@ class Game:
             return
         if not self._gameplay_active():
             if isinstance(self.boss, Boss):
+                self._cancel_boss_charge(time.time(), "suspended")
                 self.boss.tactics.cancel(time.time())
                 self.boss.defense.cancel()
                 self.boss.cancel_swipe(time.time())
@@ -2747,6 +2754,8 @@ class Game:
         # occlusion map as NormalEnemy, but only while KI-Test is enabled.
         # Neither attacks nor boss step cadence change outside this pilot.
         if isinstance(self.boss, Boss):
+            if self.boss.ai_preview and not self.enemy_ai_preview:
+                self._cancel_boss_charge(current_time, "ai_preview_disabled")
             self.boss.set_ai_preview(self.enemy_ai_preview)
             self._tick_boss_phases(current_time)
             self.boss.navigation_blockers = self._vision_blockers
@@ -3253,6 +3262,7 @@ class Game:
         now = time.time()
         self.respawn.begin(now)
         if isinstance(self.boss, Boss):
+            self._cancel_boss_charge(now, "respawn")
             self.boss.tactics.cancel(now)
             self.boss.defense.cancel()
             self.boss.cancel_swipe(now)
