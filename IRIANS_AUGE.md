@@ -76,3 +76,12 @@ Portal/Itembewertungen, GameOver-Feedback, Berichtskorruption,
 schreibgeschütztem Ordner, Menü-Rückkehr, Pausen und
 verschiedenen Bildschirmgrößen. Keine automatische Veröffentlichung
 von Daten auf GitHub.
+
+## Laufzeitmessung (PR C)
+Im DEV+-Modus werden nur während echter laufender Spiel-Frames
+die **Abstände lokaler Bildübergaben** gemessen (maximal die letzten
+6.000 Intervalle für p50/p95/Maximum, langsame Intervalle >33,3 ms
+für die ganze Runde gezählt). UI-Feedback-Standbilder werden nicht
+als normale Gameplay-Intervalle gewertet. Diese Werte sind kein
+Monitor-Feedback, keine echte Input-Latenz und kein Ersatz für
+vergleichbare Windows-Benchmarks nach `QUALITY_PERFORMANCE_PLAN.md`.
