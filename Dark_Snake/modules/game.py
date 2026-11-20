@@ -82,6 +82,7 @@ from modules.death_fog import AbyssFogVisual, FINAL_DEATH_SECONDS
 from modules.dice_visual import FrostDiceResultVisual
 from modules.round_progress import RoundJournal, begin_round, completed_round
 from modules.dev_recorder import DeveloperRecorder
+from modules.dev_vitals import VitalObserver
 from modules.dev_feedback_ui import DeveloperFeedbackUI
 from modules.career_ranks import CareerLedger, xp_for_round
 from modules.career_ceremony import career_ceremony_for_round
@@ -725,6 +726,7 @@ class Game:
         # Headless development simulations do not affect real player history.
         self._round_journal = RoundJournal()
         self.dev_recorder = DeveloperRecorder()
+        self._dev_vitals = VitalObserver()
         self.dev_feedback = DeveloperFeedbackUI()
         self._dev_button_rect = pygame.Rect(0, 0, 0, 0)
         self._dev_ui_font = pygame.font.SysFont("Segoe UI", 14, bold=True)
@@ -1056,6 +1058,7 @@ class Game:
             "grid": [GRID_WIDTH, GRID_HEIGHT],
             "vision_blockers": sorted(self._vision_blockers),
         })
+        self._dev_capture_vitals("round_start", checkpoint=True)
         self.set_state(GameState.GAME)
 
     def choose_classic_background(self, name, level_map, *, roof_objects=None,
@@ -1133,6 +1136,7 @@ class Game:
 
     def reset_game(self):
         self.dev_recorder.finish("reset")
+        self._dev_vitals.reset()
         self.dev_feedback.clear()
         self._dev_preboss_asked = False
         self._dev_boss_reviews = 0
@@ -1470,6 +1474,8 @@ class Game:
             hp=self.boss.health, max_hp=self.boss.max_health,
             cell=[self.boss.x, self.boss.y], size=self.boss.size,
         )
+        # Snapshot captures both player HP and shared lives BEFORE any boss damage.
+        self._dev_capture_vitals("boss_entry", checkpoint=True)
         self.dev_recorder.checkpoint("boss_spawn")
         boss_center = ((self.boss.x + self.boss.size / 2) * GRID_SIZE,
                        (self.boss.y + self.boss.size / 2) * GRID_SIZE)
@@ -1502,6 +1508,13 @@ class Game:
         requested = not self.dev_recorder.enabled
         if self.dev_recorder.configure(requested):
             self._dev_badge_until = time.monotonic() + 2.0
+
+    def _dev_capture_vitals(self, source, *, checkpoint=False):
+        """Telemetry only: never modify HP, lives, RNG or movement."""
+        if self.dev_recorder.active:
+            self._dev_vitals.observe(
+                self, self.dev_recorder, source=source, checkpoint=checkpoint,
+            )
 
     def _dev_item_state(self, now):
         """Actual runtime effects before/after pickup, not guessed item stats."""
@@ -1849,6 +1862,7 @@ class Game:
                 health = getattr(self, health_attr) - CLASSIC_BOSS_PROJECTILE_DAMAGE
                 setattr(self, health_attr, health)
                 lethal = lethal or health <= 0
+            self._dev_capture_vitals("boss_grid_projectile")
             if SOUNDS.get("damage"):
                 SOUNDS["damage"].play()
             if lethal:
@@ -1885,6 +1899,8 @@ class Game:
             if projectile.collides_with(head_rect):
                 setattr(self, health_attr, getattr(self, health_attr) - projectile.damage)
                 hit = True
+        if hit:
+            self._dev_capture_vitals("boss_flame_projectile")
         return hit
 
     def check_boss_collision(self, snake_head):
@@ -1912,6 +1928,8 @@ class Game:
         for health_attr in targets:
             self._normal_enemy_contact_ready_at[health_attr] = now + NORMAL_ENEMY_CONTACT_INTERVAL
             setattr(self, health_attr, getattr(self, health_attr) - NORMAL_ENEMY_CONTACT_DAMAGE)
+        if targets:
+            self._dev_capture_vitals("normal_enemy_contact")
         # Apply all simultaneous 2P hits before resolving the shared life.
         if targets and any(getattr(self, attr) <= 0 for attr in targets):
             self.handle_death()
@@ -2184,6 +2202,8 @@ class Game:
                     getattr(self, health_attr) - tactics.DAMAGE)
             self.log_combat_event("medusa_frost_hit",
                                   target=health_attr, damage=tactics.DAMAGE)
+        if hits:
+            self._dev_capture_vitals("medusa_frost")
         # 2P damage is collected before a shared-life loss is resolved.
         if hits and any(getattr(self, key) <= 0 for key in hits):
             self.handle_death()
@@ -2209,6 +2229,7 @@ class Game:
         for health_attr in targets:
             self._boss_contact_ready_at[health_attr] = now + BOSS_BODY_HIT_INTERVAL
             setattr(self, health_attr, getattr(self, health_attr) - BOSS_BODY_DAMAGE)
+        self._dev_capture_vitals("boss_body_contact")
         self.dev_recorder.event(
             "boss_body_contact", player_health_fields=targets,
             damage_each=BOSS_BODY_DAMAGE,
@@ -2496,6 +2517,7 @@ class Game:
                             setattr(self, attr, current - proj.damage)
                             if proj in self.enemy_projectiles:
                              self.enemy_projectiles.remove(proj)
+        self._dev_capture_vitals("enemy_projectile")
         for proj in self.boss_flame_projectiles[:]:
             if self._resolve_boss_flame_hits(proj):
                 self.spawn_fire_explosion(proj.rect.center)
@@ -2553,6 +2575,7 @@ class Game:
                         print(f"DEBUG: AoE-Effekt '{zone.effect_type}' auf Singleplayer angewendet.")
                         zone.debug_triggered = True
             self.player_health = player_obj.health
+            self._dev_capture_vitals("aoe_zone_aggregated")
             if self.player_health <= 0:
                 self.handle_death()
         elif self.player_count == 2 and self.snake1 and self.snake2:
@@ -2569,6 +2592,7 @@ class Game:
                         print(f"DEBUG: AoE-Effekt '{zone.effect_type}' auf Spieler 1 angewendet.")
                         zone.debug_triggered_p1 = True
             self.player_health_p1 = p1_obj.health
+            self._dev_capture_vitals("aoe_zone_aggregated")
             if self.player_health_p1 <= 0:
                 self.handle_death()
             p2_obj = type("Player", (), {})()
@@ -2584,6 +2608,7 @@ class Game:
                         print(f"DEBUG: AoE-Effekt '{zone.effect_type}' auf Spieler 2 angewendet.")
                         zone.debug_triggered_p2 = True
             self.player_health_p2 = p2_obj.health
+            self._dev_capture_vitals("aoe_zone_aggregated")
             if self.player_health_p2 <= 0:
                 self.handle_death()
         if self.respawn.active:
@@ -2846,6 +2871,7 @@ class Game:
             self.snake = [locations[0]]
             self.snake_direction = self.next_direction = Direction.RIGHT
             self.player_health = 100
+        self._dev_capture_vitals("respawn")
         self._reset_snake_stalls()
         self._reset_snake_interpolation()
         now = time.time()
@@ -2958,6 +2984,7 @@ class Game:
                 or self._round_recorded or self.game_state != GameState.GAME_OVER):
             return False
         was_recording = self.dev_recorder.active
+        self._dev_capture_vitals("round_end", checkpoint=True)
         self.dev_recorder.event(
             "round_summary", reason=reason, score=self.score, level=self.level,
             enemies_defeated=self.round_enemies_defeated,
@@ -3009,6 +3036,7 @@ class Game:
             SOUNDS["damage"].play()
         # Ziehe ein Leben ab, aber nur, wenn noch Leben übrig sind
         self.lives -= 1
+        self._dev_capture_vitals("self_stall_life_lost", checkpoint=True)
         print("DEBUG: Stillstand – Leben abgezogen, verbleibende Leben:", self.lives)
         self._begin_death_soul(stalled_players, final=self.lives <= 0)
 
@@ -3041,6 +3069,7 @@ class Game:
                 "death", ((snake[0][0] + 0.5) * GRID_SIZE,
                           (snake[0][1] + 0.5) * GRID_SIZE), {"lifetime": 1.0})
         self.lives -= 1
+        self._dev_capture_vitals("life_lost", checkpoint=True)
         if self.player_count == 1:
             affected = (1,)
         else:
@@ -3804,6 +3833,7 @@ class Game:
         in_countdown = self._tick_respawn()
         if not in_countdown and self._gameplay_active():
             self.update()
+            self._dev_capture_vitals("unattributed")
         elif was_playing:
             self._suspend_stall_clock()
         if self.level_editor.playtest is not None:
