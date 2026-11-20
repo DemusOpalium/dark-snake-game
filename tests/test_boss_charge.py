@@ -70,7 +70,7 @@ def test_fixed_cardinal_lane_respects_full_footprint_and_all_cells():
         (5, 5), 3, (14, 6), (), (GRID_WIDTH, GRID_HEIGHT),
         bodies={(8, 6)},
     ) is None
-    assert choose_charge((5, 5), 3, (7, 15), (), (45, 31)) is None
+    assert choose_charge((5, 5), 3, (14, 15), (), (45, 31)) is None
     assert choose_charge((41, 5), 3, (44, 6), (), (45, 31)) is None
 
 
@@ -236,3 +236,33 @@ def test_hidden_target_other_bosses_and_swipe_never_charge(monkeypatch):
     boss.set_ai_preview(False)
     assert not game._tick_boss_charge(clock.now + 10)
     assert boss.charge.action is None
+
+
+def test_body_entering_lane_during_warning_aborts_without_collision(monkeypatch):
+    game, boss, clock = fight(monkeypatch)
+    game._tick_boss_charge(clock.now)
+    action = boss.charge.action
+    assert action is not None
+    game.snake = [(25, 20), (8, 6)]  # body moved into the announced lane
+    clock.now = action.charge_at + .04
+    game._tick_boss_charge(clock.now)
+    assert boss.charge.action is None
+    assert game.player_health == 100
+    assert (boss.x, boss.y) == (5, 5)
+    assert any(e["type"] == "boss_charge_aborted"
+               and e["reason"] == "lane_blocked" for e in game.combat_events)
+
+
+def test_invulnerability_and_contact_cooldown_prevent_double_dipping(monkeypatch):
+    game, boss, clock = fight(monkeypatch)
+    game.effects["invincibility"] = clock.now + 2
+    game._tick_boss_charge(clock.now)
+    action = boss.charge.action
+    clock.now = action.impact_end
+    game._tick_boss_charge(clock.now)
+    assert game.player_health == 100
+    clock.now = action.ends_at + .01
+    game._tick_boss_charge(clock.now)
+    assert game.player_health == 100
+    assert boss.charge.action is None
+    assert not boss.charge.ready(clock.now)
