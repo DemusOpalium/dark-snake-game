@@ -62,7 +62,7 @@ def fight(monkeypatch, players=1, level=1):
 def test_fixed_cardinal_lane_respects_full_footprint_and_all_cells():
     assert choose_charge(
         (5, 5), 3, (14, 6), (), (GRID_WIDTH, GRID_HEIGHT),
-    ) == (9, 5)
+    ) == (11, 5)
     assert choose_charge(
         (5, 5), 3, (14, 6), {(8, 5)}, (GRID_WIDTH, GRID_HEIGHT),
     ) is None
@@ -72,6 +72,30 @@ def test_fixed_cardinal_lane_respects_full_footprint_and_all_cells():
     ) is None
     assert choose_charge((5, 5), 3, (14, 15), (), (45, 31)) is None
     assert choose_charge((41, 5), 3, (44, 6), (), (45, 31)) is None
+
+
+def test_b_tuning_longer_faster_with_readable_warning_and_recovery():
+    # Calibrated against continuous forward movement during Demus' playtest.
+    assert WARNING_SECONDS >= .6  # enough to read and evade
+    assert CHARGE_SECONDS <= .25
+    assert RECOVERY_SECONDS >= 1.2
+    assert COOLDOWN_SECONDS >= 6.0
+    # The target is in sight (within 9 cells of the boss center), yet
+    # the new stride is meaningfully longer than the four-cell alpha.
+    assert choose_charge((5, 5), 3, (14, 6), (), (45, 31)) == (11, 5)
+    assert choose_charge((5, 5), 3, (17, 6), (), (45, 31)) == (13, 5)
+
+
+def test_long_charge_checks_obstacles_across_eight_cells():
+    assert choose_charge((5, 5), 3, (17, 6), (), (45, 31)) == (13, 5)
+    # A wall in the last third must shorten the charge rather than
+    # teleporting the boss through it.
+    shortened = choose_charge((5, 5), 3, (17, 6),
+                              {(13, 6)}, (45, 31))
+    assert shortened is not None
+    assert shortened[0] < 11
+    assert choose_charge((5, 5), 3, (17, 6),
+                         {(8, 5)}, (45, 31)) is None
 
 
 def test_continuous_sweep_prevents_tunneling_between_coarse_frames():
@@ -89,8 +113,8 @@ def test_timeline_warn_charge_recover_and_cooldown():
     assert action.phase(action.charge_at) == "charge"
     assert action.phase(action.impact_end) == "recovery"
     assert action.phase(action.ends_at) == "done"
-    assert action.position(action.charge_at + CHARGE_SECONDS / 2) == pytest.approx((7, 5))
-    assert action.position(action.impact_end) == (9, 5)
+    assert action.position(action.charge_at + CHARGE_SECONDS / 2) == pytest.approx((8, 5))
+    assert action.position(action.impact_end) == (11, 5)
     assert charge.tick(action.charge_at)[2] is True
     assert charge.tick(action.charge_at + .02)[2] is False
     assert charge.tick(action.impact_end)[3] is True
@@ -108,7 +132,7 @@ def test_1p_2p_charge_deals_existing_body_damage_once_at_all_fps(
     game, boss, clock = fight(monkeypatch, players=players)
     assert game._tick_boss_charge(clock.now)
     action = boss.charge.action
-    assert action.destination == (9, 5)
+    assert action.destination == (11, 5)
     hp_before = (
         (game.player_health,) if players == 1 else
         (game.player_health_p1, game.player_health_p2)
@@ -118,7 +142,7 @@ def test_1p_2p_charge_deals_existing_body_damage_once_at_all_fps(
         game._tick_boss_charge(clock.now)
         assert not game._resolve_boss_body_contact(clock.now) or boss.charge.action is None
     assert boss.charge.action is None
-    assert (boss.x, boss.y) == (9, 5)
+    assert (boss.x, boss.y) == (11, 5)
     hp_after = (
         (game.player_health,) if players == 1 else
         (game.player_health_p1, game.player_health_p2)
@@ -151,7 +175,7 @@ def test_charge_cannot_hit_during_recovery_when_a_new_head_enters(monkeypatch):
 
 def test_low_fps_jump_over_full_motion_still_hits(monkeypatch):
     game, boss, clock = fight(monkeypatch, players=1)
-    game.snake = [(11, 6)]  # only the far end of four-tile movement
+    game.snake = [(12, 6)]  # only the far end of the longer sweep
     game._tick_boss_charge(clock.now)
     action = boss.charge.action
     clock.now = action.impact_end + .15  # no intermediate game updates
@@ -188,8 +212,8 @@ def test_warning_is_real_and_hitbox_matches_boss_sprite(monkeypatch):
     assert boss.get_hitbox() == rect
     clock.now = action.charge_at + CHARGE_SECONDS / 2
     px, py = boss._visual_position(clock.now)
-    assert (px, py) == pytest.approx((7, 5))
-    assert boss.get_hitbox().topleft == (7 * GRID_SIZE, 5 * GRID_SIZE)
+    assert (px, py) == pytest.approx((8, 5))
+    assert boss.get_hitbox().topleft == (8 * GRID_SIZE, 5 * GRID_SIZE)
     boss.draw(image)
     assert boss.image is original_sprite
     assert boss.art_asset == original_art
@@ -215,7 +239,7 @@ def test_interruptions_remove_live_dash_without_ghost_hitbox(monkeypatch, interr
         boss.set_ai_preview(False)
     assert boss.charge.action is None
     assert boss.get_hitbox().size == (boss.size * GRID_SIZE,) * 2
-    assert 5 <= boss.x <= 9
+    assert 5 <= boss.x <= 11
     if interruption == "disable":
         assert boss.charge.next_ready_at == float("-inf")  # full reset on opt-out
     else:
@@ -286,4 +310,41 @@ def test_real_update_loop_triggers_charge_after_valid_sensor_reaction(monkeypatc
     assert boss.charge.action is not None
     assert boss.charge.action.target == (14, 6)
     assert any(e["type"] == "boss_charge_warning" for e in game.combat_events)
+    assert boss.tactics.volley is None
+
+
+def test_charge_locks_short_observed_prediction_without_retarget(monkeypatch):
+    game, boss, clock = fight(monkeypatch)
+    boss.eyes.reading = MedusaReading(
+        "VISIBLE", 1, (14, 6), (16, 6), "direct",
+    )
+    assert game._tick_boss_charge(clock.now)
+    action = boss.charge.action
+    assert action.target == (16, 6)
+    assert action.destination == (13, 5)  # up to eight cells
+    warning = next(e for e in game.combat_events
+                   if e["type"] == "boss_charge_warning")
+    assert warning["aim_was_predicted"] is True
+    assert warning["distance_cells"] == 8
+    boss.eyes.reading = MedusaReading(
+        "VISIBLE", 1, (1, 6), (1, 6), "direct",
+    )
+    clock.now += WARNING_SECONDS / 2
+    game._tick_boss_charge(clock.now)
+    assert boss.charge.action is action
+    assert action.target == (16, 6)
+    assert action.destination == (13, 5)
+
+
+def test_charge_recovery_blocks_new_boss_attack_for_over_one_second(monkeypatch):
+    game, boss, clock = fight(monkeypatch)
+    game._tick_boss_charge(clock.now)
+    action = boss.charge.action
+    clock.now = action.impact_end + .8
+    game._tick_boss_charge(clock.now)
+    assert boss.charge.action is action
+    assert action.phase(clock.now) == "recovery"
+    boss.next_aoe = boss.next_proj = clock.now - 10
+    assert boss.update(clock.now) is None
+    assert boss.charge.action is action
     assert boss.tactics.volley is None
