@@ -174,8 +174,15 @@ class DeveloperRecorder:
         result["positions"] = list(self.positions)
         result["dropped_events"] = max(0, self._event_count - len(self.events))
         result["dropped_samples"] = max(0, self._sample_count - len(self.positions))
-        # Bound the final JSON, not only in-memory buffers.
+        # Analyze only at milestones, not in the rendering/update loop.
+        # Recompute after any size trimming so summary matches retained events.
         while True:
+            if checkpoint in ("boss_defeated", "round_end", "player_feedback"):
+                try:
+                    from modules.dev_analysis import analyze_report
+                    result["analysis"] = analyze_report(result)
+                except (ValueError, TypeError, KeyError) as exc:
+                    result["analysis_error"] = str(exc)[:180]
             payload = json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False)
             if len(payload.encode("utf-8")) <= MAX_REPORT_BYTES:
                 return payload
@@ -216,6 +223,9 @@ class DeveloperRecorder:
                     temp = None
                     self.last_report = target
                     self.error = None
+                    if reason in ("boss_defeated", "round_end", "player_feedback"):
+                        # HTML is a convenience only. JSON remains authoritative.
+                        self._write_html(directory, payload, target.stem)
                     self._prune(directory)
                     return True
                 except OSError as exc:
@@ -230,6 +240,32 @@ class DeveloperRecorder:
             self.error = str(exc)[:200]
         return False
 
+    def _write_html(self, directory, json_payload, name):
+        """Build a self-contained local map only during a checkpoint."""
+        temp = None
+        try:
+            from modules.dev_analysis import analyze_report, render_html
+            data = json.loads(json_payload)
+            report_html = render_html(data, data.get("analysis") or analyze_report(data))
+            with NamedTemporaryFile("w", encoding="utf-8", dir=directory,
+                                    prefix=".dev-map-", suffix=".tmp",
+                                    delete=False) as handle:
+                temp = Path(handle.name)
+                handle.write(report_html)
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.replace(temp, directory / (name + ".html"))
+            temp = None
+        except (OSError, ValueError, TypeError, KeyError) as exc:
+            # A pretty map must never stop saving the source JSON.
+            self.error = "HTML report: " + str(exc)[:160]
+        finally:
+            if temp is not None:
+                try:
+                    temp.unlink(missing_ok=True)
+                except OSError:
+                    pass
+
     def _prune(self, directory):
         """Never touch game saves, only this tool's own report filenames."""
         try:
@@ -237,6 +273,7 @@ class DeveloperRecorder:
                              key=lambda path: path.stat().st_mtime, reverse=True)
             for old in reports[MAX_REPORTS:]:
                 old.unlink(missing_ok=True)
+                old.with_suffix(".html").unlink(missing_ok=True)
         except OSError:
             pass
 
