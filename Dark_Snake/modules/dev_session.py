@@ -9,6 +9,7 @@ from __future__ import annotations
 from collections import deque
 from datetime import datetime, timezone
 import json
+import math
 import os
 from pathlib import Path
 from tempfile import NamedTemporaryFile
@@ -36,6 +37,8 @@ def _utc():
 
 
 def _safe(value, depth=0):
+    if isinstance(value, float) and not math.isfinite(value):
+        return None
     if value is None or isinstance(value, (str, int, float, bool)):
         if isinstance(value, str):
             return value[:120]
@@ -139,7 +142,7 @@ class DeveloperSession:
             "started_at": self.started,
             "last_checkpoint": str(reason)[:80],
             "saved_at": _utc(),
-            "active": self.active,
+            "active": self.active and reason not in ("disabled", "quit", "shutdown"),
             "rounds": self.rounds,
             "events": list(self.events),
             "dropped_events": self.dropped,
@@ -151,8 +154,9 @@ class DeveloperSession:
             if len(payload.encode("utf-8")) <= MAX_BYTES:
                 return payload
             if output["events"]:
-                del output["events"][:min(80, len(output["events"]))]
-                output["dropped_events"] += 80
+                removed = min(80, len(output["events"]))
+                del output["events"][:removed]
+                output["dropped_events"] += removed
             else:
                 raise ValueError("session report too large")
 
@@ -209,7 +213,9 @@ class DeveloperSession:
             return False
         self.event("session_finished", reason=str(reason)[:70])
         result = self.checkpoint(reason)
-        self.active = False
+        if result:
+            self.active = False
+        # A failed flush must not silently disable an active recorder.
         return result
 
     @staticmethod
