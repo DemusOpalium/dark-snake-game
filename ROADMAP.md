@@ -34,9 +34,13 @@
   JavaScript. Kleine Echtspiel-Screenshots und Boss-Icons zuerst;
   größere Galerie-/Tile-PNGs erst beim Scrollen laden. Vor weiterer
   Bildausweitung komprimierte Web-Versionen und Ladezeiten messen.
-- **Status:** Website-Redesign als separater **Draft-PR** zur
-  Windows-/Browser-Sichtprobe, **kein Gameplay-Code geändert**.
-  Boss-Entwicklung bleibt als nächster Spiel-PR priorisiert.
+- **Status 20.11.2026:** **✅ Website 1.0 abgeschlossen und von Demus im Browser abgenommen.**
+  PR **#246** ist auf `main` gemergt; GitHub Pages unter
+  https://demusopalium.github.io/dark-snake-game/ läuft laut Demus'
+  Live-Prüfung. Gestaltung, Galerie und Ladeverhalten sind für die
+  Version 1.0 akzeptiert. Keine Gameplay-Dateien verändert.
+  Weitere Optimierungen nur bei konkretem Bedarf oder neuem Release.
+  Boss-Entwicklung bleibt der nächste Spiel-PR.
 
 ---
 
@@ -57,8 +61,22 @@
   Teleport, Swipe, Schutzschild, Phase-Change und Frostwurf nicht
   unbemerkt überlappen. Geplanter Summon nur mit vorhandenem
   NormalEnemy und Spawn-Obergrenze.
-- **Status:** Konzept; ausdrücklich **kein Gameplay-Code geändert**.
-  Technische Referenz: `BOSS_ROLL_CHARGE_CONCEPT_2026-11-19.md`.
+- **Status:** PR **#245** am 20.11.2026 gemergt; **nur Design und Roadmap**.
+  Roll/Charge, visueller oder echter Knockback und Summon sind
+  **noch nicht implementiert**. Technische Referenz:
+  `BOSS_ROLL_CHARGE_CONCEPT_2026-11-19.md`.
+- **Nächster isolierter Code-PR:** Medusa-Ring als ein Roll/Charge-A-
+  Prototyp mit Sicht-Trigger, fester Vorwarnrichtung, 2–4 Zellen
+  gleitender Bewegung, synchroner Hitbox, maximal einem Treffer
+  pro Spieler/Charge, sauberer Recovery und Cooldown.
+- **Freigaberegel:** 1P/2P-Regression, 30/60/120-FPS-Kollisionsprüfung,
+  sichere Unterbrechungen durch Swipe/Teleport/Phasen/Pause/Respawn,
+  Windows Alpha 2, CodeQL und echter Demus-Windows-Spieltest.
+- **Danach getrennt prüfen:** zuerst ausschließlich **visuellen**
+  Ganzkörper-Knockback B1. Echte 1-Zellen-Verschiebung B2 und
+  beschränkter NormalEnemy-Summon sind optionale spätere Schritte.
+  Bestehende Boss-Teleports (#242/#243) bleiben abgenommen und
+  ohne neue Fehlerbefunde unverändert. FrostAge-Gegner (#216) warten.
 
 ---
 
