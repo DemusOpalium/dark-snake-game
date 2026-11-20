@@ -2341,13 +2341,16 @@ class Game:
         charge = boss.charge
         action = charge.action
         if action is not None:
+            motion_pending = not action.finished_motion
             before, after, began, impact, finished = charge.tick(now)
             if began:
                 self.log_combat_event(
                     "boss_charge_started", boss=boss.profile_key,
                     destination=action.destination,
                 )
-            if action.started:
+            if action.started and motion_pending:
+                # Only the actual moving 0.35s sweep deals charge damage.
+                # Recovering players cannot be newly hit during recovery.
                 # Re-check newly occupied non-head body cells and solid walls.
                 # A late blocker stops the charge before its newly swept area.
                 blockers = self._boss_snake_bodies() | set(self._vision_blockers)
