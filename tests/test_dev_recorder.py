@@ -86,3 +86,29 @@ def test_frame_intervals_only_count_active_gameplay(tmp_path):
     assert stats["observed_intervals_total"] == 2
     assert stats["slow_intervals_over_33ms"] == 1
     assert stats["p95_ms"] == 45.0
+
+
+def test_player_hp_in_nested_boss_entry_is_serialized_not_stringified(tmp_path):
+    """Recorder safety-depth must preserve P1/P2 HP, not replace it with 'dict'."""
+    recorder = DeveloperRecorder(directory=tmp_path)
+    assert recorder.configure(True)
+    assert recorder.begin_round(_token(), context={"players": 2})
+    recorder.event(
+        "vitals_snapshot", boundary="boss_entry",
+        state={
+            "players": {
+                "1": {"hp": 41.5, "max_hp": 100},
+                "2": {"hp": 87.3, "max_hp": 100},
+            },
+            "lives_remaining": 1,
+            "boss": {"key": "guardian", "hp": 84, "max_hp": 84},
+        },
+    )
+    assert recorder.finish("life_depleted")
+    data = json.loads(next(tmp_path.glob("dev-round-*.json")).read_text(encoding="utf-8"))
+    state = next(e["data"]["state"] for e in data["events"]
+                 if e["type"] == "vitals_snapshot")
+    assert state["players"]["1"] == {"hp": 41.5, "max_hp": 100}
+    assert state["players"]["2"] == {"hp": 87.3, "max_hp": 100}
+    assert state["lives_remaining"] == 1
+    assert "analysis_error" not in data
