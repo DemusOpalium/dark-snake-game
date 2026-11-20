@@ -116,3 +116,32 @@ def test_record_deliberate_test_end_after_gameover_without_changing_reason(tmp_p
     assert game.dev_recorder.report["finish_reason"] == "life_depleted"
     assert game.dev_recorder.report["tester_intent"] == "intentional_test_end"
     assert game.dev_session.rounds[-1]["tester_intent"] == "intentional_test_end"
+
+
+def test_active_round_reset_is_sealed_in_both_report_layers(tmp_path):
+    import json
+    game = Game(headless=True)
+    game.dev_session.directory = tmp_path
+    game.dev_recorder._directory = tmp_path
+    game._toggle_dev_recorder()
+    game.start_game(1)
+    rid = game._round_token["round_id"]
+    game.reset_game()
+    assert game.dev_session.rounds[0]["finish_reason"] == "reset"
+    report = json.loads((tmp_path / ("dev-round-" + rid + ".json")).read_text(encoding="utf-8"))
+    assert report["finish_reason"] == "reset"
+    assert game.dev_session.active
+
+
+def test_quit_flushes_both_json_files_without_changing_career(tmp_path):
+    import json
+    game = Game(headless=True)
+    game.dev_session.directory = tmp_path
+    game.dev_recorder._directory = tmp_path
+    game._toggle_dev_recorder()
+    game.start_game(1)
+    game._dev_shutdown()
+    session = json.loads(next(tmp_path.glob("dev-session-*.json")).read_text(encoding="utf-8"))
+    assert not session["active"]
+    assert session["rounds"][0]["finish_reason"] == "quit"
+    assert not game.dev_recorder.active
