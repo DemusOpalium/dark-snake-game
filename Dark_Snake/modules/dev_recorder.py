@@ -26,6 +26,7 @@ SOURCE_GUIDE = {
     "combat": "Dark_Snake/modules/game.py::Game.log_combat_event",
     "boss_phases": "Dark_Snake/modules/boss_phases.py",
     "boss_teleport": "Dark_Snake/modules/boss_teleport.py",
+    "boss_charge": "Dark_Snake/modules/boss_charge.py",
     "boss_personality": "Dark_Snake/modules/boss_personality.py",
     "boss_items": "Dark_Snake/modules/game.py::Game.handle_item_pickup",
     "round_history": "Dark_Snake/modules/round_progress.py",
