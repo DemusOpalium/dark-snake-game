@@ -11,6 +11,7 @@ import json
 import os
 from pathlib import Path
 from tempfile import NamedTemporaryFile
+from statistics import median
 import time
 
 from modules.resources import developer_report_directories
@@ -70,6 +71,11 @@ class DeveloperRecorder:
         self.positions = deque(maxlen=MAX_SAMPLES)
         self._event_count = 0
         self._sample_count = 0
+        self._frame_intervals_ns = deque(maxlen=6000)
+        self._frame_previous_ns = None
+        self._frame_previous_active = False
+        self._frame_total = 0
+        self._frame_slow = 0
 
     def configure(self, enabled: bool):
         """Only the main-menu UI should toggle this between new rounds."""
@@ -138,6 +144,41 @@ class DeveloperRecorder:
             "world": _safe(world),
         })
 
+    def frame_mark(self, *, game_active=True, now_ns=None):
+        """Only frame-submit spacing, never hardware input/display latency."""
+        if not self.active:
+            return
+        if now_ns is None:
+            now_ns = time.perf_counter_ns()
+        if (game_active and self._frame_previous_active
+                and self._frame_previous_ns is not None):
+            interval = max(0, now_ns - self._frame_previous_ns)
+            self._frame_intervals_ns.append(interval)
+            self._frame_total += 1
+            if interval > 33_300_000:
+                self._frame_slow += 1
+        self._frame_previous_ns = now_ns
+        self._frame_previous_active = bool(game_active)
+
+    def frame_stats(self):
+        """p50/p95 describe the latest bounded intervals; slow count is total."""
+        samples = sorted(self._frame_intervals_ns)
+        if not samples:
+            return {"interval_samples": 0, "observed_intervals_total": 0,
+                    "slow_intervals_over_33ms": 0, "p50_ms": None,
+                    "p95_ms": None, "max_ms": None}
+        import math
+        n = len(samples)
+        return {
+            "interval_samples": n,
+            "observed_intervals_total": self._frame_total,
+            "slow_intervals_over_33ms": self._frame_slow,
+            "p50_ms": round(median(samples) / 1_000_000, 3),
+            "p95_ms": round(samples[math.ceil(.95 * n) - 1] / 1_000_000, 3),
+            "max_ms": round(samples[-1] / 1_000_000, 3),
+            "definition": "Abstand lokaler Pygame-Bildübergaben; keine Monitor- oder Inputlatenz.",
+        }
+
     def add_feedback(self, *, subject, prompt, rating, note="", item_verdict=None):
         """PR B uses this; do not infer sentiment from combat counters."""
         if self.report is None or not self.enabled:
@@ -174,6 +215,7 @@ class DeveloperRecorder:
         result["positions"] = list(self.positions)
         result["dropped_events"] = max(0, self._event_count - len(self.events))
         result["dropped_samples"] = max(0, self._sample_count - len(self.positions))
+        result["performance"] = self.frame_stats()
         # Analyze only at milestones, not in the rendering/update loop.
         # Recompute after any size trimming so summary matches retained events.
         while True:
