@@ -62,3 +62,26 @@ def test_round_test_intent_is_optional_not_technical_outcome(tmp_path):
     assert session.rounds[-1]["finish_reason"] == "life_depleted"
     assert session.rounds[-1]["tester_intent"] == "intentional_test_end"
     assert not session.mark_round_intent("strange_value")
+
+
+def test_one_session_json_contains_cross_round_overview_and_ratings(tmp_path):
+    import json
+    session = DeveloperSession(directory=tmp_path)
+    session.start()
+    for index in range(2):
+        token = {"round_id": (str(index + 1) * 32),
+                 "players": 1, "started_at": "2026-11-20"}
+        session.round_start(token)
+        session.round_end(token, "life_depleted", report_saved=True,
+                          summary={"score": 500 + index, "bosses_defeated": index,
+                                   "lives_remaining": 0, "end_hp": {"1": 0}})
+        session.feedback("boss", rating=3 + index, saved=True,
+                         item_verdict=["Hilft"] if index else None)
+    assert session.checkpoint("manual")
+    result = json.loads(next(tmp_path.glob("dev-session-*.json")).read_text(encoding="utf-8"))
+    assert len(result["rounds"]) == 2
+    assert result["rounds"][0]["summary"]["score"] == 500
+    assert result["rounds"][1]["summary"]["score"] == 501
+    assert result["rounds"][0]["feedback_ratings"][0]["rating"] == 3
+    assert result["rounds"][1]["feedback_ratings"][0]["rating"] == 4
+    assert "note" not in result["rounds"][1]["feedback_ratings"][0]
