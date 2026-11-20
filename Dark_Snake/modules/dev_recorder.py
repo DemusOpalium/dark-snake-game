@@ -140,7 +140,7 @@ class DeveloperRecorder:
 
     def add_feedback(self, *, subject, prompt, rating, note="", item_verdict=None):
         """PR B uses this; do not infer sentiment from combat counters."""
-        if not self.active:
+        if self.report is None or not self.enabled:
             return False
         if rating is not None and (type(rating) is not int or not 0 <= rating <= 5):
             return False
@@ -155,7 +155,16 @@ class DeveloperRecorder:
         if len(self.report["feedback"]) >= 40:
             return False
         self.report["feedback"].append(entry)
-        self.event("player_feedback", subject=subject, rating=rating)
+        if self.active:
+            self.event("player_feedback", subject=subject, rating=rating)
+        else:
+            # Game Over review happens after the round has been sealed.
+            # Keep the final round result immutable; update only this report.
+            self._event_count += 1
+            self.events.append({
+                "ms": self.elapsed_ms(), "type": "player_feedback",
+                "data": {"subject": subject, "rating": rating},
+            })
         return self.checkpoint("player_feedback")
 
     def _snapshot(self, checkpoint):
@@ -183,7 +192,7 @@ class DeveloperRecorder:
 
     def checkpoint(self, reason="checkpoint"):
         """Atomic file replace; IO only on boss/round events or user feedback."""
-        if not self.active:
+        if self.report is None or not self.enabled:
             return False
         directories = ((self._directory,) if self._directory is not None
                        else developer_report_directories())
