@@ -1,5 +1,26 @@
 # 🛣️ ROADMAP.md – Entwicklungsfahrplan
 
+## 🧭 Aktuelle Entwicklungsschiene – BOSSE (von Demus entschieden)
+
+- **Priorität:** Bestehende Boss-Sprites und Fähigkeiten vervollständigen;
+  normale Gegner und FrostAge-Vollausbau bleiben vorerst zurückgestellt.
+- **Nächster Design-Kandidat:** `Boss Roll/Charge A`, eine kurze
+  vorgewarnte Stoß-/Rollbewegung zum **wirklich beobachteten** Spieler
+  oder bestätigten Einschlagort; danach Erholung. Erst ein einziger
+  Boss-Prototyp, keine globale neue Kampfregel.
+- **Optionale spätere Stufe:** Knockback der Snake. Derzeit
+  rastergebundene Snake-Bewegung, keine separate Physik-Engine:
+  zunächst nur visuellen Rückstoß prüfen; echte Körperverschiebung
+  nur mit lückenloser 1P/2P-, Wand-, Item- und Self-Stall-Sicherung.
+- **Fähigkeiten kombinieren statt überladen:** Roll/Charge darf
+  Teleport, Swipe, Schutzschild, Phase-Change und Frostwurf nicht
+  unbemerkt überlappen. Geplanter Summon nur mit vorhandenem
+  NormalEnemy und Spawn-Obergrenze.
+- **Status:** Konzept; ausdrücklich **kein Gameplay-Code geändert**.
+  Technische Referenz: `BOSS_ROLL_CHARGE_CONCEPT_2026-11-19.md`.
+
+---
+
 ## ✅ Boss-Fertigkeiten: Teleport A / Wächter Rift Search B · Abnahme 19.11.2026
 
 - **Manueller Windows-Spieltest (Demus) bestanden:** Medusa-Portal,
@@ -23,13 +44,22 @@
   CodeQL und Pages auf aktuellem `main` grün. Die Prüfsuite schützt
   u. a. 1P/2P, Sicherheit beim Auftauchen, Sichtregeln und Pausen.
   Das ersetzt keinen zusätzlichen **manuellen 2P-Windows-Test**.
-- **Nächster Entwicklungsfokus: FrostAge Enemy Vertical Slice.**
-  Vorhandene 17 gestagte FrostAge-Gegnergrafiken und vorbereitete
-  `FROST_PROTOTYPE_BEHAVIORS` nutzen, drei feste Archetypen
-  (Eisskelett / Frostwisp / Frosttitan) zunächst nur im separaten
-  FrostAge-Testmodus aktivieren. Assets, Sprites, HP und Spawn-Gates
-  zuerst zuordnen; danach Bewegung/Sicht/Attacken und 1P/2P testen.
-  **Classic, bestehende Bosse und Karriere-Balance unverändert.**
+- **Priorität korrigiert nach Nutzerentscheidung: Bosskampf weiterentwickeln,
+  NICHT schon neue FrostAge-Normalgegner aktivieren.** Zuerst die
+  bestehenden Boss-Persönlichkeiten erweitern (Roll-/Ram-/Charge-Angriff
+  mit Warnung, echter Bewegung, nachvollziehbarer Hitbox und Cooldown).
+  Erst anschließend als eigene Stufe ein mögliches spielerisches
+  Zurückstoßen der Schlange untersuchen. Kein unkontrollierter Umbau
+  der bewährten Raster-Kollisionen.
+- **Danach eventuell:** Boss-Summon einer **bereits existierenden**
+  Gegnerklasse, mit hartem Spawn-Limit, getrennt vom eigentlichen
+  Rollangriff. Keine neue Standardgegnerklasse oder FrostAge-Welt
+  in diesem Arbeitsschritt.
+- **FrostAge Enemy Vertical Slice vorläufig zurückgestellt**, bis
+  Demus die bestehenden Bossfähigkeiten als abgeschlossen betrachtet.
+  Die 17 gestagten FrostAge-Gegnergrafiken und vorbereiteten
+  `FROST_PROTOTYPE_BEHAVIORS` bleiben unverändert vorhanden.
+  Details: `BOSS_ROLL_CHARGE_CONCEPT_2026-11-19.md`.
 - Dokumentation: `PLAYTEST_TELEPORT_2026-11-19.md`.
 
 ---
