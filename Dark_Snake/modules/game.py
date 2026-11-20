@@ -1043,6 +1043,8 @@ class Game:
             changed = sorted(k for k, v in self.settings.items()
                              if self._dev_settings_previous.get(k) != v)
             self.dev_session.event("settings_saved", changed_keys=changed, success=saved)
+            if not saved:
+                self.dev_session.event("session_warning", code="settings_save_failed")
             if saved:
                 self._dev_settings_previous = dict(self.settings)
             self.dev_session.checkpoint("settings_saved")
@@ -3180,6 +3182,9 @@ class Game:
             return True
         except (OSError, ValueError, TypeError) as exc:
             self.round_progress_error = str(exc)
+            if self.dev_session.active:
+                self.dev_session.event("session_warning", code="round_progress_save_failed")
+                self.dev_session.checkpoint("round_progress_failure")
             record_event(f"Rundenfortschritt konnte nicht gespeichert werden: {exc}")
             return False
 
